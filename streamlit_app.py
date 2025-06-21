@@ -559,373 +559,350 @@ class EnterpriseCalculator:
             st.error(f"Claude AI API Error: {str(e)}")
             return None
         
-# STEP 1: FIRST, let's add debugging to see if the new method is being called
-# Add this at the very beginning of your new get_intelligent_datasync_recommendations method
-
-def get_intelligent_datasync_recommendations(self, config, metrics):
-    """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
-    try:
-        # DEBUG: Add this line to confirm new method is running
-        print("🔧 DEBUG: NEW DataSync optimization method is running!")
-        st.write("🔧 DEBUG: Using improved DataSync logic") # This will show in Streamlit
-        
-        current_instance = config['datasync_instance_type']
-        current_agents = config['num_datasync_agents']
-        data_size_gb = config['data_size_gb']
-        data_size_tb = data_size_gb / 1024
-        
-        # DEBUG: Show current configuration
-        st.write(f"🔧 DEBUG: Current config - {current_agents}x {current_instance}, {data_size_tb:.1f}TB")
-        
-        # Define instance hierarchy with incremental upgrade paths
-        instance_hierarchy = {
-            'm5.large': {
-                'cpu': 2, 'memory': 8, 'network': 750, 'cost_hour': 0.096,
-                'next_upgrade': 'm5.xlarge', 'upgrade_reason': 'More CPU/Memory for better performance'
-            },
-            'm5.xlarge': {
-                'cpu': 4, 'memory': 16, 'network': 750, 'cost_hour': 0.192,
-                'next_upgrade': 'm5.2xlarge', 'upgrade_reason': 'Enhanced parallel processing capabilities'
-            },
-            'm5.2xlarge': {
-                'cpu': 8, 'memory': 32, 'network': 1000, 'cost_hour': 0.384,
-                'next_upgrade': 'm5.4xlarge', 'upgrade_reason': 'Higher network performance and compute power'
-            },
-            'm5.4xlarge': {
-                'cpu': 16, 'memory': 64, 'network': 2000, 'cost_hour': 0.768,
-                'next_upgrade': 'c5.4xlarge', 'upgrade_reason': 'Switch to compute-optimized for better throughput'
-            },
-            'm5.8xlarge': {
-                'cpu': 32, 'memory': 128, 'network': 4000, 'cost_hour': 1.536,
-                'next_upgrade': 'c5.9xlarge', 'upgrade_reason': 'Maximum compute optimization'
-            },
-            'c5.2xlarge': {
-                'cpu': 8, 'memory': 16, 'network': 2000, 'cost_hour': 0.34,
-                'next_upgrade': 'c5.4xlarge', 'upgrade_reason': 'Enhanced CPU performance for large files'
-            },
-            'c5.4xlarge': {
-                'cpu': 16, 'memory': 32, 'network': 4000, 'cost_hour': 0.68,
-                'next_upgrade': 'c5.9xlarge', 'upgrade_reason': 'Maximum CPU optimization for high-throughput workloads'
-            },
-            'c5.9xlarge': {
-                'cpu': 36, 'memory': 72, 'network': 10000, 'cost_hour': 1.53,
-                'next_upgrade': None, 'upgrade_reason': 'Already at maximum compute optimization'
-            },
-            'r5.2xlarge': {
-                'cpu': 8, 'memory': 64, 'network': 2000, 'cost_hour': 0.504,
-                'next_upgrade': 'r5.4xlarge', 'upgrade_reason': 'Enhanced memory for database workloads'
-            },
-            'r5.4xlarge': {
-                'cpu': 16, 'memory': 128, 'network': 4000, 'cost_hour': 1.008,
-                'next_upgrade': None, 'upgrade_reason': 'Maximum memory optimization achieved'
-            }
-        }
-        
-        # Analyze current instance characteristics
-        current_specs = instance_hierarchy[current_instance]
-        current_cpu = current_specs['cpu']
-        current_memory = current_specs['memory']
-        current_network = current_specs['network']
-        current_cost_hour = current_specs['cost_hour']
-        
-        # Workload analysis factors
-        has_databases = len(config.get('database_types', [])) > 0
-        has_large_files = config.get('avg_file_size', '') in ['100MB-1GB (Large files)', '> 1GB (Very large files)']
-        has_many_small_files = config.get('avg_file_size', '') in ['< 1MB (Many small files)', '1-10MB (Small files)']
-        high_bandwidth = config.get('dx_bandwidth_mbps', 0) >= 10000
-        network_latency = config.get('network_latency', 25)
-        
-        # DEBUG: Show workload analysis
-        st.write(f"🔧 DEBUG: Workload - DBs:{has_databases}, LargeFiles:{has_large_files}, SmallFiles:{has_many_small_files}, HighBW:{high_bandwidth}")
-        
-        # Calculate performance efficiency of current configuration
-        current_throughput = metrics.get('optimized_throughput', 100)
-        network_bandwidth = config.get('dx_bandwidth_mbps', 1000)
-        network_utilization = (current_throughput / network_bandwidth) * 100
-        
-        # Determine if upgrade is needed based on multiple factors
-        def needs_instance_upgrade():
-            reasons = []
+    def get_intelligent_datasync_recommendations(self, config, metrics):
+        """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
+        try:
+            current_instance = config['datasync_instance_type']
+            current_agents = config['num_datasync_agents']
+            data_size_gb = config['data_size_gb']
+            data_size_tb = data_size_gb / 1024
             
-            # CPU bottleneck detection
-            if current_instance == 'm5.large' and data_size_tb > 1:
-                reasons.append("m5.large insufficient for >1TB workloads")
-            
-            # Network bottleneck detection
-            if current_network < 2000 and network_bandwidth > 5000:
-                reasons.append("Instance network performance limiting high-bandwidth utilization")
-            
-            # Memory pressure for databases
-            if has_databases and current_memory < 32 and data_size_tb > 2:
-                reasons.append("Database workloads require more memory for efficient processing")
-            
-            # CPU pressure for large files
-            if has_large_files and current_cpu < 16 and data_size_tb > 5:
-                reasons.append("Large files require more CPU cores for parallel processing")
-            
-            # High network utilization suggests need for better instance
-            if network_utilization > 70 and current_network < 4000:
-                reasons.append("High network utilization suggests instance upgrade needed")
-            
-            return reasons
-        
-        # Determine optimal agent count with incremental logic
-        def get_optimal_agent_count():
-            # Start with current agent count as baseline
-            optimal_agents = current_agents
-            
-            # Calculate theoretical optimal based on workload
-            base_agents_needed = max(1, int(data_size_tb / 5))  # 1 agent per 5TB as baseline
-            
-            # Adjust for workload characteristics
-            if has_databases:
-                # Databases benefit from fewer, more powerful agents (avoid lock contention)
-                workload_optimal = min(6, base_agents_needed)
-            elif has_large_files:
-                # Large files can use more agents efficiently
-                workload_optimal = min(12, int(base_agents_needed * 1.2))
-            elif has_many_small_files:
-                # Small files benefit from more parallelism
-                workload_optimal = min(15, int(base_agents_needed * 1.5))
-            else:
-                workload_optimal = min(10, base_agents_needed)
-            
-            # Network bandwidth consideration - don't over-provision agents for low bandwidth
-            if network_bandwidth < 1000:
-                max_agents_for_bandwidth = 3
-            elif network_bandwidth < 5000:
-                max_agents_for_bandwidth = 6
-            else:
-                max_agents_for_bandwidth = 15
-            
-            workload_optimal = min(workload_optimal, max_agents_for_bandwidth)
-            
-            # Incremental approach - don't make big jumps
-            if workload_optimal > current_agents:
-                # Increase gradually (max +3 agents at a time)
-                optimal_agents = min(current_agents + 3, workload_optimal)
-            elif workload_optimal < current_agents:
-                # Decrease gradually (max -2 agents at a time)
-                optimal_agents = max(current_agents - 2, workload_optimal)
-            else:
-                optimal_agents = current_agents
-            
-            return max(1, optimal_agents)
-        
-        # Determine next logical instance upgrade
-        def get_next_instance_upgrade():
-            upgrade_reasons = needs_instance_upgrade()
-            
-            if not upgrade_reasons:
-                return current_instance, False, "Current instance type is appropriate for workload"
-            
-            # Determine upgrade path based on workload characteristics
-            if has_databases and current_instance.startswith('m5'):
-                # For databases, consider memory-optimized instances
-                if current_instance in ['m5.large', 'm5.xlarge']:
-                    return 'r5.2xlarge', True, f"Database workload benefits from memory optimization: {'; '.join(upgrade_reasons)}"
-                elif current_instance == 'm5.2xlarge':
-                    return 'r5.4xlarge', True, f"Enhanced memory for database performance: {'; '.join(upgrade_reasons)}"
-            
-            elif has_large_files and data_size_tb > 5:
-                # For large files, prioritize compute-optimized instances
-                if current_instance.startswith('m5'):
-                    if current_instance in ['m5.large', 'm5.xlarge']:
-                        return 'c5.2xlarge', True, f"Large files benefit from compute optimization: {'; '.join(upgrade_reasons)}"
-                    elif current_instance == 'm5.2xlarge':
-                        return 'c5.4xlarge', True, f"Enhanced CPU for large file processing: {'; '.join(upgrade_reasons)}"
-                    elif current_instance == 'm5.4xlarge':
-                        return 'c5.4xlarge', True, f"Lateral move to compute-optimized: {'; '.join(upgrade_reasons)}"
-            
-            # Default incremental upgrade within same family
-            next_upgrade = current_specs.get('next_upgrade')
-            if next_upgrade:
-                return next_upgrade, True, f"Incremental upgrade: {current_specs['upgrade_reason']}; {'; '.join(upgrade_reasons)}"
-            
-            return current_instance, False, "Already at optimal instance type for workload"
-        
-        # Get recommendations
-        recommended_instance, instance_upgrade_needed, instance_reason = get_next_instance_upgrade()
-        recommended_agents = get_optimal_agent_count()
-        agent_change_needed = recommended_agents - current_agents
-        
-        # DEBUG: Show recommendations
-        st.write(f"🔧 DEBUG: Recommendations - Instance: {current_instance} → {recommended_instance} (upgrade needed: {instance_upgrade_needed})")
-        st.write(f"🔧 DEBUG: Agents: {current_agents} → {recommended_agents} (change: {agent_change_needed:+d})")
-        
-        # Calculate performance and cost impacts
-        if instance_upgrade_needed:
-            rec_specs = instance_hierarchy[recommended_instance]
-            
-            # Performance impact calculation
-            cpu_improvement = (rec_specs['cpu'] - current_cpu) / current_cpu
-            memory_improvement = (rec_specs['memory'] - current_memory) / current_memory
-            network_improvement = (rec_specs['network'] - current_network) / current_network
-            
-            # Weighted performance improvement based on workload
-            if has_databases:
-                performance_improvement = (cpu_improvement * 0.3 + memory_improvement * 0.5 + network_improvement * 0.2) * 100
-            elif has_large_files:
-                performance_improvement = (cpu_improvement * 0.5 + memory_improvement * 0.2 + network_improvement * 0.3) * 100
-            else:
-                performance_improvement = (cpu_improvement * 0.4 + memory_improvement * 0.3 + network_improvement * 0.3) * 100
-            
-            # Cost impact
-            cost_impact = ((rec_specs['cost_hour'] - current_cost_hour) / current_cost_hour) * 100
-        else:
-            performance_improvement = 0
-            cost_impact = 0
-            rec_specs = current_specs
-        
-        # Agent-based performance improvement
-        if agent_change_needed != 0:
-            agent_performance_change = (agent_change_needed / current_agents) * 100 * 0.8  # 80% scaling efficiency
-            agent_cost_change = (agent_change_needed / current_agents) * 100
-        else:
-            agent_performance_change = 0
-            agent_cost_change = 0
-        
-        # Generate agent reasoning
-        if agent_change_needed > 0:
-            agent_reasoning = f"Increase to {recommended_agents} agents (+{agent_change_needed}) for {abs(agent_performance_change):.1f}% performance improvement"
-        elif agent_change_needed < 0:
-            agent_reasoning = f"Reduce to {recommended_agents} agents ({agent_change_needed}) for {abs(agent_cost_change):.1f}% cost savings without significant performance loss"
-        else:
-            agent_reasoning = f"Current {current_agents} agents is optimal for your {data_size_tb:.1f}TB workload"
-        
-        # Current efficiency assessment
-        efficiency_factors = []
-        if network_utilization < 30:
-            efficiency_factors.append("Low network utilization - underutilized capacity")
-        elif network_utilization > 80:
-            efficiency_factors.append("High network utilization - approaching limits")
-        
-        if current_instance == 'm5.large' and data_size_tb > 5:
-            efficiency_factors.append("Instance undersized for large dataset")
-        
-        if has_databases and current_memory < 64:
-            efficiency_factors.append("Insufficient memory for database workloads")
-        
-        current_efficiency = max(20, min(100, 85 - len(efficiency_factors) * 15 + (5 if not instance_upgrade_needed else 0)))
-        
-        # Performance rating
-        if current_efficiency >= 85:
-            performance_rating = "Optimal"
-        elif current_efficiency >= 70:
-            performance_rating = "Good"
-        elif current_efficiency >= 55:
-            performance_rating = "Fair"
-        else:
-            performance_rating = "Needs Improvement"
-        
-        # Alternative configurations with incremental approach
-        alternatives = []
-        
-        # Conservative upgrade (minimal cost increase)
-        if instance_upgrade_needed and current_instance in ['m5.large', 'm5.xlarge']:
-            alternatives.append({
-                "name": "Conservative Upgrade",
-                "instance": current_specs.get('next_upgrade', current_instance),
-                "agents": current_agents,
-                "description": "Minimal cost increase with performance boost"
-            })
-        
-        # Performance-focused (if significant improvement possible)
-        if performance_improvement > 20 or agent_performance_change > 15:
-            alternatives.append({
-                "name": "Performance Focused",
-                "instance": recommended_instance,
-                "agents": recommended_agents,
-                "description": f"Optimized for {performance_improvement + agent_performance_change:.0f}% performance gain"
-            })
-        
-        # Cost-optimized (if over-provisioned)
-        if current_efficiency < 60:
-            cost_opt_agents = max(1, current_agents - 1)
-            alternatives.append({
-                "name": "Cost Optimized", 
-                "instance": current_instance,
-                "agents": cost_opt_agents,
-                "description": "Reduce costs while maintaining acceptable performance"
-            })
-        
-        result = {
-            "current_analysis": {
-                "current_efficiency": current_efficiency,
-                "performance_rating": performance_rating,
-                "scaling_effectiveness": {
-                    "scaling_rating": "Well-scaled" if 60 <= current_efficiency <= 85 else "Under-scaled" if current_efficiency < 60 else "Over-scaled",
-                    "efficiency": current_efficiency / 100
+            # Define instance hierarchy with incremental upgrade paths
+            instance_hierarchy = {
+                'm5.large': {
+                    'cpu': 2, 'memory': 8, 'network': 750, 'cost_hour': 0.096,
+                    'next_upgrade': 'm5.xlarge', 'upgrade_reason': 'More CPU/Memory for better performance'
                 },
-                "workload_complexity": len([x for x in [has_databases, has_large_files, has_many_small_files, high_bandwidth] if x])
-            },
-            "recommended_instance": {
-                "recommended_instance": recommended_instance,
-                "upgrade_needed": instance_upgrade_needed,
-                "reason": instance_reason,
-                "expected_performance_gain": max(0, performance_improvement),
-                "cost_impact_percent": cost_impact
-            },
-            "recommended_agents": {
-                "recommended_agents": recommended_agents,
-                "change_needed": agent_change_needed,
-                "reasoning": agent_reasoning,
-                "performance_change_percent": agent_performance_change,
-                "cost_change_percent": agent_cost_change
-            },
-            "bottleneck_analysis": (
-                needs_instance_upgrade(),
-                [
-                    "Consider incremental instance upgrade for better resource allocation",
-                    "Monitor network utilization and adjust agent count accordingly", 
-                    "Evaluate workload characteristics for optimal instance family selection"
-                ] if needs_instance_upgrade() else []
-            ),
-            "cost_performance_analysis": {
-                "current_cost_efficiency": current_cost_hour / max(1, current_throughput / 100),
-                "efficiency_ranking": min(20, max(1, int(current_efficiency / 5)))
-            },
-            "alternative_configurations": alternatives
-        }
-        
-        # DEBUG: Show final result
-        st.write(f"🔧 DEBUG: Final recommendation - {result['recommended_instance']['recommended_instance']} with {result['recommended_agents']['recommended_agents']} agents")
-        
-        return result
-        
-    except Exception as e:
-        # DEBUG: Show if we hit the error case
-        st.error(f"🔧 DEBUG: Error in new method - {str(e)}")
-        
-        # Return safe defaults if analysis fails
-        return {
-            "current_analysis": {
-                "current_efficiency": 75,
-                "performance_rating": "Good",
-                "scaling_effectiveness": {"scaling_rating": "Well-scaled", "efficiency": 0.8},
-                "workload_complexity": 3
-            },
-            "recommended_instance": {
-                "recommended_instance": config['datasync_instance_type'],
-                "upgrade_needed": False,
-                "reason": "Current configuration analysis unavailable - using fallback",
-                "expected_performance_gain": 0,
-                "cost_impact_percent": 0
-            },
-            "recommended_agents": {
-                "recommended_agents": config['num_datasync_agents'],
-                "change_needed": 0,
-                "reasoning": "Current agent count maintained - using fallback",
-                "performance_change_percent": 0,
-                "cost_change_percent": 0
-            },
-            "bottleneck_analysis": ([], []),
-            "cost_performance_analysis": {
-                "current_cost_efficiency": 0.1,
-                "efficiency_ranking": 10
-            },
-            "alternative_configurations": []
-        }
+                'm5.xlarge': {
+                    'cpu': 4, 'memory': 16, 'network': 750, 'cost_hour': 0.192,
+                    'next_upgrade': 'm5.2xlarge', 'upgrade_reason': 'Enhanced parallel processing capabilities'
+                },
+                'm5.2xlarge': {
+                    'cpu': 8, 'memory': 32, 'network': 1000, 'cost_hour': 0.384,
+                    'next_upgrade': 'm5.4xlarge', 'upgrade_reason': 'Higher network performance and compute power'
+                },
+                'm5.4xlarge': {
+                    'cpu': 16, 'memory': 64, 'network': 2000, 'cost_hour': 0.768,
+                    'next_upgrade': 'c5.4xlarge', 'upgrade_reason': 'Switch to compute-optimized for better throughput'
+                },
+                'm5.8xlarge': {
+                    'cpu': 32, 'memory': 128, 'network': 4000, 'cost_hour': 1.536,
+                    'next_upgrade': 'c5.9xlarge', 'upgrade_reason': 'Maximum compute optimization'
+                },
+                'c5.2xlarge': {
+                    'cpu': 8, 'memory': 16, 'network': 2000, 'cost_hour': 0.34,
+                    'next_upgrade': 'c5.4xlarge', 'upgrade_reason': 'Enhanced CPU performance for large files'
+                },
+                'c5.4xlarge': {
+                    'cpu': 16, 'memory': 32, 'network': 4000, 'cost_hour': 0.68,
+                    'next_upgrade': 'c5.9xlarge', 'upgrade_reason': 'Maximum CPU optimization for high-throughput workloads'
+                },
+                'c5.9xlarge': {
+                    'cpu': 36, 'memory': 72, 'network': 10000, 'cost_hour': 1.53,
+                    'next_upgrade': None, 'upgrade_reason': 'Already at maximum compute optimization'
+                },
+                'r5.2xlarge': {
+                    'cpu': 8, 'memory': 64, 'network': 2000, 'cost_hour': 0.504,
+                    'next_upgrade': 'r5.4xlarge', 'upgrade_reason': 'Enhanced memory for database workloads'
+                },
+                'r5.4xlarge': {
+                    'cpu': 16, 'memory': 128, 'network': 4000, 'cost_hour': 1.008,
+                    'next_upgrade': None, 'upgrade_reason': 'Maximum memory optimization achieved'
+                }
+            }
+            
+            # Analyze current instance characteristics
+            current_specs = instance_hierarchy[current_instance]
+            current_cpu = current_specs['cpu']
+            current_memory = current_specs['memory']
+            current_network = current_specs['network']
+            current_cost_hour = current_specs['cost_hour']
+            
+            # Workload analysis factors
+            has_databases = len(config.get('database_types', [])) > 0
+            has_large_files = config.get('avg_file_size', '') in ['100MB-1GB (Large files)', '> 1GB (Very large files)']
+            has_many_small_files = config.get('avg_file_size', '') in ['< 1MB (Many small files)', '1-10MB (Small files)']
+            high_bandwidth = config.get('dx_bandwidth_mbps', 0) >= 10000
+            network_latency = config.get('network_latency', 25)
+            
+            # Calculate performance efficiency of current configuration
+            current_throughput = metrics.get('optimized_throughput', 100)
+            network_bandwidth = config.get('dx_bandwidth_mbps', 1000)
+            network_utilization = (current_throughput / network_bandwidth) * 100
+            
+            # Determine if upgrade is needed based on multiple factors
+            def needs_instance_upgrade():
+                reasons = []
+                
+                # CPU bottleneck detection
+                if current_instance == 'm5.large' and data_size_tb > 1:
+                    reasons.append("m5.large insufficient for >1TB workloads")
+                
+                # Network bottleneck detection
+                if current_network < 2000 and network_bandwidth > 5000:
+                    reasons.append("Instance network performance limiting high-bandwidth utilization")
+                
+                # Memory pressure for databases
+                if has_databases and current_memory < 32 and data_size_tb > 2:
+                    reasons.append("Database workloads require more memory for efficient processing")
+                
+                # CPU pressure for large files
+                if has_large_files and current_cpu < 16 and data_size_tb > 5:
+                    reasons.append("Large files require more CPU cores for parallel processing")
+                
+                # High network utilization suggests need for better instance
+                if network_utilization > 70 and current_network < 4000:
+                    reasons.append("High network utilization suggests instance upgrade needed")
+                
+                return reasons
+            
+            # Determine optimal agent count with incremental logic
+            def get_optimal_agent_count():
+                # Start with current agent count as baseline
+                optimal_agents = current_agents
+                
+                # Calculate theoretical optimal based on workload
+                base_agents_needed = max(1, int(data_size_tb / 5))  # 1 agent per 5TB as baseline
+                
+                # Adjust for workload characteristics
+                if has_databases:
+                    # Databases benefit from fewer, more powerful agents (avoid lock contention)
+                    workload_optimal = min(6, base_agents_needed)
+                elif has_large_files:
+                    # Large files can use more agents efficiently
+                    workload_optimal = min(12, int(base_agents_needed * 1.2))
+                elif has_many_small_files:
+                    # Small files benefit from more parallelism
+                    workload_optimal = min(15, int(base_agents_needed * 1.5))
+                else:
+                    workload_optimal = min(10, base_agents_needed)
+                
+                # Network bandwidth consideration - don't over-provision agents for low bandwidth
+                if network_bandwidth < 1000:
+                    max_agents_for_bandwidth = 3
+                elif network_bandwidth < 5000:
+                    max_agents_for_bandwidth = 6
+                else:
+                    max_agents_for_bandwidth = 15
+                
+                workload_optimal = min(workload_optimal, max_agents_for_bandwidth)
+                
+                # Incremental approach - don't make big jumps
+                if workload_optimal > current_agents:
+                    # Increase gradually (max +3 agents at a time)
+                    optimal_agents = min(current_agents + 3, workload_optimal)
+                elif workload_optimal < current_agents:
+                    # Decrease gradually (max -2 agents at a time)
+                    optimal_agents = max(current_agents - 2, workload_optimal)
+                else:
+                    optimal_agents = current_agents
+                
+                return max(1, optimal_agents)
+            
+            # Determine next logical instance upgrade
+            def get_next_instance_upgrade():
+                upgrade_reasons = needs_instance_upgrade()
+                
+                if not upgrade_reasons:
+                    return current_instance, False, "Current instance type is appropriate for workload"
+                
+                # Determine upgrade path based on workload characteristics
+                if has_databases and current_instance.startswith('m5'):
+                    # For databases, consider memory-optimized instances
+                    if current_instance in ['m5.large', 'm5.xlarge']:
+                        return 'r5.2xlarge', True, f"Database workload benefits from memory optimization: {'; '.join(upgrade_reasons)}"
+                    elif current_instance == 'm5.2xlarge':
+                        return 'r5.4xlarge', True, f"Enhanced memory for database performance: {'; '.join(upgrade_reasons)}"
+                
+                elif has_large_files and data_size_tb > 5:
+                    # For large files, prioritize compute-optimized instances
+                    if current_instance.startswith('m5'):
+                        if current_instance in ['m5.large', 'm5.xlarge']:
+                            return 'c5.2xlarge', True, f"Large files benefit from compute optimization: {'; '.join(upgrade_reasons)}"
+                        elif current_instance == 'm5.2xlarge':
+                            return 'c5.4xlarge', True, f"Enhanced CPU for large file processing: {'; '.join(upgrade_reasons)}"
+                        elif current_instance == 'm5.4xlarge':
+                            return 'c5.4xlarge', True, f"Lateral move to compute-optimized: {'; '.join(upgrade_reasons)}"
+                
+                # Default incremental upgrade within same family
+                next_upgrade = current_specs.get('next_upgrade')
+                if next_upgrade:
+                    return next_upgrade, True, f"Incremental upgrade: {current_specs['upgrade_reason']}; {'; '.join(upgrade_reasons)}"
+                
+                return current_instance, False, "Already at optimal instance type for workload"
+            
+            # Get recommendations
+            recommended_instance, instance_upgrade_needed, instance_reason = get_next_instance_upgrade()
+            recommended_agents = get_optimal_agent_count()
+            agent_change_needed = recommended_agents - current_agents
+            
+            # Calculate performance and cost impacts
+            if instance_upgrade_needed:
+                rec_specs = instance_hierarchy[recommended_instance]
+                
+                # Performance impact calculation
+                cpu_improvement = (rec_specs['cpu'] - current_cpu) / current_cpu
+                memory_improvement = (rec_specs['memory'] - current_memory) / current_memory
+                network_improvement = (rec_specs['network'] - current_network) / current_network
+                
+                # Weighted performance improvement based on workload
+                if has_databases:
+                    performance_improvement = (cpu_improvement * 0.3 + memory_improvement * 0.5 + network_improvement * 0.2) * 100
+                elif has_large_files:
+                    performance_improvement = (cpu_improvement * 0.5 + memory_improvement * 0.2 + network_improvement * 0.3) * 100
+                else:
+                    performance_improvement = (cpu_improvement * 0.4 + memory_improvement * 0.3 + network_improvement * 0.3) * 100
+                
+                # Cost impact
+                cost_impact = ((rec_specs['cost_hour'] - current_cost_hour) / current_cost_hour) * 100
+            else:
+                performance_improvement = 0
+                cost_impact = 0
+                rec_specs = current_specs
+            
+            # Agent-based performance improvement
+            if agent_change_needed != 0:
+                agent_performance_change = (agent_change_needed / current_agents) * 100 * 0.8  # 80% scaling efficiency
+                agent_cost_change = (agent_change_needed / current_agents) * 100
+            else:
+                agent_performance_change = 0
+                agent_cost_change = 0
+            
+            # Generate agent reasoning
+            if agent_change_needed > 0:
+                agent_reasoning = f"Increase to {recommended_agents} agents (+{agent_change_needed}) for {abs(agent_performance_change):.1f}% performance improvement"
+            elif agent_change_needed < 0:
+                agent_reasoning = f"Reduce to {recommended_agents} agents ({agent_change_needed}) for {abs(agent_cost_change):.1f}% cost savings without significant performance loss"
+            else:
+                agent_reasoning = f"Current {current_agents} agents is optimal for your {data_size_tb:.1f}TB workload"
+            
+            # Current efficiency assessment
+            efficiency_factors = []
+            if network_utilization < 30:
+                efficiency_factors.append("Low network utilization - underutilized capacity")
+            elif network_utilization > 80:
+                efficiency_factors.append("High network utilization - approaching limits")
+            
+            if current_instance == 'm5.large' and data_size_tb > 5:
+                efficiency_factors.append("Instance undersized for large dataset")
+            
+            if has_databases and current_memory < 64:
+                efficiency_factors.append("Insufficient memory for database workloads")
+            
+            current_efficiency = max(20, min(100, 85 - len(efficiency_factors) * 15 + (5 if not instance_upgrade_needed else 0)))
+            
+            # Performance rating
+            if current_efficiency >= 85:
+                performance_rating = "Optimal"
+            elif current_efficiency >= 70:
+                performance_rating = "Good"
+            elif current_efficiency >= 55:
+                performance_rating = "Fair"
+            else:
+                performance_rating = "Needs Improvement"
+            
+            # Alternative configurations with incremental approach
+            alternatives = []
+            
+            # Conservative upgrade (minimal cost increase)
+            if instance_upgrade_needed and current_instance in ['m5.large', 'm5.xlarge']:
+                alternatives.append({
+                    "name": "Conservative Upgrade",
+                    "instance": current_specs.get('next_upgrade', current_instance),
+                    "agents": current_agents,
+                    "description": "Minimal cost increase with performance boost"
+                })
+            
+            # Performance-focused (if significant improvement possible)
+            if performance_improvement > 20 or agent_performance_change > 15:
+                alternatives.append({
+                    "name": "Performance Focused",
+                    "instance": recommended_instance,
+                    "agents": recommended_agents,
+                    "description": f"Optimized for {performance_improvement + agent_performance_change:.0f}% performance gain"
+                })
+            
+            # Cost-optimized (if over-provisioned)
+            if current_efficiency < 60:
+                cost_opt_agents = max(1, current_agents - 1)
+                alternatives.append({
+                    "name": "Cost Optimized", 
+                    "instance": current_instance,
+                    "agents": cost_opt_agents,
+                    "description": "Reduce costs while maintaining acceptable performance"
+                })
+            
+            return {
+                "current_analysis": {
+                    "current_efficiency": current_efficiency,
+                    "performance_rating": performance_rating,
+                    "scaling_effectiveness": {
+                        "scaling_rating": "Well-scaled" if 60 <= current_efficiency <= 85 else "Under-scaled" if current_efficiency < 60 else "Over-scaled",
+                        "efficiency": current_efficiency / 100
+                    },
+                    "workload_complexity": len([x for x in [has_databases, has_large_files, has_many_small_files, high_bandwidth] if x])
+                },
+                "recommended_instance": {
+                    "recommended_instance": recommended_instance,
+                    "upgrade_needed": instance_upgrade_needed,
+                    "reason": instance_reason,
+                    "expected_performance_gain": max(0, performance_improvement),
+                    "cost_impact_percent": cost_impact
+                },
+                "recommended_agents": {
+                    "recommended_agents": recommended_agents,
+                    "change_needed": agent_change_needed,
+                    "reasoning": agent_reasoning,
+                    "performance_change_percent": agent_performance_change,
+                    "cost_change_percent": agent_cost_change
+                },
+                "bottleneck_analysis": (
+                    needs_instance_upgrade(),
+                    [
+                        "Consider incremental instance upgrade for better resource allocation",
+                        "Monitor network utilization and adjust agent count accordingly", 
+                        "Evaluate workload characteristics for optimal instance family selection"
+                    ] if needs_instance_upgrade() else []
+                ),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": current_cost_hour / max(1, current_throughput / 100),
+                    "efficiency_ranking": min(20, max(1, int(current_efficiency / 5)))
+                },
+                "alternative_configurations": alternatives
+            }
+            
+        except Exception as e:
+            # Return safe defaults if analysis fails
+            return {
+                "current_analysis": {
+                    "current_efficiency": 75,
+                    "performance_rating": "Good",
+                    "scaling_effectiveness": {"scaling_rating": "Well-scaled", "efficiency": 0.8},
+                    "workload_complexity": 3
+                },
+                "recommended_instance": {
+                    "recommended_instance": config['datasync_instance_type'],
+                    "upgrade_needed": False,
+                    "reason": "Current configuration analysis unavailable",
+                    "expected_performance_gain": 0,
+                    "cost_impact_percent": 0
+                },
+                "recommended_agents": {
+                    "recommended_agents": config['num_datasync_agents'],
+                    "change_needed": 0,
+                    "reasoning": "Current agent count maintained",
+                    "performance_change_percent": 0,
+                    "cost_change_percent": 0
+                },
+                "bottleneck_analysis": ([], []),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": 0.1,
+                    "efficiency_ranking": 10
+                },
+                "alternative_configurations": []
+            }
+            
+
 
 class PDFReportGenerator:
     """Generate comprehensive PDF reports for migration analysis"""
