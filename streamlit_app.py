@@ -485,9 +485,13 @@ class MigrationPlatform:
         self.calculator = EnterpriseCalculator()
         self.initialize_session_state()
         self.setup_custom_css()
+        
+        # Add real-time tracking
+        self.last_update_time = datetime.now()
+        self.auto_refresh_interval = 30  # seconds
     
     def initialize_session_state(self):
-        """Initialize session state variables"""
+        """Initialize session state variables with real-time tracking"""
         if 'migration_projects' not in st.session_state:
             st.session_state.migration_projects = {}
         if 'user_profile' not in st.session_state:
@@ -500,9 +504,13 @@ class MigrationPlatform:
             st.session_state.audit_log = []
         if 'active_tab' not in st.session_state:
             st.session_state.active_tab = "dashboard"
+        if 'last_config_hash' not in st.session_state:
+            st.session_state.last_config_hash = None
+        if 'config_change_count' not in st.session_state:
+            st.session_state.config_change_count = 0
     
     def setup_custom_css(self):
-        """Setup custom CSS styling"""
+        """Setup custom CSS styling with real-time indicators"""
         st.markdown("""
         <style>
             .main-header {
@@ -519,6 +527,12 @@ class MigrationPlatform:
                 border-radius: 8px;
                 border-left: 4px solid #FF9900;
                 margin: 0.5rem 0;
+                transition: all 0.3s ease;
+            }
+            .metric-card:hover {
+                background-color: #e9ecef;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             }
             .security-badge {
                 background-color: #28a745;
@@ -549,6 +563,7 @@ class MigrationPlatform:
                 border-radius: 10px;
                 border-left: 4px solid #3498db;
                 margin: 10px 0;
+                animation: slideIn 0.5s ease-in;
             }
             .ai-insight {
                 background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
@@ -557,7 +572,29 @@ class MigrationPlatform:
                 border-left: 3px solid #007bff;
                 margin: 8px 0;
                 font-style: italic;
+                animation: slideIn 0.5s ease-in;
             }
+            .real-time-indicator {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                background-color: #28a745;
+                border-radius: 50%;
+                animation: pulse 2s infinite;
+                margin-right: 5px;
+            }
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.3; }
+                100% { opacity: 1; }
+            }
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .status-good { color: #28a745; font-weight: bold; }
+            .status-warning { color: #ffc107; font-weight: bold; }
+            .status-danger { color: #dc3545; font-weight: bold; }
         </style>
         """, unsafe_allow_html=True)
     
@@ -802,6 +839,25 @@ class MigrationPlatform:
             'real_world_mode': real_world_mode
         }
     
+    def detect_configuration_changes(self, config):
+        """Detect when configuration changes and log them"""
+        import hashlib
+        
+        # Create a hash of the current configuration
+        config_str = json.dumps(config, sort_keys=True)
+        current_hash = hashlib.md5(config_str.encode()).hexdigest()
+        
+        # Check if configuration changed
+        if st.session_state.last_config_hash != current_hash:
+            if st.session_state.last_config_hash is not None:  # Not the first load
+                st.session_state.config_change_count += 1
+                # Log configuration change
+                self.log_audit_event("CONFIG_CHANGED", f"Configuration updated - Change #{st.session_state.config_change_count}")
+            
+            st.session_state.last_config_hash = current_hash
+            return True
+        return False
+    
     def calculate_migration_metrics(self, config):
         """Calculate all migration metrics with error handling"""
         try:
@@ -917,6 +973,248 @@ class MigrationPlatform:
                 }
             }
     
+    def render_dashboard_tab(self, config, metrics):
+        """Render the dashboard tab with real-time data"""
+        st.header("🏠 Enterprise Migration Dashboard")
+        
+        # Calculate dynamic executive summary metrics
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        # Dynamic calculation for active projects
+        active_projects = len(st.session_state.migration_projects) + 1  # +1 for current project
+        project_change = "+1" if active_projects > 1 else "New"
+        
+        # Dynamic calculation for total data migrated (sum of all projects + current)
+        total_data_tb = metrics['data_size_tb']
+        for project_data in st.session_state.migration_projects.values():
+            if 'performance_metrics' in project_data:
+                total_data_tb += project_data.get('data_size_gb', 0) / 1024
+        data_change = f"+{metrics['data_size_tb']:.1f} TB"
+        
+        # Dynamic migration success rate based on project completion and network efficiency
+        base_success_rate = 85  # Base rate
+        network_efficiency_bonus = metrics['network_efficiency'] * 15  # Up to 15% bonus
+        compliance_bonus = len(config['compliance_frameworks']) * 2  # 2% per framework
+        risk_penalty = {"Low": 0, "Medium": -3, "High": -8, "Critical": -15}
+        risk_adjustment = risk_penalty.get(metrics['networking_recommendations']['risk_level'], 0)
+        
+        calculated_success_rate = min(99, base_success_rate + network_efficiency_bonus + compliance_bonus + risk_adjustment)
+        success_change = f"+{calculated_success_rate - 85:.0f}%" if calculated_success_rate > 85 else f"{calculated_success_rate - 85:.0f}%"
+        
+        # Dynamic cost savings calculation
+        on_premises_cost = metrics['data_size_tb'] * 1000 * 12  # $1000/TB/month
+        aws_annual_cost = metrics['cost_breakdown']['storage'] * 12 + metrics['cost_breakdown']['total']
+        annual_savings = max(0, on_premises_cost - aws_annual_cost)
+        
+        # Add optimization savings
+        if config.get('real_world_mode', True):
+            optimization_potential = metrics['optimized_throughput'] / max(1, metrics.get('theoretical_throughput', metrics['optimized_throughput'] * 1.2))
+            efficiency_savings = annual_savings * (1 - optimization_potential) * 0.3  # 30% of inefficiency as potential savings
+            total_savings = annual_savings + efficiency_savings
+        else:
+            total_savings = annual_savings
+        
+        savings_change = f"+${annual_savings/1000:.0f}K"
+        
+        # Dynamic compliance score
+        max_compliance_points = 100
+        encryption_points = 20 if config['encryption_in_transit'] and config['encryption_at_rest'] else 10
+        framework_points = min(40, len(config['compliance_frameworks']) * 10)
+        classification_points = {"Public": 5, "Internal": 10, "Confidential": 15, "Restricted": 20, "Top Secret": 25}
+        data_class_points = classification_points.get(config['data_classification'], 10)
+        network_security_points = 15 if config['qos_enabled'] and config['dx_redundant'] else 10
+        risk_points = {"Low": 15, "Medium": 10, "High": 5, "Critical": 0}
+        risk_score_points = risk_points.get(metrics['networking_recommendations']['risk_level'], 10)
+        
+        compliance_score = min(max_compliance_points, encryption_points + framework_points + data_class_points + network_security_points + risk_score_points)
+        compliance_change = f"+{compliance_score - 80:.0f}%" if compliance_score > 80 else f"{compliance_score - 80:.0f}%"
+        
+        with col1:
+            st.metric("Active Projects", str(active_projects), project_change)
+        with col2:
+            st.metric("Total Data Volume", f"{total_data_tb:.1f} TB", data_change)
+        with col3:
+            st.metric("Migration Success Rate", f"{calculated_success_rate:.0f}%", success_change)
+        with col4:
+            st.metric("Projected Annual Savings", f"${total_savings/1000:.0f}K", savings_change)
+        with col5:
+            st.metric("Compliance Score", f"{compliance_score:.0f}%", compliance_change)
+        
+        # Current project overview with real-time metrics
+        st.subheader("📊 Current Project Overview")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.metric("💾 Data Volume", f"{metrics['data_size_tb']:.1f} TB", f"{config['data_size_gb']:,.0f} GB")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            performance_mode = "Real-world" if config.get('real_world_mode', True) else "Theoretical"
+            if 'theoretical_throughput' in metrics:
+                efficiency_pct = f"{(metrics['optimized_throughput']/metrics['theoretical_throughput'])*100:.0f}%"
+                delta_text = f"{efficiency_pct} of theoretical ({performance_mode})"
+            else:
+                delta_text = f"{metrics['network_efficiency']:.1%} efficiency ({performance_mode})"
+            st.metric("⚡ Throughput", f"{metrics['optimized_throughput']:.0f} Mbps", delta_text)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            # Calculate if timeline is on track
+            timeline_status = "On Track" if metrics['transfer_days'] <= config['max_transfer_days'] else "At Risk"
+            timeline_delta = f"{metrics['transfer_days']*24:.0f} hours ({timeline_status})"
+            st.metric("📅 Duration", f"{metrics['transfer_days']:.1f} days", timeline_delta)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            # Calculate budget status
+            budget_status = "Under Budget" if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else "Over Budget"
+            budget_delta = f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}/TB ({budget_status})"
+            st.metric("💰 Total Cost", f"${metrics['cost_breakdown']['total']:,.0f}", budget_delta)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Real-time AI-Powered Recommendations Section
+        st.subheader("🤖 AI-Powered Recommendations")
+        recommendations = metrics['networking_recommendations']
+        
+        ai_type = "Real-time Claude AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "Built-in AI"
+        
+        # Dynamic performance analysis based on current configuration
+        performance_analysis = ""
+        if config.get('real_world_mode', True):
+            theoretical_max = metrics.get('theoretical_throughput', metrics['optimized_throughput'] * 1.5)
+            efficiency_ratio = metrics['optimized_throughput'] / theoretical_max
+            performance_gap = (1 - efficiency_ratio) * 100
+            
+            if efficiency_ratio > 0.8:
+                performance_analysis = f"Excellent performance! Your configuration achieves {efficiency_ratio*100:.0f}% of theoretical maximum with only {performance_gap:.0f}% optimization potential remaining."
+            elif efficiency_ratio > 0.6:
+                performance_analysis = f"Good performance with room for improvement. Current efficiency is {efficiency_ratio*100:.0f}% with {performance_gap:.0f}% optimization gap due to storage I/O constraints and DataSync overhead."
+            else:
+                performance_analysis = f"Significant optimization opportunity! Your current {efficiency_ratio*100:.0f}% efficiency suggests {performance_gap:.0f}% performance gap mainly from storage bottlenecks and network constraints."
+        else:
+            performance_analysis = "Theoretical mode shows maximum possible performance under perfect laboratory conditions."
+        
+        st.markdown(f"""
+        <div class="ai-insight">
+            <strong>🧠 {ai_type} Analysis:</strong> {recommendations['rationale']}
+            <br><br>
+            <strong>🔍 Real-time Performance Analysis:</strong> {performance_analysis}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Show real AI analysis if available
+        if recommendations.get('ai_analysis'):
+            st.markdown(f"""
+            <div class="ai-insight">
+                <strong>🔮 Advanced Claude AI Insights:</strong><br>
+                {recommendations['ai_analysis'].replace('\n', '<br>')}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Real-time activities and dynamic alerts
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📋 Real-time Activities")
+            
+            # Dynamic activities based on current configuration
+            current_time = datetime.now().strftime("%H:%M")
+            activities = [
+                f"🕐 {current_time} - {config['project_name']} configuration updated",
+                f"🤖 AI recommended: {recommendations['primary_method']} for {metrics['data_size_tb']:.1f}TB dataset",
+                f"🌐 Network analysis: {recommendations['networking_option']} ({metrics['optimized_throughput']:.0f} Mbps)",
+                f"📊 Business impact: {metrics['business_impact']['level']} priority ({metrics['business_impact']['score']:.2f} score)",
+                f"🔒 {len(config['compliance_frameworks'])} compliance framework(s) validated",
+                f"💰 Cost analysis: ${metrics['cost_breakdown']['total']:,.0f} total budget",
+                f"⚡ Performance mode: {'Real-world modeling' if config.get('real_world_mode') else 'Theoretical maximum'}"
+            ]
+            
+            for activity in activities:
+                st.write(f"• {activity}")
+        
+        with col2:
+            st.subheader("⚠️ Real-time Alerts & Status")
+            
+            alerts = []
+            
+            # Dynamic alert generation based on current configuration
+            if metrics['transfer_days'] > config['max_transfer_days']:
+                days_over = metrics['transfer_days'] - config['max_transfer_days']
+                alerts.append(f"🔴 Timeline risk: {days_over:.1f} days over {config['max_transfer_days']}-day target")
+            
+            if metrics['cost_breakdown']['total'] > config['budget_allocated']:
+                over_budget = metrics['cost_breakdown']['total'] - config['budget_allocated']
+                alerts.append(f"🔴 Budget exceeded by ${over_budget:,.0f}")
+            
+            if metrics['compliance_risks']:
+                alerts.append(f"🟡 {len(metrics['compliance_risks'])} compliance risk(s) identified")
+            
+            if config['network_latency'] > 100:
+                alerts.append(f"🟡 High latency ({config['network_latency']}ms) may impact performance")
+            
+            if recommendations['risk_level'] in ["High", "Critical"]:
+                alerts.append(f"🟡 {recommendations['risk_level']} risk migration - review recommendations")
+            
+            # Performance-specific alerts
+            if config.get('real_world_mode', True) and 'theoretical_throughput' in metrics:
+                efficiency = metrics['optimized_throughput'] / metrics['theoretical_throughput']
+                if efficiency < 0.5:
+                    alerts.append("🟡 Low performance efficiency - consider instance upgrade")
+            
+            # Network utilization alerts
+            utilization = (metrics['optimized_throughput'] / config['dx_bandwidth_mbps']) * 100
+            if utilization > 80:
+                alerts.append(f"🟡 High network utilization ({utilization:.0f}%) - monitor closely")
+            
+            # Compliance alerts based on data classification
+            if config['data_classification'] in ["Restricted", "Top Secret"] and not config['encryption_at_rest']:
+                alerts.append("🔴 Critical: Encryption at rest required for classified data")
+            
+            # AI-specific alerts
+            if config.get('enable_real_ai') and not config.get('claude_api_key'):
+                alerts.append("🟡 Real AI enabled but no API key provided")
+            
+            if not alerts:
+                alerts.append("🟢 All systems optimal - no issues detected")
+            
+            for alert in alerts:
+                st.write(alert)
+        
+        # Real-time project health dashboard
+        st.subheader("🏥 Project Health Dashboard")
+        
+        # Calculate overall project health score
+        health_factors = {
+            "Timeline": 100 if metrics['transfer_days'] <= config['max_transfer_days'] else max(0, 100 - (metrics['transfer_days'] - config['max_transfer_days']) * 10),
+            "Budget": 100 if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else max(0, 100 - ((metrics['cost_breakdown']['total'] - config['budget_allocated']) / config['budget_allocated']) * 100),
+            "Performance": metrics['network_efficiency'] * 100,
+            "Security": compliance_score,
+            "Risk": {"Low": 95, "Medium": 75, "High": 50, "Critical": 25}.get(recommendations['risk_level'], 75)
+        }
+        
+        # Display health metrics
+        health_cols = st.columns(len(health_factors))
+        for idx, (factor, score) in enumerate(health_factors.items()):
+            with health_cols[idx]:
+                color = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
+                st.metric(f"{color} {factor}", f"{score:.0f}%")
+        
+        # Overall health score
+        overall_health = sum(health_factors.values()) / len(health_factors)
+        health_status = "Excellent" if overall_health >= 90 else "Good" if overall_health >= 75 else "Fair" if overall_health >= 60 else "Needs Attention"
+        
+        st.markdown(f"""
+        <div class="recommendation-box">
+            <h4>📊 Overall Project Health: {overall_health:.0f}% ({health_status})</h4>
+            <p><strong>Real-time Assessment:</strong> Based on current configuration, your migration project shows {health_status.lower()} health indicators with primary optimization opportunities in {min(health_factors, key=health_factors.get).lower()} management.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     def render_networking_architecture_diagram(self, recommendations, config):
         """Render network architecture diagram"""
         
@@ -1002,114 +1300,6 @@ class MigrationPlatform:
         )
         
         return fig
-    
-    def render_dashboard_tab(self, config, metrics):
-        """Render the dashboard tab"""
-        st.header("🏠 Enterprise Migration Dashboard")
-        
-        # Executive summary metrics
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            st.metric("Active Projects", "3", "+1")
-        with col2:
-            st.metric("Total Data Migrated", "247 TB", "+12 TB")
-        with col3:
-            st.metric("Migration Success Rate", "94%", "+2%")
-        with col4:
-            st.metric("Cost Savings YTD", "$2.1M", "+$340K")
-        with col5:
-            st.metric("Compliance Score", "96%", "+4%")
-        
-        # Current project overview
-        st.subheader("📊 Current Project Overview")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("💾 Data Volume", f"{metrics['data_size_tb']:.1f} TB", f"{config['data_size_gb']:,.0f} GB")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            performance_mode = "Real-world" if config.get('real_world_mode', True) else "Theoretical"
-            if 'theoretical_throughput' in metrics:
-                efficiency_pct = f"{(metrics['optimized_throughput']/metrics['theoretical_throughput'])*100:.0f}%"
-                st.metric("⚡ Throughput", f"{metrics['optimized_throughput']:.0f} Mbps", f"{efficiency_pct} of theoretical ({performance_mode})")
-            else:
-                st.metric("⚡ Throughput", f"{metrics['optimized_throughput']:.0f} Mbps", f"{metrics['network_efficiency']:.1%} efficiency")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("📅 Duration", f"{metrics['transfer_days']:.1f} days", f"{metrics['transfer_days']*24:.0f} hours")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("💰 Total Cost", f"${metrics['cost_breakdown']['total']:,.0f}", f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}/TB")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        # AI-Powered Recommendations Section
-        st.subheader("🤖 AI-Powered Recommendations")
-        recommendations = metrics['networking_recommendations']
-        
-        ai_type = "Real-time Claude AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "Built-in AI"
-        
-        st.markdown(f"""
-        <div class="ai-insight">
-            <strong>🧠 {ai_type} Analysis:</strong> {recommendations['rationale']}
-            <br><br>
-            <strong>🔍 Performance Reality Check:</strong> 
-            {f"With real-world modeling enabled, your {config['datasync_instance_type']} configuration achieves {metrics['optimized_throughput']:.0f} Mbps ({(metrics['optimized_throughput']/metrics.get('theoretical_throughput', metrics['optimized_throughput']*1.5))*100:.0f}% of theoretical maximum). The {(1-(metrics['optimized_throughput']/metrics.get('theoretical_throughput', metrics['optimized_throughput']*1.5)))*100:.0f}% performance gap is due to storage I/O constraints, DataSync overhead, and AWS API limits." if config.get('real_world_mode', True) else "Theoretical mode shows maximum possible performance under perfect laboratory conditions."}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Show real AI analysis if available
-        if recommendations.get('ai_analysis'):
-            st.markdown(f"""
-            <div class="ai-insight">
-                <strong>🔮 Advanced Claude AI Insights:</strong><br>
-                {recommendations['ai_analysis'].replace('\n', '<br>')}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Recent activities and alerts
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("📋 Recent Activities")
-            activities = [
-                f"✅ {config['project_name']} migration plan generated",
-                f"🤖 AI recommended: {recommendations['primary_method']}",
-                f"🌐 Network path: {recommendations['networking_option']}",
-                f"📊 Business impact assessment: {metrics['business_impact']['level']}",
-                "🔒 Compliance framework validation completed"
-            ]
-            
-            for activity in activities:
-                st.write(f"• {activity}")
-        
-        with col2:
-            st.subheader("⚠️ Alerts & Notifications")
-            alerts = []
-            
-            if metrics['transfer_days'] > config['max_transfer_days']:
-                alerts.append(f"🔴 Timeline exceeds {config['max_transfer_days']} day target")
-            if metrics['cost_breakdown']['total'] > config['budget_allocated']:
-                alerts.append("🔴 Budget exceeded")
-            if metrics['compliance_risks']:
-                alerts.append("🟡 Compliance risks identified")
-            if config['network_latency'] > 100:
-                alerts.append("🟡 High network latency detected")
-            if recommendations['risk_level'] == "High":
-                alerts.append("🟡 High risk migration detected")
-            if not alerts:
-                alerts.append("🟢 All systems optimal")
-            
-            for alert in alerts:
-                st.write(alert)
     
     def render_network_tab(self, config, metrics):
         """Render the network analysis tab"""
@@ -1299,96 +1489,6 @@ class MigrationPlatform:
         })
         
         st.dataframe(quality_metrics, use_container_width=True, hide_index=True)
-        
-        # Real-world Performance Factors
-        st.subheader("🔧 Real-world Performance Contributing Factors")
-        
-        factors_data = []
-        
-        if config.get('real_world_mode', True):
-            factors_data = [
-                {
-                    "Factor": "DataSync Protocol Overhead",
-                    "Impact": "25%",
-                    "Description": "Checksums, metadata processing, error handling",
-                    "Your Case": "Significant for large files",
-                    "Mitigation": "Use parallel streams, optimize instance size"
-                },
-                {
-                    "Factor": "Storage I/O Limitations", 
-                    "Impact": "40%",
-                    "Description": "Source storage IOPS, disk speed limitations",
-                    "Your Case": "Major bottleneck with m5.large",
-                    "Mitigation": "Upgrade to SSD, increase IOPS, use c5.xlarge+"
-                },
-                {
-                    "Factor": "TCP Window Scaling",
-                    "Impact": "20%", 
-                    "Description": "TCP buffer limitations, window scaling disabled",
-                    "Your Case": f"Using {config.get('tcp_window_size', 'Default')}",
-                    "Mitigation": "Enable TCP window scaling (2MB+)"
-                },
-                {
-                    "Factor": "S3 API Rate Limits",
-                    "Impact": "15%",
-                    "Description": "PUT request throttling, regional limits",
-                    "Your Case": "Standard S3 limits apply",
-                    "Mitigation": "Request limit increases, use multipart uploads"
-                },
-                {
-                    "Factor": "Instance Resource Constraints",
-                    "Impact": "30%",
-                    "Description": "CPU, memory, network interface limits",
-                    "Your Case": f"m5.large constraints for 1GB files",
-                    "Mitigation": "Upgrade to m5.xlarge or c5.2xlarge"
-                },
-                {
-                    "Factor": "Concurrent Workloads", 
-                    "Impact": "15%",
-                    "Description": "Other applications sharing resources",
-                    "Your Case": "Depends on server utilization",
-                    "Mitigation": "Dedicated migration servers, off-peak hours"
-                }
-            ]
-        else:
-            factors_data = [
-                {
-                    "Factor": "Laboratory Conditions",
-                    "Impact": "5%",
-                    "Description": "Only protocol overhead",
-                    "Your Case": "Theoretical maximum",
-                    "Mitigation": "N/A - Perfect conditions"
-                }
-            ]
-        
-        df_factors = pd.DataFrame(factors_data)
-        st.dataframe(df_factors, use_container_width=True, hide_index=True)
-        
-        # Specific recommendations for user's scenario
-        st.markdown(f"""
-        <div class="recommendation-box">
-            <h4>🎯 Why You're Seeing 124 Mbps Instead of 600 Mbps</h4>
-            <p><strong>Expected with real-world modeling:</strong> {metrics['optimized_throughput']:.0f} Mbps</p>
-            <p><strong>Your actual result:</strong> 124 Mbps</p>
-            <p><strong>Key bottlenecks in your setup:</strong></p>
-            <ul>
-                <li><strong>m5.large CPU/Memory limits:</strong> Instance can't handle 1GB file processing efficiently (~40% impact)</li>
-                <li><strong>Storage I/O bottleneck:</strong> Source disk IOPS limiting read performance (~30% impact)</li>
-                <li><strong>Single DataSync agent:</strong> Insufficient parallelism for large files (~25% impact)</li>
-                <li><strong>TCP window scaling:</strong> Default settings limit throughput (~20% impact)</li>
-                <li><strong>DataSync overhead:</strong> Checksums, metadata, error handling (~15% impact)</li>
-            </ul>
-            <p><strong>Quick wins to reach 300-400 Mbps:</strong></p>
-            <ul>
-                <li>Upgrade to <strong>c5.2xlarge or m5.2xlarge</strong> (better CPU for large files)</li>
-                <li>Add <strong>2-3 more DataSync agents</strong> (parallel processing)</li>
-                <li>Use <strong>SSD storage</strong> on source (higher IOPS)</li>
-                <li>Enable <strong>TCP window scaling to 2MB</strong></li>
-                <li>Use <strong>dedicated bandwidth during off-peak hours</strong></li>
-            </ul>
-            <p><strong>Expected result with optimizations:</strong> 350-450 Mbps (realistic target)</p>
-        </div>
-        """, unsafe_allow_html=True)
     
     def render_planner_tab(self, config, metrics):
         """Render the migration planner tab"""
@@ -1849,6 +1949,146 @@ class MigrationPlatform:
         </div>
         """, unsafe_allow_html=True)
     
+    def render_sidebar_status(self, config, metrics):
+        """Render real-time status in sidebar"""
+        with st.sidebar:
+            st.markdown("---")
+            st.subheader("🚦 Real-time Status")
+            
+            # Dynamic health indicators based on current configuration
+            status_factors = []
+            
+            # Timeline status
+            if metrics['transfer_days'] <= config['max_transfer_days']:
+                days_remaining = config['max_transfer_days'] - metrics['transfer_days']
+                status_factors.append(f"✅ Timeline (+{days_remaining:.1f} days buffer)")
+            else:
+                days_over = metrics['transfer_days'] - config['max_transfer_days']
+                status_factors.append(f"❌ Timeline (-{days_over:.1f} days over)")
+            
+            # Budget status
+            if metrics['cost_breakdown']['total'] <= config['budget_allocated']:
+                budget_remaining = config['budget_allocated'] - metrics['cost_breakdown']['total']
+                status_factors.append(f"✅ Budget (${budget_remaining:,.0f} remaining)")
+            else:
+                budget_over = metrics['cost_breakdown']['total'] - config['budget_allocated']
+                status_factors.append(f"❌ Budget (+${budget_over:,.0f} over)")
+            
+            # Compliance status
+            if not metrics['compliance_risks']:
+                compliance_count = len(config['compliance_frameworks'])
+                status_factors.append(f"✅ Compliance ({compliance_count} frameworks)")
+            else:
+                risk_count = len(metrics['compliance_risks'])
+                status_factors.append(f"⚠️ Compliance ({risk_count} risks)")
+            
+            # Network status with real-time metrics
+            if config['network_latency'] < 50:
+                status_factors.append(f"✅ Network ({config['network_latency']}ms latency)")
+            elif config['network_latency'] < 100:
+                status_factors.append(f"⚠️ Network ({config['network_latency']}ms latency)")
+            else:
+                status_factors.append(f"❌ Network ({config['network_latency']}ms latency)")
+            
+            # Performance status
+            if 'theoretical_throughput' in metrics:
+                efficiency_pct = (metrics['optimized_throughput'] / metrics['theoretical_throughput']) * 100
+                if efficiency_pct >= 80:
+                    status_factors.append(f"✅ Performance ({efficiency_pct:.0f}% efficiency)")
+                elif efficiency_pct >= 60:
+                    status_factors.append(f"⚠️ Performance ({efficiency_pct:.0f}% efficiency)")
+                else:
+                    status_factors.append(f"❌ Performance ({efficiency_pct:.0f}% efficiency)")
+            else:
+                network_eff_pct = metrics['network_efficiency'] * 100
+                if network_eff_pct >= 80:
+                    status_factors.append(f"✅ Performance ({network_eff_pct:.0f}% network efficiency)")
+                else:
+                    status_factors.append(f"⚠️ Performance ({network_eff_pct:.0f}% network efficiency)")
+            
+            for factor in status_factors:
+                st.write(factor)
+            
+            # Real-time AI Recommendations Summary
+            st.subheader("🤖 Live AI Summary")
+            recommendations = metrics['networking_recommendations']
+            
+            # Dynamic AI status
+            if config.get('enable_real_ai') and config.get('claude_api_key'):
+                ai_status = f"🔮 Real AI ({config.get('ai_model', 'claude-sonnet-4')[:15]}...)"
+            else:
+                ai_status = "🧠 Built-in AI Simulation"
+            
+            st.write(f"**AI Mode:** {ai_status}")
+            st.write(f"**Method:** {recommendations['primary_method']}")
+            st.write(f"**Network:** {recommendations['networking_option']}")
+            st.write(f"**Throughput:** {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps")
+            st.write(f"**Risk:** {recommendations['risk_level']}")
+            st.write(f"**Efficiency:** {recommendations['cost_efficiency']}")
+            
+            # Real-time performance insights
+            if config.get('real_world_mode', True) and 'theoretical_throughput' in metrics:
+                performance_gap = (1 - (metrics['optimized_throughput'] / metrics['theoretical_throughput'])) * 100
+                if performance_gap > 40:
+                    st.write(f"**Optimization:** {performance_gap:.0f}% gap - Major improvement possible")
+                elif performance_gap > 20:
+                    st.write(f"**Optimization:** {performance_gap:.0f}% gap - Good optimization potential")
+                else:
+                    st.write(f"**Optimization:** {performance_gap:.0f}% gap - Well optimized")
+            
+            # Dynamic bottleneck identification
+            bottlenecks = []
+            if config['datasync_instance_type'] == "m5.large" and config['avg_file_size'] == "> 1GB (Very large files)":
+                bottlenecks.append("Instance CPU/Memory")
+            if config['dx_bandwidth_mbps'] < 1000:
+                bottlenecks.append("Network Bandwidth")
+            if config['network_latency'] > 50:
+                bottlenecks.append("Network Latency")
+            if config['num_datasync_agents'] < 3:
+                bottlenecks.append("Agent Count")
+            
+            if bottlenecks:
+                st.write(f"**Bottlenecks:** {', '.join(bottlenecks[:2])}")
+            
+            # Quick actions with real-time context
+            st.subheader("⚡ Smart Actions")
+            
+            if st.button("🔄 Refresh Analysis"):
+                # Log the refresh action
+                st.session_state.audit_log.append({
+                    "timestamp": datetime.now().isoformat(),
+                    "type": "MANUAL_REFRESH",
+                    "details": f"User refreshed analysis for {config['project_name']}",
+                    "user": st.session_state.user_profile["role"]
+                })
+                st.rerun()
+            
+            # Dynamic action recommendations
+            if recommendations['primary_method'] != "DataSync":
+                if st.button(f"🤖 Switch to {recommendations['primary_method']}"):
+                    st.info(f"AI recommends switching to {recommendations['primary_method']} for optimal performance")
+            
+            # Performance optimization action
+            if 'theoretical_throughput' in metrics:
+                efficiency = metrics['optimized_throughput'] / metrics['theoretical_throughput']
+                if efficiency < 0.7:
+                    if st.button("🚀 Apply Performance Optimizations"):
+                        st.info("Performance optimizations would upgrade instance type, increase agents, and optimize network settings")
+            
+            # Budget optimization action
+            if metrics['cost_breakdown']['total'] > config['budget_allocated']:
+                if st.button("💰 Optimize Costs"):
+                    st.info("Cost optimizations would adjust storage class, instance types, and transfer schedule")
+            
+            # Real-time configuration summary
+            st.subheader("📊 Config Summary")
+            st.write(f"**Data:** {metrics['data_size_tb']:.1f} TB")
+            st.write(f"**Agents:** {config['num_datasync_agents']}x {config['datasync_instance_type']}")
+            st.write(f"**Bandwidth:** {config['dx_bandwidth_mbps']} Mbps")
+            st.write(f"**Mode:** {'Real-world' if config.get('real_world_mode') else 'Theoretical'}")
+            st.write(f"**Duration:** {metrics['transfer_days']:.1f} days")
+            st.write(f"**Cost:** ${metrics['cost_breakdown']['total']:,.0f}")
+    
     def log_audit_event(self, event_type, details):
         """Log audit events"""
         event = {
@@ -1945,64 +2185,8 @@ class MigrationPlatform:
             st.markdown("• End-to-end Encryption")
             st.markdown("• Zero Trust Architecture")
     
-    def render_sidebar_status(self, config, metrics):
-        """Render quick status in sidebar"""
-        with st.sidebar:
-            st.markdown("---")
-            st.subheader("🚦 Quick Status")
-            
-            # Overall health indicators
-            status_factors = []
-            
-            if metrics['transfer_days'] <= config['max_transfer_days']:
-                status_factors.append("✅ Timeline")
-            else:
-                status_factors.append("❌ Timeline")
-            
-            if metrics['cost_breakdown']['total'] <= config['budget_allocated']:
-                status_factors.append("✅ Budget")
-            else:
-                status_factors.append("❌ Budget")
-            
-            if not metrics['compliance_risks']:
-                status_factors.append("✅ Compliance")
-            else:
-                status_factors.append("⚠️ Compliance")
-            
-            if config['network_latency'] < 100:
-                status_factors.append("✅ Network")
-            else:
-                status_factors.append("⚠️ Network")
-            
-            for factor in status_factors:
-                st.write(factor)
-            
-            # AI Recommendations Summary
-            st.subheader("🤖 AI Summary")
-            recommendations = metrics['networking_recommendations']
-            ai_status = "🔮 Real AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "🧠 Built-in AI"
-            st.write(f"**AI Mode:** {ai_status}")
-            st.write(f"**Method:** {recommendations['primary_method']}")
-            st.write(f"**Network:** {recommendations['networking_option']}")
-            st.write(f"**Risk:** {recommendations['risk_level']}")
-            st.write(f"**Efficiency:** {recommendations['cost_efficiency']}")
-            
-            # Quick actions
-            st.subheader("⚡ Quick Actions")
-            
-            if st.button("🔄 Refresh Calculations"):
-                st.rerun()
-            
-            if st.button("🤖 Apply AI Recommendations"):
-                st.info("AI recommendations would be automatically applied to optimize the configuration")
-            
-            if st.button("🔍 Analyze My Performance Gap"):
-                if 'theoretical_throughput' in metrics:
-                    gap_percentage = (1 - (metrics['optimized_throughput'] / metrics['theoretical_throughput'])) * 100
-                    st.info(f"Performance gap: {gap_percentage:.0f}% - Check Network Analysis tab for detailed breakdown")
-    
     def run(self):
-        """Main application entry point"""
+        """Main application entry point with real-time updates"""
         # Render header and navigation
         self.render_header()
         self.render_navigation()
@@ -2010,8 +2194,26 @@ class MigrationPlatform:
         # Get configuration from sidebar
         config = self.render_sidebar_controls()
         
-        # Calculate migration metrics
+        # Detect configuration changes for real-time updates
+        config_changed = self.detect_configuration_changes(config)
+        
+        # Calculate migration metrics (this will recalculate automatically when config changes)
         metrics = self.calculate_migration_metrics(config)
+        
+        # Show real-time update indicator
+        if config_changed:
+            st.success("🔄 Configuration updated - Dashboard refreshed with new calculations")
+        
+        # Add automatic refresh timestamp
+        current_time = datetime.now()
+        time_since_update = (current_time - self.last_update_time).seconds
+        
+        # Display last update time in the header
+        st.markdown(f"""
+        <div style="text-align: right; color: #666; font-size: 0.8em; margin-bottom: 1rem;">
+            Last updated: {current_time.strftime('%H:%M:%S')} | Auto-refresh: {time_since_update}s ago
+        </div>
+        """, unsafe_allow_html=True)
         
         # Render appropriate tab based on selection
         if st.session_state.active_tab == "dashboard":
@@ -2026,6 +2228,9 @@ class MigrationPlatform:
             self.render_security_tab(config, metrics)
         elif st.session_state.active_tab == "analytics":
             self.render_analytics_tab(config, metrics)
+        
+        # Update timestamp
+        self.last_update_time = current_time
         
         # Render footer and sidebar status
         self.render_footer(config, metrics)
@@ -2047,7 +2252,7 @@ def main():
         st.code(f"Error: {str(e)}")
         
         # Provide support contact
-        st.info("If the problem persists, please contact support at support@enterprise-migration.com")
+        st.info("If the problem persists, please contact support at admin@futureminds.com")
 
 # Application entry point
 if __name__ == "__main__":
