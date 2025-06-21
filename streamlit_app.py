@@ -9,7 +9,13 @@ import hashlib
 from typing import Dict, List, Tuple, Optional
 import uuid
 import time
-import streamlit.components.v1 as components
+
+# Optional: Import for real Claude AI integration
+try:
+    import anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
 
 # Page configuration
 st.set_page_config(
@@ -53,6 +59,73 @@ class EnterpriseCalculator:
             "ISO27001": {"risk_assessment": True, "documentation": True, "continuous_monitoring": True},
             "FedRAMP": {"encryption_required": True, "continuous_monitoring": True, "incident_response": True},
             "FISMA": {"encryption_required": True, "access_control": True, "audit_trail": True}
+        }
+        
+        # Geographic latency matrix (ms)
+        self.geographic_latency = {
+            "San Jose, CA": {"us-west-1": 15, "us-west-2": 25, "us-east-1": 70, "us-east-2": 65},
+            "San Antonio, TX": {"us-west-1": 45, "us-west-2": 50, "us-east-1": 35, "us-east-2": 30},
+            "New York, NY": {"us-west-1": 75, "us-west-2": 80, "us-east-1": 10, "us-east-2": 15},
+            "Chicago, IL": {"us-west-1": 60, "us-west-2": 65, "us-east-1": 25, "us-east-2": 20},
+            "Dallas, TX": {"us-west-1": 40, "us-west-2": 45, "us-east-1": 35, "us-east-2": 30},
+            "Los Angeles, CA": {"us-west-1": 20, "us-west-2": 15, "us-east-1": 75, "us-east-2": 70},
+            "Atlanta, GA": {"us-west-1": 65, "us-west-2": 70, "us-east-1": 15, "us-east-2": 20},
+            "London, UK": {"us-west-1": 150, "us-west-2": 155, "us-east-1": 80, "us-east-2": 85},
+            "Frankfurt, DE": {"us-west-1": 160, "us-west-2": 165, "us-east-1": 90, "us-east-2": 95},
+            "Tokyo, JP": {"us-west-1": 120, "us-west-2": 115, "us-east-1": 180, "us-east-2": 185},
+            "Sydney, AU": {"us-west-1": 170, "us-west-2": 165, "us-east-1": 220, "us-east-2": 225}
+        }
+        
+        # Database migration tools
+        self.db_migration_tools = {
+            "DMS": {
+                "name": "Database Migration Service",
+                "best_for": ["Homogeneous", "Heterogeneous", "Continuous Replication"],
+                "data_size_limit": "Large (TB scale)",
+                "downtime": "Minimal",
+                "cost_factor": 1.0,
+                "complexity": "Medium"
+            },
+            "DataSync": {
+                "name": "AWS DataSync",
+                "best_for": ["File Systems", "Object Storage", "Large Files"],
+                "data_size_limit": "Very Large (PB scale)",
+                "downtime": "None",
+                "cost_factor": 0.8,
+                "complexity": "Low"
+            },
+            "DMS+DataSync": {
+                "name": "Hybrid DMS + DataSync",
+                "best_for": ["Complex Workloads", "Mixed Data Types"],
+                "data_size_limit": "Very Large",
+                "downtime": "Low",
+                "cost_factor": 1.3,
+                "complexity": "High"
+            },
+            "Parallel Copy": {
+                "name": "AWS Parallel Copy",
+                "best_for": ["Time-Critical", "High Throughput"],
+                "data_size_limit": "Large",
+                "downtime": "Low",
+                "cost_factor": 1.5,
+                "complexity": "Medium"
+            },
+            "Snowball Edge": {
+                "name": "AWS Snowball Edge",
+                "best_for": ["Limited Bandwidth", "Large Datasets"],
+                "data_size_limit": "Very Large (100TB per device)",
+                "downtime": "Medium",
+                "cost_factor": 0.6,
+                "complexity": "Low"
+            },
+            "Storage Gateway": {
+                "name": "AWS Storage Gateway",
+                "best_for": ["Hybrid Cloud", "Gradual Migration"],
+                "data_size_limit": "Large",
+                "downtime": "None",
+                "cost_factor": 1.2,
+                "complexity": "Medium"
+            }
         }
     
     def calculate_enterprise_throughput(self, instance_type, num_agents, file_size_category, 
@@ -169,6 +242,193 @@ class EnterpriseCalculator:
             recommendation = "Direct migration acceptable"
         
         return {"score": avg_impact, "level": level, "recommendation": recommendation}
+    
+    def get_optimal_networking_architecture(self, source_location, target_region, data_size_gb, 
+                                          dx_bandwidth_mbps, database_types, data_types, config=None):
+        """AI-powered networking architecture recommendations"""
+        
+        # Get latency for the route
+        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
+        
+        # Analyze data characteristics
+        has_databases = len(database_types) > 0
+        has_large_files = any("Large" in dt or "Media" in dt for dt in data_types)
+        data_size_tb = data_size_gb / 1024
+        
+        recommendations = {
+            "primary_method": "",
+            "secondary_method": "",
+            "networking_option": "",
+            "db_migration_tool": "",
+            "rationale": "",
+            "estimated_performance": {},
+            "cost_efficiency": "",
+            "risk_level": "",
+            "ai_analysis": ""
+        }
+        
+        # Try to get real AI analysis if enabled
+        if config and config.get('enable_real_ai') and config.get('claude_api_key'):
+            real_ai_analysis = self.get_real_ai_analysis(config, config['claude_api_key'], config.get('ai_model'))
+            if real_ai_analysis:
+                recommendations["ai_analysis"] = real_ai_analysis
+        
+        # Network architecture decision logic (fallback built-in AI)
+        if dx_bandwidth_mbps >= 1000 and estimated_latency < 50:
+            recommendations["networking_option"] = "Direct Connect (Primary)"
+            network_score = 9
+        elif dx_bandwidth_mbps >= 500:
+            recommendations["networking_option"] = "Direct Connect with Internet Backup"
+            network_score = 7
+        else:
+            recommendations["networking_option"] = "Internet with VPN"
+            network_score = 5
+        
+        # Database migration tool selection
+        if has_databases and data_size_tb > 10:
+            if len(database_types) > 2:
+                recommendations["db_migration_tool"] = "DMS+DataSync"
+            else:
+                recommendations["db_migration_tool"] = "DMS"
+        elif has_large_files and data_size_tb > 50:
+            if dx_bandwidth_mbps < 1000:
+                recommendations["db_migration_tool"] = "Snowball Edge"
+            else:
+                recommendations["db_migration_tool"] = "DataSync"
+        elif data_size_tb > 100:
+            recommendations["db_migration_tool"] = "Parallel Copy"
+        else:
+            recommendations["db_migration_tool"] = "DataSync"
+        
+        # Primary method selection
+        if data_size_tb > 50 and dx_bandwidth_mbps < 1000:
+            recommendations["primary_method"] = "Snowball Edge"
+            recommendations["secondary_method"] = "DataSync (for ongoing sync)"
+        elif has_databases:
+            recommendations["primary_method"] = recommendations["db_migration_tool"]
+            recommendations["secondary_method"] = "Storage Gateway (for hybrid)"
+        else:
+            recommendations["primary_method"] = "DataSync"
+            recommendations["secondary_method"] = "S3 Transfer Acceleration"
+        
+        # Generate built-in AI rationale
+        recommendations["rationale"] = self._generate_ai_rationale(
+            source_location, target_region, data_size_tb, dx_bandwidth_mbps, 
+            has_databases, has_large_files, estimated_latency, network_score
+        )
+        
+        # Performance estimation
+        if recommendations["networking_option"] == "Direct Connect (Primary)":
+            base_throughput = min(dx_bandwidth_mbps * 0.8, 2000)
+        elif "Direct Connect" in recommendations["networking_option"]:
+            base_throughput = min(dx_bandwidth_mbps * 0.6, 1500)
+        else:
+            base_throughput = min(500, dx_bandwidth_mbps * 0.4)
+        
+        recommendations["estimated_performance"] = {
+            "throughput_mbps": base_throughput,
+            "estimated_days": (data_size_gb * 8) / (base_throughput * 86400) / 1000,
+            "network_efficiency": network_score / 10
+        }
+        
+        # Cost and risk assessment
+        if data_size_tb > 100 and dx_bandwidth_mbps < 1000:
+            recommendations["cost_efficiency"] = "High (Physical transfer)"
+            recommendations["risk_level"] = "Medium"
+        elif dx_bandwidth_mbps >= 1000:
+            recommendations["cost_efficiency"] = "Medium (Network transfer)"
+            recommendations["risk_level"] = "Low"
+        else:
+            recommendations["cost_efficiency"] = "Medium"
+            recommendations["risk_level"] = "Medium"
+        
+        return recommendations
+    
+    def _generate_ai_rationale(self, source, target, data_size_tb, bandwidth, has_db, has_large_files, latency, network_score):
+        """Generate intelligent rationale for recommendations"""
+        
+        rationale_parts = []
+        
+        # Geographic analysis
+        if latency < 30:
+            rationale_parts.append(f"Excellent geographic proximity between {source} and {target} (≈{latency}ms latency)")
+        elif latency < 80:
+            rationale_parts.append(f"Good connectivity between {source} and {target} (≈{latency}ms latency)")
+        else:
+            rationale_parts.append(f"Significant distance between {source} and {target} (≈{latency}ms latency) - consider regional optimization")
+        
+        # Bandwidth analysis
+        if bandwidth >= 10000:
+            rationale_parts.append("High-bandwidth Direct Connect enables optimal network transfer performance")
+        elif bandwidth >= 1000:
+            rationale_parts.append("Adequate Direct Connect bandwidth supports efficient network-based migration")
+        else:
+            rationale_parts.append("Limited bandwidth suggests physical transfer methods for large datasets")
+        
+        # Data characteristics
+        if data_size_tb > 100:
+            rationale_parts.append(f"Large dataset ({data_size_tb:.1f}TB) requires high-throughput migration strategy")
+        
+        if has_db:
+            rationale_parts.append("Database workloads require specialized migration tools with minimal downtime capabilities")
+        
+        if has_large_files:
+            rationale_parts.append("Large file presence optimizes for high-throughput, parallel transfer methods")
+        
+        # Performance prediction
+        if network_score >= 8:
+            rationale_parts.append("Network conditions are optimal for direct cloud migration")
+        elif network_score >= 6:
+            rationale_parts.append("Network conditions support cloud migration with some optimization needed")
+        else:
+            rationale_parts.append("Network limitations suggest hybrid or physical transfer approaches")
+        
+        return ". ".join(rationale_parts) + "."
+    
+    def get_real_ai_analysis(self, config, api_key, model="claude-3-sonnet-20240229"):
+        """Get real Claude AI analysis using Anthropic API"""
+        if not ANTHROPIC_AVAILABLE or not api_key:
+            return None
+        
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            
+            # Prepare context for Claude
+            context = f"""
+            You are an expert AWS migration architect. Analyze this migration scenario and provide recommendations:
+            
+            Project: {config.get('project_name', 'N/A')}
+            Data Size: {config.get('data_size_gb', 0)} GB
+            Source: {config.get('source_location', 'N/A')}
+            Target: {config.get('target_aws_region', 'N/A')}
+            Network: {config.get('dx_bandwidth_mbps', 0)} Mbps Direct Connect
+            Databases: {', '.join(config.get('database_types', []))}
+            Data Types: {', '.join(config.get('data_types', []))}
+            Compliance: {', '.join(config.get('compliance_frameworks', []))}
+            Data Classification: {config.get('data_classification', 'N/A')}
+            
+            Provide specific recommendations for:
+            1. Best migration method and tools
+            2. Network architecture approach
+            3. Performance optimization strategies
+            4. Risk mitigation approaches
+            5. Cost optimization suggestions
+            
+            Be concise but specific. Focus on AWS best practices.
+            """
+            
+            response = client.messages.create(
+                model=model,
+                max_tokens=1000,
+                temperature=0.3,
+                messages=[{"role": "user", "content": context}]
+            )
+            
+            return response.content[0].text if response.content else None
+            
+        except Exception as e:
+            st.error(f"Claude AI API Error: {str(e)}")
+            return None
 
 class MigrationPlatform:
     """Main application class for the Enterprise AWS Migration Platform"""
@@ -232,6 +492,23 @@ class MigrationPlatform:
                 border-radius: 10px;
                 background: white;
                 box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                padding: 15px;
+                margin: 10px 0;
+            }
+            .recommendation-box {
+                background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
+                padding: 15px;
+                border-radius: 10px;
+                border-left: 4px solid #3498db;
+                margin: 10px 0;
+            }
+            .ai-insight {
+                background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+                padding: 12px;
+                border-radius: 8px;
+                border-left: 3px solid #007bff;
+                margin: 8px 0;
+                font-style: italic;
             }
         </style>
         """, unsafe_allow_html=True)
@@ -247,7 +524,7 @@ class MigrationPlatform:
     
     def render_navigation(self):
         """Render the top navigation bar"""
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 2, 2, 2, 2, 2, 2])
+        col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 2, 2, 2])
         
         with col1:
             if st.button("🏠 Dashboard"):
@@ -267,1050 +544,6 @@ class MigrationPlatform:
         with col6:
             if st.button("📈 Analytics"):
                 st.session_state.active_tab = "analytics"
-        with col7:
-            if st.button("🌐 Network Lab"):
-                st.session_state.active_tab = "network_lab"
-    
-    def render_network_lab_tab(self):
-        """Render the advanced networking tool tab"""
-        st.header("🌐 Advanced Networking Architecture Lab")
-        st.markdown("**Interactive Network Design, Analysis & Learning Platform**")
-        
-        # Create tabs for different networking features
-        lab_tab1, lab_tab2, lab_tab3 = st.tabs(["🏗️ Interactive Network Designer", "📊 Network Analysis Tools", "📚 Learning Resources"])
-        
-        with lab_tab1:
-            st.subheader("Interactive Network Architecture Designer")
-            st.markdown("**Design, simulate and analyze enterprise network topologies with real-time performance metrics.**")
-            
-            # Embed the networking tool
-            networking_html = self.get_networking_tool_html()
-            
-            components.html(
-                networking_html,
-                height=1200,  # Increased height to accommodate the full tool
-                scrolling=True
-            )
-        
-        with lab_tab2:
-            st.subheader("Network Analysis & Troubleshooting Tools")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("### 🔍 Network Diagnostics")
-                
-                # Source and Target selection
-                source_location = st.selectbox("Source Location", 
-                    ["San Jose, CA", "San Antonio, TX", "New York, NY", "Chicago, IL", "Atlanta, GA", "Seattle, WA"])
-                
-                target_location = st.selectbox("Target Location",
-                    ["AWS us-west-1", "AWS us-west-2", "AWS us-east-1", "AWS us-east-2", "Azure West US", "GCP us-central1"])
-                
-                connection_type = st.selectbox("Connection Type",
-                    ["Direct Fiber", "AWS Direct Connect", "VPN over Internet", "MPLS Network", "SD-WAN"])
-                
-                if st.button("🧪 Run Network Test"):
-                    # Simulate network test results
-                    import random
-                    latency = random.randint(10, 80)
-                    throughput = random.randint(500, 2000)
-                    packet_loss = round(random.uniform(0, 0.5), 3)
-                    jitter = round(random.uniform(1, 10), 1)
-                    
-                    st.success("✅ Network Test Complete")
-                    
-                    # Display results
-                    col_a, col_b, col_c, col_d = st.columns(4)
-                    with col_a:
-                        st.metric("Latency", f"{latency} ms")
-                    with col_b:
-                        st.metric("Throughput", f"{throughput} Mbps")
-                    with col_c:
-                        st.metric("Packet Loss", f"{packet_loss}%")
-                    with col_d:
-                        st.metric("Jitter", f"{jitter} ms")
-            
-            with col2:
-                st.markdown("### 📈 Performance Metrics")
-                
-                # Create a sample latency chart
-                dates = pd.date_range(start="2024-01-01", periods=30, freq="D")
-                latency_data = np.random.normal(25, 5, 30)
-                
-                fig_latency = go.Figure()
-                fig_latency.add_trace(go.Scatter(
-                    x=dates,
-                    y=latency_data,
-                    mode='lines+markers',
-                    name='Latency (ms)',
-                    line=dict(color='#FF9900')
-                ))
-                
-                fig_latency.update_layout(
-                    title="Network Latency Trend",
-                    xaxis_title="Date",
-                    yaxis_title="Latency (ms)",
-                    height=300
-                )
-                
-                st.plotly_chart(fig_latency, use_container_width=True)
-                
-                # Network Quality Assessment
-                st.markdown("### 🎯 Network Quality")
-                quality_score = random.randint(85, 98)
-                
-                if quality_score >= 95:
-                    quality_status = "🟢 Excellent"
-                elif quality_score >= 85:
-                    quality_status = "🟡 Good"
-                else:
-                    quality_status = "🔴 Needs Improvement"
-                
-                st.metric("Overall Quality Score", f"{quality_score}/100", quality_status)
-        
-        with lab_tab3:
-            st.subheader("📚 Networking Knowledge Base")
-            
-            # Create expandable sections for different networking topics
-            with st.expander("🏗️ Network Topologies"):
-                st.markdown("""
-                **Common Network Topologies:**
-                
-                - **Star Topology**: All devices connect to a central hub/switch
-                  - ✅ Easy to manage and troubleshoot
-                  - ❌ Single point of failure at the center
-                
-                - **Mesh Topology**: Every device connects to every other device
-                  - ✅ High redundancy and fault tolerance
-                  - ❌ Expensive and complex to implement
-                
-                - **Ring Topology**: Devices form a circular data path
-                  - ✅ Predictable performance
-                  - ❌ Single break can affect entire network
-                
-                - **Spine-Leaf**: Modern data center architecture
-                  - ✅ High bandwidth and low latency
-                  - ✅ Excellent scalability
-                """)
-            
-            with st.expander("📡 Network Protocols"):
-                st.markdown("""
-                **Key Network Protocols:**
-                
-                **Layer 3 (Network):**
-                - IP (Internet Protocol): Addressing and routing
-                - OSPF: Open Shortest Path First routing
-                - BGP: Border Gateway Protocol for internet routing
-                
-                **Layer 4 (Transport):**
-                - TCP: Reliable, connection-oriented
-                - UDP: Fast, connectionless
-                
-                **Layer 7 (Application):**
-                - HTTP/HTTPS: Web traffic
-                - DNS: Domain name resolution
-                - SMTP: Email transmission
-                """)
-            
-            with st.expander("⚡ Network Optimization"):
-                st.markdown("""
-                **Performance Optimization Techniques:**
-                
-                1. **Bandwidth Management**
-                   - QoS (Quality of Service) implementation
-                   - Traffic shaping and policing
-                   - Load balancing across multiple links
-                
-                2. **Latency Optimization**
-                   - Geographic proximity to resources
-                   - CDN (Content Delivery Network) usage
-                   - Protocol optimization (TCP window scaling)
-                
-                3. **Reliability Improvements**
-                   - Redundant connections
-                   - Failover mechanisms
-                   - Network monitoring and alerting
-                """)
-            
-            with st.expander("🔧 Troubleshooting Guide"):
-                st.markdown("""
-                **Network Troubleshooting Methodology:**
-                
-                1. **Physical Layer (Layer 1)**
-                   - Check cable connections
-                   - Verify power and LED status
-                   - Test with known good cables
-                
-                2. **Data Link Layer (Layer 2)**
-                   - Check switch port status
-                   - Verify VLAN configuration
-                   - Review spanning tree status
-                
-                3. **Network Layer (Layer 3)**
-                   - Ping connectivity tests
-                   - Traceroute for path analysis
-                   - Routing table verification
-                
-                4. **Higher Layers**
-                   - Port connectivity tests
-                   - Application-specific diagnostics
-                   - Performance monitoring
-                """)
-    
-    def get_networking_tool_html(self):
-        """Return the complete HTML for the networking tool"""
-        return """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Networking Architecture Platform</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 15px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        h1 {
-            color: #2c3e50;
-            font-size: 2em;
-            font-weight: 700;
-            background: linear-gradient(45deg, #3498db, #8e44ad, #e74c3c);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
-        }
-
-        .subtitle {
-            color: #6c757d;
-            font-size: 1em;
-            font-weight: 500;
-        }
-
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 4px;
-            flex-wrap: wrap;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .tab {
-            flex: 1;
-            min-width: 120px;
-            padding: 10px 15px;
-            background: transparent;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            color: #6c757d;
-            text-align: center;
-            font-size: 0.85em;
-        }
-
-        .tab.active {
-            background: linear-gradient(45deg, #3498db, #8e44ad);
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.4s ease-in;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .network-workspace {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .control-panel {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            height: fit-content;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .control-group {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .control-group:last-child {
-            border-bottom: none;
-        }
-
-        .control-group h3 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 0.95em;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .network-canvas {
-            width: 100%;
-            height: 450px;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            background: radial-gradient(circle at center, #f8f9fa 0%, #e9ecef 100%);
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-
-        .node {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 3px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            font-size: 0.7em;
-            text-align: center;
-            z-index: 10;
-        }
-
-        .node:hover {
-            transform: scale(1.1);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-            z-index: 20;
-        }
-
-        .router { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-        .server { background: linear-gradient(135deg, #27ae60, #229954); }
-        .cloud { background: linear-gradient(135deg, #3498db, #2980b9); }
-        .firewall { background: linear-gradient(135deg, #f39c12, #d68910); }
-        .switch { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
-        .user { background: linear-gradient(135deg, #34495e, #2c3e50); }
-
-        .connection {
-            position: absolute;
-            height: 2px;
-            background: linear-gradient(90deg, #3498db, #8e44ad);
-            transform-origin: left center;
-            opacity: 0.8;
-            border-radius: 1px;
-            z-index: 1;
-        }
-
-        .animated-connection {
-            animation: dataFlow 2s infinite;
-        }
-
-        @keyframes dataFlow {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
-
-        select, input, button {
-            width: 100%;
-            padding: 8px;
-            margin: 4px 0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 12px;
-            transition: all 0.2s ease;
-        }
-
-        select:focus, input:focus {
-            border-color: #3498db;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
-            outline: none;
-        }
-
-        button {
-            background: linear-gradient(45deg, #3498db, #8e44ad);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .metric-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .metric-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .metric-value {
-            font-size: 1.8em;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
-        .metric-label {
-            font-size: 0.85em;
-            opacity: 0.9;
-            font-weight: 500;
-        }
-
-        .topology-info {
-            background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            border-left: 4px solid #3498db;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .topology-info h3 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 1.1em;
-        }
-
-        .legend {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            background: white;
-            border-radius: 20px;
-            border: 1px solid #e9ecef;
-            font-weight: 500;
-            font-size: 0.8em;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-            transition: all 0.2s ease;
-        }
-
-        .legend-item:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
-        }
-
-        .legend-color {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        @media (max-width: 768px) {
-            .network-workspace {
-                grid-template-columns: 1fr;
-            }
-            
-            .control-panel {
-                order: 2;
-            }
-            
-            .network-canvas {
-                order: 1;
-                height: 350px;
-            }
-            
-            .tabs {
-                flex-direction: column;
-            }
-            
-            .tab {
-                margin: 1px 0;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🌐 Advanced Networking Architecture Platform</h1>
-            <p class="subtitle">Interactive Network Design, Analysis & Learning Tool</p>
-        </div>
-
-        <div class="tabs">
-            <button class="tab active" onclick="showTab('topologies')">🏗️ Network Topologies</button>
-            <button class="tab" onclick="showTab('protocols')">📚 Protocols</button>
-            <button class="tab" onclick="showTab('latency')">⚡ Latency Analysis</button>
-            <button class="tab" onclick="showTab('geography')">🗺️ Geographic</button>
-        </div>
-
-        <!-- Network Topologies Tab -->
-        <div id="topologies" class="tab-content active">
-            <div class="network-workspace">
-                <div class="control-panel">
-                    <div class="control-group">
-                        <h3>🏗️ Topology Type</h3>
-                        <select id="topologySelect" onchange="generateTopology()">
-                            <option value="star">Star Topology</option>
-                            <option value="mesh">Full Mesh</option>
-                            <option value="ring">Ring Topology</option>
-                            <option value="tree">Hierarchical Tree</option>
-                            <option value="datacenter">Data Center</option>
-                            <option value="wan">Enterprise WAN</option>
-                        </select>
-                    </div>
-
-                    <div class="control-group">
-                        <h3>⚙️ Parameters</h3>
-                        <label>Nodes: <span id="nodeCountValue">8</span></label>
-                        <input type="range" id="nodeCount" min="4" max="20" value="8" oninput="updateNodeCount()">
-                        
-                        <label>Connection Speed:</label>
-                        <select id="connectionSpeed">
-                            <option value="100">100 Mbps</option>
-                            <option value="1000" selected>1 Gbps</option>
-                            <option value="10000">10 Gbps</option>
-                        </select>
-                    </div>
-
-                    <div class="control-group">
-                        <h3>🎮 Actions</h3>
-                        <button onclick="simulateTraffic()">🔄 Simulate Traffic</button>
-                        <button onclick="analyzePerformance()">📈 Analyze</button>
-                        <button onclick="showOptimalPath()">🎯 Optimal Path</button>
-                    </div>
-                </div>
-
-                <div class="network-canvas" id="networkCanvas"></div>
-            </div>
-
-            <div class="topology-info" id="topologyInfo">
-                <h3>📋 Current Topology: Star Network</h3>
-                <p>A star topology connects all devices to a central hub or switch.</p>
-            </div>
-
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-value" id="totalNodes">8</div>
-                    <div class="metric-label">Total Nodes</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="totalConnections">7</div>
-                    <div class="metric-label">Connections</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="networkDiameter">2</div>
-                    <div class="metric-label">Diameter</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="redundancyLevel">0%</div>
-                    <div class="metric-label">Redundancy</div>
-                </div>
-            </div>
-
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-color router"></div>
-                    <span>Router</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color server"></div>
-                    <span>Server</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color cloud"></div>
-                    <span>Cloud</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color firewall"></div>
-                    <span>Firewall</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color switch"></div>
-                    <span>Switch</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color user"></div>
-                    <span>Device</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Other tabs would be similar but simplified for space -->
-        <div id="protocols" class="tab-content">
-            <h2>📚 Network Protocols & Standards</h2>
-            <p>OSI Model layers, routing protocols, and security standards...</p>
-        </div>
-
-        <div id="latency" class="tab-content">
-            <h2>⚡ Latency Analysis</h2>
-            <p>Network performance testing and optimization...</p>
-        </div>
-
-        <div id="geography" class="tab-content">
-            <h2>🗺️ Geographic Networks</h2>
-            <p>Global network architecture and regional connectivity...</p>
-        </div>
-    </div>
-
-    <script>
-        // Global variables
-        let currentTopology = 'star';
-        let networkNodes = [];
-        let networkConnections = [];
-        let nodeCount = 8;
-
-        // Initialize the application
-        function init() {
-            generateTopology();
-        }
-
-        // Tab switching functionality
-        function showTab(tabName) {
-            const tabContents = document.querySelectorAll('.tab-content');
-            tabContents.forEach(content => content.classList.remove('active'));
-
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        // Network topology generation
-        function generateTopology() {
-            const topology = document.getElementById('topologySelect').value;
-            const canvas = document.getElementById('networkCanvas');
-            canvas.innerHTML = '';
-
-            currentTopology = topology;
-            networkNodes = [];
-            networkConnections = [];
-
-            const width = canvas.clientWidth;
-            const height = canvas.clientHeight;
-
-            switch (topology) {
-                case 'star':
-                    generateStarTopology(canvas, width, height);
-                    break;
-                case 'mesh':
-                    generateMeshTopology(canvas, width, height);
-                    break;
-                case 'ring':
-                    generateRingTopology(canvas, width, height);
-                    break;
-                case 'tree':
-                    generateTreeTopology(canvas, width, height);
-                    break;
-                case 'datacenter':
-                    generateDatacenterTopology(canvas, width, height);
-                    break;
-                case 'wan':
-                    generateWanTopology(canvas, width, height);
-                    break;
-            }
-
-            updateTopologyInfo(topology);
-            updateMetrics();
-        }
-
-        function generateStarTopology(canvas, width, height) {
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const radius = Math.min(width, height) * 0.3;
-
-            // Central node
-            const centralNode = createNode(centerX, centerY, 'switch', 'SW1');
-            canvas.appendChild(centralNode);
-            networkNodes.push({ x: centerX, y: centerY, type: 'switch', id: 'SW1' });
-
-            // Peripheral nodes
-            for (let i = 0; i < nodeCount - 1; i++) {
-                const angle = (2 * Math.PI * i) / (nodeCount - 1);
-                const x = centerX + radius * Math.cos(angle);
-                const y = centerY + radius * Math.sin(angle);
-                
-                const nodeType = i % 3 === 0 ? 'server' : 'user';
-                const nodeId = nodeType === 'server' ? `SRV${Math.floor(i/3) + 1}` : `PC${i + 1}`;
-                
-                const node = createNode(x, y, nodeType, nodeId);
-                canvas.appendChild(node);
-                networkNodes.push({ x, y, type: nodeType, id: nodeId });
-
-                const connection = createConnection(centerX, centerY, x, y);
-                canvas.appendChild(connection);
-                networkConnections.push({ from: 'SW1', to: nodeId });
-            }
-        }
-
-        function generateMeshTopology(canvas, width, height) {
-            const cols = Math.ceil(Math.sqrt(nodeCount));
-            const rows = Math.ceil(nodeCount / cols);
-            const spacingX = width / (cols + 1);
-            const spacingY = height / (rows + 1);
-
-            for (let i = 0; i < nodeCount; i++) {
-                const row = Math.floor(i / cols);
-                const col = i % cols;
-                const x = spacingX * (col + 1);
-                const y = spacingY * (row + 1);
-                
-                const nodeType = i % 3 === 0 ? 'router' : 'user';
-                const nodeId = `N${i + 1}`;
-                
-                const node = createNode(x, y, nodeType, nodeId);
-                canvas.appendChild(node);
-                networkNodes.push({ x, y, type: nodeType, id: nodeId });
-            }
-
-            // Create mesh connections
-            for (let i = 0; i < networkNodes.length; i++) {
-                for (let j = i + 1; j < networkNodes.length; j++) {
-                    const node1 = networkNodes[i];
-                    const node2 = networkNodes[j];
-                    const connection = createConnection(node1.x, node1.y, node2.x, node2.y);
-                    canvas.appendChild(connection);
-                    networkConnections.push({ from: node1.id, to: node2.id });
-                }
-            }
-        }
-
-        function generateRingTopology(canvas, width, height) {
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const radius = Math.min(width, height) * 0.35;
-
-            for (let i = 0; i < nodeCount; i++) {
-                const angle = (2 * Math.PI * i) / nodeCount;
-                const x = centerX + radius * Math.cos(angle);
-                const y = centerY + radius * Math.sin(angle);
-                
-                const nodeType = i % 3 === 0 ? 'router' : 'user';
-                const nodeId = `N${i + 1}`;
-                
-                const node = createNode(x, y, nodeType, nodeId);
-                canvas.appendChild(node);
-                networkNodes.push({ x, y, type: nodeType, id: nodeId });
-            }
-
-            for (let i = 0; i < networkNodes.length; i++) {
-                const current = networkNodes[i];
-                const next = networkNodes[(i + 1) % networkNodes.length];
-                const connection = createConnection(current.x, current.y, next.x, next.y);
-                canvas.appendChild(connection);
-                networkConnections.push({ from: current.id, to: next.id });
-            }
-        }
-
-        function generateTreeTopology(canvas, width, height) {
-            // Root node
-            const rootX = width / 2;
-            const rootY = height * 0.2;
-            const rootNode = createNode(rootX, rootY, 'router', 'ROOT');
-            canvas.appendChild(rootNode);
-            networkNodes.push({ x: rootX, y: rootY, type: 'router', id: 'ROOT' });
-
-            // Level 2 nodes
-            const level2Count = 3;
-            for (let i = 0; i < level2Count; i++) {
-                const x = width * (0.2 + 0.6 * i / (level2Count - 1));
-                const y = height * 0.5;
-                const nodeId = `L2-${i + 1}`;
-                const node = createNode(x, y, 'switch', nodeId);
-                canvas.appendChild(node);
-                networkNodes.push({ x, y, type: 'switch', id: nodeId });
-
-                const connection = createConnection(rootX, rootY, x, y);
-                canvas.appendChild(connection);
-                networkConnections.push({ from: 'ROOT', to: nodeId });
-
-                // Level 3 nodes
-                for (let j = 0; j < 2; j++) {
-                    const leafX = x + (j === 0 ? -40 : 40);
-                    const leafY = height * 0.8;
-                    const leafId = `L3-${i}-${j}`;
-                    const leafNode = createNode(leafX, leafY, 'user', leafId);
-                    canvas.appendChild(leafNode);
-                    networkNodes.push({ x: leafX, y: leafY, type: 'user', id: leafId });
-
-                    const leafConnection = createConnection(x, y, leafX, leafY);
-                    canvas.appendChild(leafConnection);
-                    networkConnections.push({ from: nodeId, to: leafId });
-                }
-            }
-        }
-
-        function generateDatacenterTopology(canvas, width, height) {
-            // Spine switches
-            const spineCount = 2;
-            for (let i = 0; i < spineCount; i++) {
-                const x = width * 0.3 + (width * 0.4 * i);
-                const y = height * 0.2;
-                const node = createNode(x, y, 'switch', `Spine${i + 1}`);
-                canvas.appendChild(node);
-                networkNodes.push({ x, y, type: 'switch', id: `Spine${i + 1}` });
-            }
-
-            // Leaf switches
-            const leafCount = 4;
-            for (let i = 0; i < leafCount; i++) {
-                const x = width * 0.15 + (width * 0.7 * i) / (leafCount - 1);
-                const y = height * 0.5;
-                const node = createNode(x, y, 'switch', `Leaf${i + 1}`);
-                canvas.appendChild(node);
-                networkNodes.push({ x, y, type: 'switch', id: `Leaf${i + 1}` });
-
-                // Connect to spine switches
-                for (let j = 0; j < spineCount; j++) {
-                    const spineNode = networkNodes[j];
-                    const connection = createConnection(spineNode.x, spineNode.y, x, y);
-                    canvas.appendChild(connection);
-                    networkConnections.push({ from: `Spine${j + 1}`, to: `Leaf${i + 1}` });
-                }
-
-                // Add servers
-                const serverX = x;
-                const serverY = height * 0.8;
-                const serverNode = createNode(serverX, serverY, 'server', `Srv${i + 1}`);
-                canvas.appendChild(serverNode);
-                networkNodes.push({ x: serverX, y: serverY, type: 'server', id: `Srv${i + 1}` });
-
-                const serverConnection = createConnection(x, y, serverX, serverY);
-                canvas.appendChild(serverConnection);
-                networkConnections.push({ from: `Leaf${i + 1}`, to: `Srv${i + 1}` });
-            }
-        }
-
-        function generateWanTopology(canvas, width, height) {
-            const sites = [
-                { x: width * 0.2, y: height * 0.3, id: 'HQ', type: 'router' },
-                { x: width * 0.8, y: height * 0.2, id: 'Branch1', type: 'router' },
-                { x: width * 0.7, y: height * 0.7, id: 'Branch2', type: 'router' },
-                { x: width * 0.3, y: height * 0.8, id: 'DC', type: 'server' },
-                { x: width * 0.5, y: height * 0.1, id: 'Cloud', type: 'cloud' }
-            ];
-
-            sites.forEach(site => {
-                const node = createNode(site.x, site.y, site.type, site.id);
-                canvas.appendChild(node);
-                networkNodes.push(site);
-            });
-
-            const connections = [
-                ['HQ', 'Branch1'], ['HQ', 'Branch2'], ['HQ', 'DC'], 
-                ['HQ', 'Cloud'], ['Branch1', 'Cloud'], ['Branch2', 'DC']
-            ];
-
-            connections.forEach(([from, to]) => {
-                const fromNode = networkNodes.find(n => n.id === from);
-                const toNode = networkNodes.find(n => n.id === to);
-                const connection = createConnection(fromNode.x, fromNode.y, toNode.x, toNode.y);
-                canvas.appendChild(connection);
-                networkConnections.push({ from, to });
-            });
-        }
-
-        function createNode(x, y, type, id) {
-            const node = document.createElement('div');
-            node.className = `node ${type}`;
-            node.style.left = (x - 25) + 'px';
-            node.style.top = (y - 25) + 'px';
-            node.textContent = id;
-            node.title = `${type.toUpperCase()}: ${id}`;
-            node.onclick = () => showNodeDetails(id, type);
-            return node;
-        }
-
-        function createConnection(x1, y1, x2, y2) {
-            const connection = document.createElement('div');
-            connection.className = 'connection animated-connection';
-            
-            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-            
-            connection.style.left = x1 + 'px';
-            connection.style.top = (y1 - 1) + 'px';
-            connection.style.width = length + 'px';
-            connection.style.transform = `rotate(${angle}deg)`;
-            connection.style.zIndex = '1';
-            
-            return connection;
-        }
-
-        function updateNodeCount() {
-            nodeCount = document.getElementById('nodeCount').value;
-            document.getElementById('nodeCountValue').textContent = nodeCount;
-            generateTopology();
-        }
-
-        function updateTopologyInfo(topology) {
-            const info = document.getElementById('topologyInfo');
-            const topologyData = {
-                star: {
-                    title: 'Star Network',
-                    description: 'All devices connect to a central hub or switch.',
-                },
-                mesh: {
-                    title: 'Full Mesh Network',
-                    description: 'Every device connects to every other device.',
-                },
-                ring: {
-                    title: 'Ring Topology',
-                    description: 'Devices form a circular data path.',
-                },
-                tree: {
-                    title: 'Hierarchical Tree',
-                    description: 'Multi-level tree structure with root and branches.',
-                },
-                datacenter: {
-                    title: 'Data Center Spine-Leaf',
-                    description: 'Modern spine-leaf architecture for data centers.',
-                },
-                wan: {
-                    title: 'WAN Architecture',
-                    description: 'Wide area network connecting distributed sites.',
-                }
-            };
-
-            const data = topologyData[topology] || topologyData.star;
-            info.innerHTML = `
-                <h3>📋 Current Topology: ${data.title}</h3>
-                <p>${data.description}</p>
-            `;
-        }
-
-        function updateMetrics() {
-            document.getElementById('totalNodes').textContent = networkNodes.length;
-            document.getElementById('totalConnections').textContent = networkConnections.length;
-            
-            let diameter = 2;
-            if (currentTopology === 'mesh') diameter = 1;
-            else if (currentTopology === 'ring') diameter = Math.floor(nodeCount / 2);
-            else if (currentTopology === 'datacenter') diameter = 3;
-            
-            document.getElementById('networkDiameter').textContent = diameter;
-            
-            let redundancy = 0;
-            if (currentTopology === 'mesh') redundancy = 100;
-            else if (currentTopology === 'ring') redundancy = 50;
-            else if (currentTopology === 'datacenter') redundancy = 90;
-            
-            document.getElementById('redundancyLevel').textContent = redundancy + '%';
-        }
-
-        function simulateTraffic() {
-            const connections = document.querySelectorAll('.connection');
-            connections.forEach(connection => {
-                connection.style.animation = 'none';
-                setTimeout(() => {
-                    connection.style.animation = 'dataFlow 0.5s infinite';
-                }, 10);
-            });
-            
-            setTimeout(() => {
-                connections.forEach(connection => {
-                    connection.style.animation = 'dataFlow 2s infinite';
-                });
-            }, 3000);
-        }
-
-        function analyzePerformance() {
-            alert(`Performance Analysis:\\n\\nTopology: ${currentTopology.toUpperCase()}\\nNodes: ${networkNodes.length}\\nConnections: ${networkConnections.length}\\nEstimated Throughput: ${(Math.random() * 900 + 100).toFixed(0)} Mbps`);
-        }
-
-        function showOptimalPath() {
-            const connections = document.querySelectorAll('.connection');
-            connections.forEach(connection => {
-                connection.style.background = 'linear-gradient(90deg, #27ae60, #229954)';
-                connection.style.height = '4px';
-            });
-            
-            setTimeout(() => {
-                connections.forEach(connection => {
-                    connection.style.background = 'linear-gradient(90deg, #3498db, #8e44ad)';
-                    connection.style.height = '2px';
-                });
-            }, 2000);
-        }
-
-        function showNodeDetails(id, type) {
-            const cpu = Math.floor(Math.random() * 60 + 20);
-            const memory = Math.floor(Math.random() * 80 + 10);
-            const uptime = Math.floor(Math.random() * 365);
-            
-            alert(`Node Details:\\n\\nID: ${id}\\nType: ${type.toUpperCase()}\\nStatus: Online\\nCPU: ${cpu}%\\nMemory: ${memory}%\\nUptime: ${uptime} days`);
-        }
-
-        // Initialize when page loads
-        window.onload = init;
-    </script>
-</body>
-</html>
-        """
     
     def render_sidebar_controls(self):
         """Render sidebar configuration controls"""
@@ -1416,12 +649,37 @@ class MigrationPlatform:
         # Geographic configuration section
         st.sidebar.subheader("🗺️ Geographic Settings")
         source_location = st.sidebar.selectbox("Source Data Center Location",
-            ["New York, NY", "Chicago, IL", "Dallas, TX", "Los Angeles, CA", "Atlanta, GA", 
-             "London, UK", "Frankfurt, DE", "Tokyo, JP", "Sydney, AU", "Other"])
+            ["San Jose, CA", "San Antonio, TX", "New York, NY", "Chicago, IL", "Dallas, TX", 
+             "Los Angeles, CA", "Atlanta, GA", "London, UK", "Frankfurt, DE", "Tokyo, JP", "Sydney, AU", "Other"])
         target_aws_region = st.sidebar.selectbox("Target AWS Region",
             ["us-east-1 (N. Virginia)", "us-east-2 (Ohio)", "us-west-1 (N. California)", 
              "us-west-2 (Oregon)", "eu-west-1 (Ireland)", "eu-central-1 (Frankfurt)",
              "ap-southeast-1 (Singapore)", "ap-northeast-1 (Tokyo)"])
+        
+        # AI Configuration section
+        st.sidebar.subheader("🤖 AI Configuration")
+        enable_real_ai = st.sidebar.checkbox("Enable Real Claude AI API", value=False)
+        
+        if enable_real_ai:
+            if ANTHROPIC_AVAILABLE:
+                claude_api_key = st.sidebar.text_input(
+                    "Claude API Key", 
+                    type="password", 
+                    help="Enter your Anthropic Claude API key for enhanced AI analysis"
+                )
+                ai_model = st.sidebar.selectbox(
+                    "AI Model", 
+                    ["claude-3-sonnet-20240229", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
+                    help="Select Claude model for analysis"
+                )
+            else:
+                st.sidebar.error("Anthropic library not installed. Run: pip install anthropic")
+                claude_api_key = ""
+                ai_model = "claude-3-sonnet-20240229"
+        else:
+            claude_api_key = ""
+            ai_model = "claude-3-sonnet-20240229"
+            st.sidebar.info("Using built-in AI simulation")
         
         return {
             'project_name': project_name,
@@ -1468,7 +726,10 @@ class MigrationPlatform:
             'enable_lifecycle': enable_lifecycle,
             'cross_region_replication': cross_region_replication,
             'source_location': source_location,
-            'target_aws_region': target_aws_region
+            'target_aws_region': target_aws_region,
+            'enable_real_ai': enable_real_ai,
+            'claude_api_key': claude_api_key,
+            'ai_model': ai_model
         }
     
     def calculate_migration_metrics(self, config):
@@ -1524,6 +785,13 @@ class MigrationPlatform:
             )
             business_impact = self.calculator.calculate_business_impact(transfer_days, config['data_types'])
             
+            # Get AI-powered networking recommendations
+            target_region_short = config['target_aws_region'].split()[0]  # Extract region code
+            networking_recommendations = self.calculator.get_optimal_networking_architecture(
+                config['source_location'], target_region_short, config['data_size_gb'],
+                config['dx_bandwidth_mbps'], config['database_types'], config['data_types'], config
+            )
+            
             return {
                 'data_size_tb': data_size_tb,
                 'effective_data_gb': effective_data_gb,
@@ -1535,7 +803,8 @@ class MigrationPlatform:
                 'compliance_reqs': compliance_reqs,
                 'compliance_risks': compliance_risks,
                 'business_impact': business_impact,
-                'available_hours_per_day': available_hours_per_day
+                'available_hours_per_day': available_hours_per_day,
+                'networking_recommendations': networking_recommendations
             }
             
         except Exception as e:
@@ -1552,8 +821,104 @@ class MigrationPlatform:
                 'compliance_reqs': [],
                 'compliance_risks': [],
                 'business_impact': {'score': 0.5, 'level': 'Medium', 'recommendation': 'Standard approach'},
-                'available_hours_per_day': 24
+                'available_hours_per_day': 24,
+                'networking_recommendations': {
+                    'primary_method': 'DataSync',
+                    'secondary_method': 'S3 Transfer Acceleration',
+                    'networking_option': 'Direct Connect',
+                    'db_migration_tool': 'DMS',
+                    'rationale': 'Default configuration recommendation',
+                    'estimated_performance': {'throughput_mbps': 100, 'estimated_days': 10, 'network_efficiency': 0.7},
+                    'cost_efficiency': 'Medium',
+                    'risk_level': 'Low'
+                }
             }
+    
+    def render_networking_architecture_diagram(self, recommendations, config):
+        """Render network architecture diagram"""
+        
+        # Create a network architecture visualization
+        fig = go.Figure()
+        
+        # Define positions for network components
+        components = {
+            "Source DC": {"x": 1, "y": 3, "color": "#3498db", "size": 60},
+            "Direct Connect": {"x": 3, "y": 4, "color": "#FF9900", "size": 40},
+            "Internet": {"x": 3, "y": 2, "color": "#95a5a6", "size": 40},
+            "AWS Region": {"x": 5, "y": 3, "color": "#27ae60", "size": 60},
+            "Migration Tool": {"x": 3, "y": 3, "color": "#e74c3c", "size": 50}
+        }
+        
+        # Add nodes
+        for name, props in components.items():
+            fig.add_trace(go.Scatter(
+                x=[props["x"]], y=[props["y"]],
+                mode='markers+text',
+                marker=dict(size=props["size"], color=props["color"]),
+                text=[name],
+                textposition="middle center",
+                textfont=dict(color="white", size=10),
+                name=name,
+                showlegend=False
+            ))
+        
+        # Add connections based on recommendations
+        connections = []
+        
+        # Primary path
+        if "Direct Connect" in recommendations["networking_option"]:
+            connections.append({"from": "Source DC", "to": "Direct Connect", "style": "solid", "color": "#FF9900", "width": 4})
+            connections.append({"from": "Direct Connect", "to": "AWS Region", "style": "solid", "color": "#FF9900", "width": 4})
+        else:
+            connections.append({"from": "Source DC", "to": "Internet", "style": "solid", "color": "#95a5a6", "width": 3})
+            connections.append({"from": "Internet", "to": "AWS Region", "style": "solid", "color": "#95a5a6", "width": 3})
+        
+        # Secondary path (if hybrid)
+        if "Backup" in recommendations["networking_option"]:
+            connections.append({"from": "Source DC", "to": "Internet", "style": "dash", "color": "#95a5a6", "width": 2})
+            connections.append({"from": "Internet", "to": "AWS Region", "style": "dash", "color": "#95a5a6", "width": 2})
+        
+        # Migration tool connection
+        connections.append({"from": "Source DC", "to": "Migration Tool", "style": "solid", "color": "#e74c3c", "width": 3})
+        connections.append({"from": "Migration Tool", "to": "AWS Region", "style": "solid", "color": "#e74c3c", "width": 3})
+        
+        # Draw connections
+        for conn in connections:
+            from_comp = components[conn["from"]]
+            to_comp = components[conn["to"]]
+            
+            fig.add_trace(go.Scatter(
+                x=[from_comp["x"], to_comp["x"]],
+                y=[from_comp["y"], to_comp["y"]],
+                mode='lines',
+                line=dict(
+                    color=conn["color"],
+                    width=conn["width"],
+                    dash='dash' if conn["style"] == "dash" else None
+                ),
+                showlegend=False
+            ))
+        
+        fig.update_layout(
+            title=f"Recommended Network Architecture: {recommendations['networking_option']}",
+            xaxis=dict(range=[0, 6], showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(range=[1, 5], showgrid=False, zeroline=False, showticklabels=False),
+            height=400,
+            plot_bgcolor='rgba(248,249,250,0.8)',
+            annotations=[
+                dict(
+                    x=3, y=1.5,
+                    text=f"Primary: {recommendations['primary_method']}<br>Secondary: {recommendations['secondary_method']}",
+                    showarrow=False,
+                    font=dict(size=12, color="#2c3e50"),
+                    bgcolor="white",
+                    bordercolor="#ddd",
+                    borderwidth=1
+                )
+            ]
+        )
+        
+        return fig
     
     def render_dashboard_tab(self, config, metrics):
         """Render the dashboard tab"""
@@ -1598,6 +963,27 @@ class MigrationPlatform:
             st.metric("💰 Total Cost", f"${metrics['cost_breakdown']['total']:,.0f}", f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}/TB")
             st.markdown('</div>', unsafe_allow_html=True)
         
+        # AI-Powered Recommendations Section
+        st.subheader("🤖 AI-Powered Recommendations")
+        recommendations = metrics['networking_recommendations']
+        
+        ai_type = "Real-time Claude AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "Built-in AI"
+        
+        st.markdown(f"""
+        <div class="ai-insight">
+            <strong>🧠 {ai_type} Analysis:</strong> {recommendations['rationale']}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Show real AI analysis if available
+        if recommendations.get('ai_analysis'):
+            st.markdown(f"""
+            <div class="ai-insight">
+                <strong>🔮 Advanced Claude AI Insights:</strong><br>
+                {recommendations['ai_analysis'].replace('\n', '<br>')}
+            </div>
+            """, unsafe_allow_html=True)
+        
         # Recent activities and alerts
         col1, col2 = st.columns(2)
         
@@ -1605,10 +991,10 @@ class MigrationPlatform:
             st.subheader("📋 Recent Activities")
             activities = [
                 f"✅ {config['project_name']} migration plan generated",
-                "🔄 Network optimization recommendations updated",
+                f"🤖 AI recommended: {recommendations['primary_method']}",
+                f"🌐 Network path: {recommendations['networking_option']}",
                 f"📊 Business impact assessment: {metrics['business_impact']['level']}",
-                "🔒 Compliance framework validation completed",
-                f"💰 Cost estimate: ${metrics['cost_breakdown']['total']:,.0f}"
+                "🔒 Compliance framework validation completed"
             ]
             
             for activity in activities:
@@ -1626,6 +1012,8 @@ class MigrationPlatform:
                 alerts.append("🟡 Compliance risks identified")
             if config['network_latency'] > 100:
                 alerts.append("🟡 High network latency detected")
+            if recommendations['risk_level'] == "High":
+                alerts.append("🟡 High risk migration detected")
             if not alerts:
                 alerts.append("🟢 All systems optimal")
             
@@ -1634,7 +1022,7 @@ class MigrationPlatform:
     
     def render_network_tab(self, config, metrics):
         """Render the network analysis tab"""
-        st.header("🌐 Network Analysis & Optimization")
+        st.header("🌐 Network Analysis & Architecture Optimization")
         
         # Network performance dashboard
         col1, col2, col3, col4 = st.columns(4)
@@ -1653,33 +1041,82 @@ class MigrationPlatform:
         with col4:
             st.metric("Packet Loss", f"{config['packet_loss']}%", "Quality indicator")
         
-        # Network optimization chart
-        st.subheader("📊 Network Performance Analysis")
+        # AI-Powered Network Architecture Recommendations
+        st.subheader("🤖 AI-Powered Network Architecture Recommendations")
         
-        # Create performance comparison chart
-        configs_list = ["Baseline", "Current", "Optimized"]
-        baseline_throughput = self.calculator.calculate_enterprise_throughput(
-            config['datasync_instance_type'], config['num_datasync_agents'], config['avg_file_size'], 
-            config['dx_bandwidth_mbps'], 100, 5, 0.05, False, config['dedicated_bandwidth']
-        )[0]
+        recommendations = metrics['networking_recommendations']
         
-        throughputs = [baseline_throughput, metrics['datasync_throughput'], metrics['optimized_throughput']]
+        # Display networking architecture diagram
+        fig_network = self.render_networking_architecture_diagram(recommendations, config)
+        st.plotly_chart(fig_network, use_container_width=True)
         
-        fig_perf = go.Figure()
-        fig_perf.add_trace(go.Bar(
-            x=configs_list,
-            y=throughputs,
-            marker_color=['lightgray', 'lightblue', 'lightgreen'],
-            text=[f"{t:.0f} Mbps" for t in throughputs],
-            textposition='auto'
-        ))
+        # Recommendations breakdown
+        col1, col2 = st.columns(2)
         
-        fig_perf.update_layout(
-            title="Network Performance Comparison",
-            yaxis_title="Throughput (Mbps)",
-            height=400
-        )
-        st.plotly_chart(fig_perf, use_container_width=True)
+        with col1:
+            st.markdown(f"""
+            <div class="recommendation-box">
+                <h4>🎯 Recommended Configuration</h4>
+                <p><strong>Primary Method:</strong> {recommendations['primary_method']}</p>
+                <p><strong>Secondary Method:</strong> {recommendations['secondary_method']}</p>
+                <p><strong>Network Option:</strong> {recommendations['networking_option']}</p>
+                <p><strong>Database Tool:</strong> {recommendations['db_migration_tool']}</p>
+                <p><strong>Cost Efficiency:</strong> {recommendations['cost_efficiency']}</p>
+                <p><strong>Risk Level:</strong> {recommendations['risk_level']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="recommendation-box">
+                <h4>📊 Expected Performance</h4>
+                <p><strong>Throughput:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps</p>
+                <p><strong>Estimated Duration:</strong> {recommendations['estimated_performance']['estimated_days']:.1f} days</p>
+                <p><strong>Network Efficiency:</strong> {recommendations['estimated_performance']['network_efficiency']:.1%}</p>
+                <p><strong>Route:</strong> {config['source_location']} → {config['target_aws_region']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Claude AI Rationale
+        st.markdown(f"""
+        <div class="ai-insight">
+            <strong>🧠 Claude AI Analysis:</strong> {recommendations['rationale']}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Real AI Analysis (if enabled)
+        if recommendations.get('ai_analysis'):
+            st.subheader("🤖 Advanced Claude AI Analysis")
+            st.markdown(f"""
+            <div class="ai-insight">
+                <strong>🔮 Real-time Claude AI Insights:</strong><br>
+                {recommendations['ai_analysis'].replace('\n', '<br>')}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Database Migration Tools Comparison
+        st.subheader("🗄️ Database Migration Tools Analysis")
+        
+        db_tools_data = []
+        for tool_key, tool_info in self.calculator.db_migration_tools.items():
+            score = 85  # Base score
+            if tool_key == recommendations['db_migration_tool']:
+                score = 95  # Recommended tool gets higher score
+            elif len(config['database_types']) > 0 and "Database" in tool_info['best_for'][0]:
+                score = 90
+            
+            db_tools_data.append({
+                "Tool": tool_info['name'],
+                "Best For": ", ".join(tool_info['best_for'][:2]),
+                "Data Size Limit": tool_info['data_size_limit'],
+                "Downtime": tool_info['downtime'],
+                "Complexity": tool_info['complexity'],
+                "Recommendation Score": f"{score}%" if tool_key == recommendations['db_migration_tool'] else f"{score - 10}%",
+                "Status": "✅ Recommended" if tool_key == recommendations['db_migration_tool'] else "Available"
+            })
+        
+        df_db_tools = pd.DataFrame(db_tools_data)
+        st.dataframe(df_db_tools, use_container_width=True, hide_index=True)
         
         # Network quality assessment
         st.subheader("📡 Network Quality Assessment")
@@ -1687,15 +1124,17 @@ class MigrationPlatform:
         utilization_pct = (metrics['optimized_throughput'] / config['dx_bandwidth_mbps']) * 100
         
         quality_metrics = pd.DataFrame({
-            "Metric": ["Latency", "Jitter", "Packet Loss", "Throughput"],
+            "Metric": ["Latency", "Jitter", "Packet Loss", "Throughput", "Geographic Route"],
             "Current": [f"{config['network_latency']} ms", f"{config['network_jitter']} ms", 
-                       f"{config['packet_loss']}%", f"{metrics['optimized_throughput']:.0f} Mbps"],
-            "Target": ["< 50 ms", "< 10 ms", "< 0.1%", f"{config['dx_bandwidth_mbps'] * 0.8:.0f} Mbps"],
+                       f"{config['packet_loss']}%", f"{metrics['optimized_throughput']:.0f} Mbps",
+                       f"{config['source_location']} → {config['target_aws_region']}"],
+            "Target": ["< 50 ms", "< 10 ms", "< 0.1%", f"{config['dx_bandwidth_mbps'] * 0.8:.0f} Mbps", "Optimized"],
             "Status": [
                 "✅ Good" if config['network_latency'] < 50 else "⚠️ High",
                 "✅ Good" if config['network_jitter'] < 10 else "⚠️ High", 
                 "✅ Good" if config['packet_loss'] < 0.1 else "⚠️ High",
-                "✅ Good" if utilization_pct < 80 else "⚠️ High"
+                "✅ Good" if utilization_pct < 80 else "⚠️ High",
+                "✅ Optimal" if recommendations['estimated_performance']['network_efficiency'] > 0.8 else "⚠️ Review"
             ]
         })
         
@@ -1705,6 +1144,18 @@ class MigrationPlatform:
         """Render the migration planner tab"""
         st.header("📊 Migration Planning & Strategy")
         
+        # AI Recommendations at the top
+        st.subheader("🤖 AI-Powered Migration Strategy")
+        recommendations = metrics['networking_recommendations']
+        
+        st.markdown(f"""
+        <div class="ai-insight">
+            <strong>🧠 Claude AI Recommendation:</strong> Based on your data profile ({metrics['data_size_tb']:.1f}TB), 
+            network configuration ({config['dx_bandwidth_mbps']} Mbps), and geographic location ({config['source_location']} → {config['target_aws_region']}), 
+            the optimal approach is <strong>{recommendations['primary_method']}</strong> with <strong>{recommendations['networking_option']}</strong>.
+        </div>
+        """, unsafe_allow_html=True)
+        
         # Migration method comparison
         st.subheader("🔍 Migration Method Analysis")
         
@@ -1712,12 +1163,13 @@ class MigrationPlatform:
         
         # DataSync analysis
         migration_methods.append({
-            "Method": "DataSync Multi-Agent",
+            "Method": f"DataSync Multi-Agent ({recommendations['primary_method']})",
             "Throughput": f"{metrics['optimized_throughput']:.0f} Mbps",
             "Duration": f"{metrics['transfer_days']:.1f} days",
             "Cost": f"${metrics['cost_breakdown']['total']:,.0f}",
             "Security": "High" if config['encryption_in_transit'] and config['encryption_at_rest'] else "Medium",
-            "Complexity": "Medium"
+            "Complexity": "Medium",
+            "AI Score": "95%" if recommendations['primary_method'] == "DataSync" else "85%"
         })
         
         # Snowball analysis
@@ -1727,12 +1179,28 @@ class MigrationPlatform:
             snowball_cost = snowball_devices * 300 + 2000
             
             migration_methods.append({
-                "Method": f"Snowball Edge ({snowball_devices}x)",
+                "Method": f"Snowball Edge ({snowball_devices}x devices)",
                 "Throughput": "Physical transfer",
                 "Duration": f"{snowball_days} days",
                 "Cost": f"${snowball_cost:,.0f}",
                 "Security": "Very High",
-                "Complexity": "Low"
+                "Complexity": "Low",
+                "AI Score": "90%" if recommendations['primary_method'] == "Snowball Edge" else "75%"
+            })
+        
+        # DMS for databases
+        if config['database_types']:
+            dms_days = metrics['transfer_days'] * 1.2  # DMS typically takes longer
+            dms_cost = metrics['cost_breakdown']['total'] * 1.1
+            
+            migration_methods.append({
+                "Method": f"Database Migration Service (DMS)",
+                "Throughput": f"{metrics['optimized_throughput'] * 0.8:.0f} Mbps",
+                "Duration": f"{dms_days:.1f} days",
+                "Cost": f"${dms_cost:,.0f}",
+                "Security": "High",
+                "Complexity": "Medium",
+                "AI Score": "95%" if recommendations['db_migration_tool'] == "DMS" else "80%"
             })
         
         # Storage Gateway
@@ -1741,16 +1209,61 @@ class MigrationPlatform:
         sg_cost = metrics['cost_breakdown']['total'] * 1.3
         
         migration_methods.append({
-            "Method": "Storage Gateway",
+            "Method": "Storage Gateway (Hybrid)",
             "Throughput": f"{sg_throughput:.0f} Mbps",
             "Duration": f"{sg_days:.1f} days",
             "Cost": f"${sg_cost:,.0f}",
             "Security": "High",
-            "Complexity": "Medium"
+            "Complexity": "Medium",
+            "AI Score": "80%"
         })
         
         df_methods = pd.DataFrame(migration_methods)
         st.dataframe(df_methods, use_container_width=True, hide_index=True)
+        
+        # Geographic Optimization Analysis
+        st.subheader("🗺️ Geographic Route Optimization")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Show latency comparison for different regions
+            if config['source_location'] in self.calculator.geographic_latency:
+                latencies = self.calculator.geographic_latency[config['source_location']]
+                region_comparison = []
+                
+                for region, latency in latencies.items():
+                    region_comparison.append({
+                        "AWS Region": region,
+                        "Latency (ms)": latency,
+                        "Performance Impact": "Excellent" if latency < 30 else "Good" if latency < 80 else "Fair",
+                        "Recommended": "✅" if region in config['target_aws_region'] else ""
+                    })
+                
+                df_regions = pd.DataFrame(region_comparison)
+                st.dataframe(df_regions, use_container_width=True, hide_index=True)
+        
+        with col2:
+            # Create latency comparison chart
+            if config['source_location'] in self.calculator.geographic_latency:
+                latencies = self.calculator.geographic_latency[config['source_location']]
+                
+                fig_latency = go.Figure()
+                fig_latency.add_trace(go.Bar(
+                    x=list(latencies.keys()),
+                    y=list(latencies.values()),
+                    marker_color=['lightgreen' if region in config['target_aws_region'] else 'lightblue' for region in latencies.keys()],
+                    text=[f"{latency} ms" for latency in latencies.values()],
+                    textposition='auto'
+                ))
+                
+                fig_latency.update_layout(
+                    title=f"Network Latency from {config['source_location']}",
+                    xaxis_title="AWS Region",
+                    yaxis_title="Latency (ms)",
+                    height=300
+                )
+                st.plotly_chart(fig_latency, use_container_width=True)
         
         # Business impact assessment
         st.subheader("📈 Business Impact Analysis")
@@ -1767,7 +1280,12 @@ class MigrationPlatform:
             timeline_status = "✅ On Track" if metrics['transfer_days'] <= config['max_transfer_days'] else "⚠️ At Risk"
             st.metric("Timeline Status", timeline_status)
         
-        st.write(f"**Recommendation:** {metrics['business_impact']['recommendation']}")
+        st.markdown(f"""
+        <div class="recommendation-box">
+            <strong>📋 Migration Recommendation:</strong> {metrics['business_impact']['recommendation']}
+            <br><strong>🤖 AI Analysis:</strong> {recommendations['rationale']}
+        </div>
+        """, unsafe_allow_html=True)
     
     def render_performance_tab(self, config, metrics):
         """Render the performance optimization tab"""
@@ -1795,28 +1313,50 @@ class MigrationPlatform:
         with col4:
             st.metric("Cost per TB", f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}")
         
-        # Optimization recommendations
-        st.subheader("🎯 Optimization Recommendations")
+        # AI-Powered Optimization Recommendations
+        st.subheader("🤖 AI-Powered Optimization Recommendations")
+        recommendations = metrics['networking_recommendations']
         
-        recommendations = []
+        st.markdown(f"""
+        <div class="ai-insight">
+            <strong>🧠 Claude AI Performance Analysis:</strong> Your current configuration achieves {metrics['network_efficiency']:.1%} efficiency. 
+            The recommended {recommendations['primary_method']} with {recommendations['networking_option']} can deliver 
+            {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps throughput.
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Optimization recommendations
+        st.subheader("🎯 Specific Optimization Recommendations")
+        
+        recommendations_list = []
         
         if config['tcp_window_size'] == "Default":
-            recommendations.append("Enable TCP window scaling for 15-20% improvement")
+            recommendations_list.append("🔧 Enable TCP window scaling (2MB) for 25-30% improvement")
         
         if config['mtu_size'] == "1500 (Standard)":
-            recommendations.append("Configure jumbo frames for 10-15% improvement")
+            recommendations_list.append("📡 Configure jumbo frames (9000 MTU) for 10-15% improvement")
         
         if config['network_congestion_control'] == "Cubic (Default)":
-            recommendations.append("Switch to BBR algorithm for 20-25% improvement")
+            recommendations_list.append("⚡ Switch to BBR algorithm for 20-25% improvement")
         
         if not config['wan_optimization']:
-            recommendations.append("Enable WAN optimization for 25-30% improvement")
+            recommendations_list.append("🚀 Enable WAN optimization for 25-30% improvement")
         
         if config['parallel_streams'] < 20:
-            recommendations.append("Increase parallel streams for better throughput")
+            recommendations_list.append("🔄 Increase parallel streams to 20+ for better throughput")
         
-        if recommendations:
-            for rec in recommendations:
+        if not config['use_transfer_acceleration']:
+            recommendations_list.append("🌐 Enable S3 Transfer Acceleration for 50-500% improvement")
+        
+        # Add AI-specific recommendations
+        if recommendations['networking_option'] != "Direct Connect (Primary)":
+            recommendations_list.append(f"🤖 AI suggests upgrading to Direct Connect for optimal performance")
+        
+        if recommendations['primary_method'] != "DataSync":
+            recommendations_list.append(f"🤖 AI recommends {recommendations['primary_method']} for your workload characteristics")
+        
+        if recommendations_list:
+            for rec in recommendations_list:
                 st.write(f"• {rec}")
         else:
             st.success("✅ Configuration is already well optimized!")
@@ -1824,24 +1364,27 @@ class MigrationPlatform:
         # Performance comparison chart
         st.subheader("📊 Optimization Impact Analysis")
         
+        # Include AI recommendations in the chart
         optimization_scenarios = {
-            "Current": metrics['optimized_throughput'],
-            "TCP Optimized": metrics['optimized_throughput'] * 1.2 if config['tcp_window_size'] == "Default" else metrics['optimized_throughput'],
-            "MTU Optimized": metrics['optimized_throughput'] * 1.15 if config['mtu_size'] == "1500 (Standard)" else metrics['optimized_throughput'],
-            "Fully Optimized": metrics['optimized_throughput'] * 1.45 if (config['tcp_window_size'] == "Default" and config['mtu_size'] == "1500 (Standard)" and not config['wan_optimization']) else metrics['optimized_throughput'] * 1.1
+            "Current Config": metrics['optimized_throughput'],
+            "TCP Optimized": metrics['optimized_throughput'] * 1.25 if config['tcp_window_size'] == "Default" else metrics['optimized_throughput'],
+            "Network Optimized": metrics['optimized_throughput'] * 1.4 if not config['wan_optimization'] else metrics['optimized_throughput'],
+            "AI Recommended": recommendations['estimated_performance']['throughput_mbps']
         }
         
         fig_opt = go.Figure()
+        colors = ['lightblue', 'lightgreen', 'orange', 'gold']
+        
         fig_opt.add_trace(go.Bar(
             x=list(optimization_scenarios.keys()),
             y=list(optimization_scenarios.values()),
-            marker_color=['lightblue', 'lightgreen', 'orange', 'lightcoral'],
+            marker_color=colors,
             text=[f"{v:.0f} Mbps" for v in optimization_scenarios.values()],
             textposition='auto'
         ))
         
         fig_opt.update_layout(
-            title="Optimization Scenarios Comparison",
+            title="Performance Optimization Scenarios",
             yaxis_title="Throughput (Mbps)",
             height=400
         )
@@ -1868,6 +1411,23 @@ class MigrationPlatform:
         
         with col4:
             st.metric("Audit Events", len(st.session_state.audit_log))
+        
+        # AI Security Analysis
+        recommendations = metrics['networking_recommendations']
+        st.subheader("🤖 AI Security & Compliance Analysis")
+        
+        security_analysis = f"""
+        Based on your data classification ({config['data_classification']}) and compliance requirements 
+        ({', '.join(config['compliance_frameworks']) if config['compliance_frameworks'] else 'None specified'}), 
+        the recommended {recommendations['primary_method']} provides appropriate security controls. 
+        Risk level is assessed as {recommendations['risk_level']}.
+        """
+        
+        st.markdown(f"""
+        <div class="ai-insight">
+            <strong>🧠 Claude AI Security Assessment:</strong> {security_analysis}
+        </div>
+        """, unsafe_allow_html=True)
         
         # Security controls matrix
         st.subheader("🛡️ Security Controls Matrix")
@@ -1902,6 +1462,16 @@ class MigrationPlatform:
                 "Required" if "GDPR" in config['compliance_frameworks'] else "Recommended",
                 "Required",
                 "Required" if config['compliance_frameworks'] else "Optional"
+            ],
+            "AI Recommendation": [
+                "✅ Optimal" if config['encryption_in_transit'] else "⚠️ Enable",
+                "✅ Optimal" if config['encryption_at_rest'] else "⚠️ Enable",
+                "✅ Configured",
+                "✅ AWS Best Practice",
+                "✅ Enterprise Standard",
+                "⚠️ Review DLP policies",
+                "✅ AWS native tools",
+                "✅ Optimal" if config['compliance_frameworks'] else "⚠️ Define requirements"
             ]
         })
         
@@ -1923,6 +1493,26 @@ class MigrationPlatform:
     def render_analytics_tab(self, config, metrics):
         """Render the analytics and reporting tab"""
         st.header("📈 Analytics & Reporting")
+        
+        # AI-Generated Executive Summary
+        recommendations = metrics['networking_recommendations']
+        st.subheader("🤖 AI-Generated Executive Summary")
+        
+        executive_summary = f"""
+        **Migration Project:** {config['project_name']} | **Data Volume:** {metrics['data_size_tb']:.1f}TB | 
+        **Estimated Duration:** {metrics['transfer_days']:.1f} days | **Total Cost:** ${metrics['cost_breakdown']['total']:,.0f}
+        
+        **AI Recommendation:** Implement {recommendations['primary_method']} with {recommendations['networking_option']} 
+        for optimal performance and cost efficiency. Expected throughput: {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps.
+        
+        **Risk Assessment:** {recommendations['risk_level']} risk level with {recommendations['cost_efficiency']} cost efficiency.
+        """
+        
+        st.markdown(f"""
+        <div class="ai-insight">
+            {executive_summary}
+        </div>
+        """, unsafe_allow_html=True)
         
         # Cost breakdown
         st.subheader("💰 Cost Analysis")
@@ -1950,11 +1540,24 @@ class MigrationPlatform:
             x=dates,
             y=throughput_trend,
             mode='lines+markers',
-            name='Throughput (Mbps)'
+            name='Throughput (Mbps)',
+            line=dict(color='#3498db')
+        ))
+        
+        # Add AI prediction line
+        future_dates = pd.date_range(start="2025-01-01", end="2025-06-30", freq="M")
+        ai_prediction = [recommendations['estimated_performance']['throughput_mbps']] * len(future_dates)
+        
+        fig_trend.add_trace(go.Scatter(
+            x=future_dates,
+            y=ai_prediction,
+            mode='lines+markers',
+            name='AI Predicted Performance',
+            line=dict(color='#e74c3c', dash='dash')
         ))
         
         fig_trend.update_layout(
-            title="Historical Throughput Performance",
+            title="Historical Throughput Performance & AI Predictions",
             xaxis_title="Date",
             yaxis_title="Throughput (Mbps)",
             height=400
@@ -1962,7 +1565,7 @@ class MigrationPlatform:
         st.plotly_chart(fig_trend, use_container_width=True)
         
         # ROI Analysis
-        st.subheader("💡 ROI Analysis")
+        st.subheader("💡 ROI Analysis with AI Insights")
         
         col1, col2, col3 = st.columns(3)
         
@@ -1981,6 +1584,18 @@ class MigrationPlatform:
             payback_period = metrics['cost_breakdown']['total'] / annual_savings if annual_savings > 0 else 0
             payback_display = f"{payback_period:.1f} years" if payback_period > 0 and payback_period < 50 else "N/A"
             st.metric("Payback Period", payback_display)
+        
+        # AI Business Impact Analysis
+        st.markdown(f"""
+        <div class="recommendation-box">
+            <h4>🤖 AI Business Impact Analysis</h4>
+            <p><strong>Business Value:</strong> The recommended migration strategy delivers {recommendations['cost_efficiency']} cost efficiency 
+            with {recommendations['risk_level']} risk profile.</p>
+            <p><strong>Performance Impact:</strong> Expected {recommendations['estimated_performance']['network_efficiency']:.1%} network efficiency 
+            with {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput.</p>
+            <p><strong>Strategic Recommendation:</strong> {recommendations['rationale']}</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     def log_audit_event(self, event_type, details):
         """Log audit events"""
@@ -2015,6 +1630,7 @@ class MigrationPlatform:
                         "transfer_days": metrics['transfer_days'],
                         "network_efficiency": metrics['network_efficiency']
                     },
+                    "ai_recommendations": metrics['networking_recommendations'],
                     "timestamp": datetime.now().isoformat()
                 }
                 
@@ -2031,7 +1647,7 @@ class MigrationPlatform:
                     st.info("No audit events recorded yet.")
         
         with col3:
-            if st.button("📤 Export Report"):
+            if st.button("📤 Export AI Report"):
                 report_data = {
                     "project_summary": {
                         "name": config['project_name'],
@@ -2039,19 +1655,21 @@ class MigrationPlatform:
                         "estimated_days": metrics['transfer_days'],
                         "total_cost": metrics['cost_breakdown']['total']
                     },
+                    "ai_recommendations": metrics['networking_recommendations'],
                     "performance_metrics": {
                         "throughput_mbps": metrics['optimized_throughput'],
                         "network_efficiency": metrics['network_efficiency'],
                         "business_impact": metrics['business_impact']['level']
                     },
                     "compliance": config['compliance_frameworks'],
+                    "generated_by": "Claude AI",
                     "generated": datetime.now().isoformat()
                 }
                 
                 st.download_button(
-                    label="Download JSON Report",
+                    label="Download AI Analysis Report",
                     data=json.dumps(report_data, indent=2),
-                    file_name=f"{config['project_name']}_migration_report.json",
+                    file_name=f"{config['project_name']}_ai_migration_report.json",
                     mime="application/json"
                 )
         
@@ -2064,10 +1682,10 @@ class MigrationPlatform:
             st.markdown("*AI-Powered • Security-First • Compliance-Ready*")
         
         with col2:
-            st.markdown("**📞 Support & Resources**")
-            st.markdown("• 24/7 Enterprise Support")
-            st.markdown("• Migration Acceleration Program")
-            st.markdown("• Compliance Advisory Services")
+            st.markdown("**🤖 AI-Powered Features**")
+            st.markdown("• Intelligent Architecture Recommendations")
+            st.markdown("• Automated Performance Optimization")
+            st.markdown("• Smart Cost Analysis")
         
         with col3:
             st.markdown("**🔒 Security & Privacy**")
@@ -2107,14 +1725,24 @@ class MigrationPlatform:
             for factor in status_factors:
                 st.write(factor)
             
+            # AI Recommendations Summary
+            st.subheader("🤖 AI Summary")
+            recommendations = metrics['networking_recommendations']
+            ai_status = "🔮 Real AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "🧠 Built-in AI"
+            st.write(f"**AI Mode:** {ai_status}")
+            st.write(f"**Method:** {recommendations['primary_method']}")
+            st.write(f"**Network:** {recommendations['networking_option']}")
+            st.write(f"**Risk:** {recommendations['risk_level']}")
+            st.write(f"**Efficiency:** {recommendations['cost_efficiency']}")
+            
             # Quick actions
             st.subheader("⚡ Quick Actions")
             
             if st.button("🔄 Refresh Calculations"):
                 st.rerun()
             
-            if st.button("🎯 Auto-Optimize"):
-                st.info("Auto-optimization would adjust parameters for best performance/cost balance")
+            if st.button("🤖 Apply AI Recommendations"):
+                st.info("AI recommendations would be automatically applied to optimize the configuration")
     
     def run(self):
         """Main application entry point"""
@@ -2141,13 +1769,10 @@ class MigrationPlatform:
             self.render_security_tab(config, metrics)
         elif st.session_state.active_tab == "analytics":
             self.render_analytics_tab(config, metrics)
-        elif st.session_state.active_tab == "network_lab":
-            self.render_network_lab_tab()
         
-        # Render footer and sidebar status (not for network lab tab)
-        if st.session_state.active_tab != "network_lab":
-            self.render_footer(config, metrics)
-            self.render_sidebar_status(config, metrics)
+        # Render footer and sidebar status
+        self.render_footer(config, metrics)
+        self.render_sidebar_status(config, metrics)
 
 def main():
     """Main function to run the Enterprise AWS Migration Platform"""
