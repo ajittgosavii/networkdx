@@ -385,7 +385,7 @@ class EnterpriseCalculator:
         
         return ". ".join(rationale_parts) + "."
     
-    def get_real_ai_analysis(self, config, api_key, model="claude-3-sonnet-20240229"):
+    def get_real_ai_analysis(self, config, api_key, model="claude-sonnet-4-20250514"):
         """Get real Claude AI analysis using Anthropic API"""
         if not ANTHROPIC_AVAILABLE or not api_key:
             return None
@@ -669,16 +669,27 @@ class MigrationPlatform:
                 )
                 ai_model = st.sidebar.selectbox(
                     "AI Model", 
-                    ["claude-3-sonnet-20240229", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
+                    ["claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-3-7-sonnet-20250219", 
+                     "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
                     help="Select Claude model for analysis"
                 )
+                
+                # Display model information
+                model_info = {
+                    "claude-sonnet-4-20250514": "⚡ Claude Sonnet 4 - Best balance of speed & intelligence (Recommended)",
+                    "claude-opus-4-20250514": "🧠 Claude Opus 4 - Most powerful model for complex analysis",
+                    "claude-3-7-sonnet-20250219": "🎯 Claude 3.7 Sonnet - Extended thinking capabilities",
+                    "claude-3-5-sonnet-20241022": "🔄 Claude 3.5 Sonnet - Reliable performance",
+                    "claude-3-5-haiku-20241022": "💨 Claude 3.5 Haiku - Fastest responses"
+                }
+                st.sidebar.info(model_info.get(ai_model, "Model information not available"))
             else:
                 st.sidebar.error("Anthropic library not installed. Run: pip install anthropic")
                 claude_api_key = ""
                 ai_model = "claude-3-sonnet-20240229"
         else:
             claude_api_key = ""
-            ai_model = "claude-3-sonnet-20240229"
+            ai_model = "claude-sonnet-4-20250514"
             st.sidebar.info("Using built-in AI simulation")
         
         return {
