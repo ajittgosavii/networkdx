@@ -9,6 +9,7 @@ import hashlib
 from typing import Dict, List, Tuple, Optional
 import uuid
 import time
+import streamlit.components.v1 as components
 
 # Page configuration
 st.set_page_config(
@@ -226,6 +227,12 @@ class MigrationPlatform:
                 border-radius: 4px;
                 border-left: 3px solid #007bff;
             }
+            .networking-frame {
+                border: 2px solid #FF9900;
+                border-radius: 10px;
+                background: white;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
         </style>
         """, unsafe_allow_html=True)
     
@@ -240,7 +247,7 @@ class MigrationPlatform:
     
     def render_navigation(self):
         """Render the top navigation bar"""
-        col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 2, 2, 2])
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 2, 2, 2, 2, 2, 2])
         
         with col1:
             if st.button("🏠 Dashboard"):
@@ -260,6 +267,1050 @@ class MigrationPlatform:
         with col6:
             if st.button("📈 Analytics"):
                 st.session_state.active_tab = "analytics"
+        with col7:
+            if st.button("🌐 Network Lab"):
+                st.session_state.active_tab = "network_lab"
+    
+    def render_network_lab_tab(self):
+        """Render the advanced networking tool tab"""
+        st.header("🌐 Advanced Networking Architecture Lab")
+        st.markdown("**Interactive Network Design, Analysis & Learning Platform**")
+        
+        # Create tabs for different networking features
+        lab_tab1, lab_tab2, lab_tab3 = st.tabs(["🏗️ Interactive Network Designer", "📊 Network Analysis Tools", "📚 Learning Resources"])
+        
+        with lab_tab1:
+            st.subheader("Interactive Network Architecture Designer")
+            st.markdown("**Design, simulate and analyze enterprise network topologies with real-time performance metrics.**")
+            
+            # Embed the networking tool
+            networking_html = self.get_networking_tool_html()
+            
+            components.html(
+                networking_html,
+                height=1200,  # Increased height to accommodate the full tool
+                scrolling=True
+            )
+        
+        with lab_tab2:
+            st.subheader("Network Analysis & Troubleshooting Tools")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### 🔍 Network Diagnostics")
+                
+                # Source and Target selection
+                source_location = st.selectbox("Source Location", 
+                    ["San Jose, CA", "San Antonio, TX", "New York, NY", "Chicago, IL", "Atlanta, GA", "Seattle, WA"])
+                
+                target_location = st.selectbox("Target Location",
+                    ["AWS us-west-1", "AWS us-west-2", "AWS us-east-1", "AWS us-east-2", "Azure West US", "GCP us-central1"])
+                
+                connection_type = st.selectbox("Connection Type",
+                    ["Direct Fiber", "AWS Direct Connect", "VPN over Internet", "MPLS Network", "SD-WAN"])
+                
+                if st.button("🧪 Run Network Test"):
+                    # Simulate network test results
+                    import random
+                    latency = random.randint(10, 80)
+                    throughput = random.randint(500, 2000)
+                    packet_loss = round(random.uniform(0, 0.5), 3)
+                    jitter = round(random.uniform(1, 10), 1)
+                    
+                    st.success("✅ Network Test Complete")
+                    
+                    # Display results
+                    col_a, col_b, col_c, col_d = st.columns(4)
+                    with col_a:
+                        st.metric("Latency", f"{latency} ms")
+                    with col_b:
+                        st.metric("Throughput", f"{throughput} Mbps")
+                    with col_c:
+                        st.metric("Packet Loss", f"{packet_loss}%")
+                    with col_d:
+                        st.metric("Jitter", f"{jitter} ms")
+            
+            with col2:
+                st.markdown("### 📈 Performance Metrics")
+                
+                # Create a sample latency chart
+                dates = pd.date_range(start="2024-01-01", periods=30, freq="D")
+                latency_data = np.random.normal(25, 5, 30)
+                
+                fig_latency = go.Figure()
+                fig_latency.add_trace(go.Scatter(
+                    x=dates,
+                    y=latency_data,
+                    mode='lines+markers',
+                    name='Latency (ms)',
+                    line=dict(color='#FF9900')
+                ))
+                
+                fig_latency.update_layout(
+                    title="Network Latency Trend",
+                    xaxis_title="Date",
+                    yaxis_title="Latency (ms)",
+                    height=300
+                )
+                
+                st.plotly_chart(fig_latency, use_container_width=True)
+                
+                # Network Quality Assessment
+                st.markdown("### 🎯 Network Quality")
+                quality_score = random.randint(85, 98)
+                
+                if quality_score >= 95:
+                    quality_status = "🟢 Excellent"
+                elif quality_score >= 85:
+                    quality_status = "🟡 Good"
+                else:
+                    quality_status = "🔴 Needs Improvement"
+                
+                st.metric("Overall Quality Score", f"{quality_score}/100", quality_status)
+        
+        with lab_tab3:
+            st.subheader("📚 Networking Knowledge Base")
+            
+            # Create expandable sections for different networking topics
+            with st.expander("🏗️ Network Topologies"):
+                st.markdown("""
+                **Common Network Topologies:**
+                
+                - **Star Topology**: All devices connect to a central hub/switch
+                  - ✅ Easy to manage and troubleshoot
+                  - ❌ Single point of failure at the center
+                
+                - **Mesh Topology**: Every device connects to every other device
+                  - ✅ High redundancy and fault tolerance
+                  - ❌ Expensive and complex to implement
+                
+                - **Ring Topology**: Devices form a circular data path
+                  - ✅ Predictable performance
+                  - ❌ Single break can affect entire network
+                
+                - **Spine-Leaf**: Modern data center architecture
+                  - ✅ High bandwidth and low latency
+                  - ✅ Excellent scalability
+                """)
+            
+            with st.expander("📡 Network Protocols"):
+                st.markdown("""
+                **Key Network Protocols:**
+                
+                **Layer 3 (Network):**
+                - IP (Internet Protocol): Addressing and routing
+                - OSPF: Open Shortest Path First routing
+                - BGP: Border Gateway Protocol for internet routing
+                
+                **Layer 4 (Transport):**
+                - TCP: Reliable, connection-oriented
+                - UDP: Fast, connectionless
+                
+                **Layer 7 (Application):**
+                - HTTP/HTTPS: Web traffic
+                - DNS: Domain name resolution
+                - SMTP: Email transmission
+                """)
+            
+            with st.expander("⚡ Network Optimization"):
+                st.markdown("""
+                **Performance Optimization Techniques:**
+                
+                1. **Bandwidth Management**
+                   - QoS (Quality of Service) implementation
+                   - Traffic shaping and policing
+                   - Load balancing across multiple links
+                
+                2. **Latency Optimization**
+                   - Geographic proximity to resources
+                   - CDN (Content Delivery Network) usage
+                   - Protocol optimization (TCP window scaling)
+                
+                3. **Reliability Improvements**
+                   - Redundant connections
+                   - Failover mechanisms
+                   - Network monitoring and alerting
+                """)
+            
+            with st.expander("🔧 Troubleshooting Guide"):
+                st.markdown("""
+                **Network Troubleshooting Methodology:**
+                
+                1. **Physical Layer (Layer 1)**
+                   - Check cable connections
+                   - Verify power and LED status
+                   - Test with known good cables
+                
+                2. **Data Link Layer (Layer 2)**
+                   - Check switch port status
+                   - Verify VLAN configuration
+                   - Review spanning tree status
+                
+                3. **Network Layer (Layer 3)**
+                   - Ping connectivity tests
+                   - Traceroute for path analysis
+                   - Routing table verification
+                
+                4. **Higher Layers**
+                   - Port connectivity tests
+                   - Application-specific diagnostics
+                   - Performance monitoring
+                """)
+    
+    def get_networking_tool_html(self):
+        """Return the complete HTML for the networking tool"""
+        return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Networking Architecture Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 2em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #3498db, #8e44ad, #e74c3c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #6c757d;
+            font-size: 1em;
+            font-weight: 500;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 4px;
+            flex-wrap: wrap;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 15px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: #6c757d;
+            text-align: center;
+            font-size: 0.85em;
+        }
+
+        .tab.active {
+            background: linear-gradient(45deg, #3498db, #8e44ad);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .network-workspace {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            height: fit-content;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .control-group:last-child {
+            border-bottom: none;
+        }
+
+        .control-group h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .network-canvas {
+            width: 100%;
+            height: 450px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: radial-gradient(circle at center, #f8f9fa 0%, #e9ecef 100%);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .node {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-size: 0.7em;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            z-index: 20;
+        }
+
+        .router { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .server { background: linear-gradient(135deg, #27ae60, #229954); }
+        .cloud { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .firewall { background: linear-gradient(135deg, #f39c12, #d68910); }
+        .switch { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .user { background: linear-gradient(135deg, #34495e, #2c3e50); }
+
+        .connection {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #3498db, #8e44ad);
+            transform-origin: left center;
+            opacity: 0.8;
+            border-radius: 1px;
+            z-index: 1;
+        }
+
+        .animated-connection {
+            animation: dataFlow 2s infinite;
+        }
+
+        @keyframes dataFlow {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        select:focus, input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+            outline: none;
+        }
+
+        button {
+            background: linear-gradient(45deg, #3498db, #8e44ad);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .topology-info {
+            background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .topology-info h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #e9ecef;
+            font-weight: 500;
+            font-size: 0.8em;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+        }
+
+        .legend-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .network-workspace {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                order: 2;
+            }
+            
+            .network-canvas {
+                order: 1;
+                height: 350px;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                margin: 1px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Advanced Networking Architecture Platform</h1>
+            <p class="subtitle">Interactive Network Design, Analysis & Learning Tool</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('topologies')">🏗️ Network Topologies</button>
+            <button class="tab" onclick="showTab('protocols')">📚 Protocols</button>
+            <button class="tab" onclick="showTab('latency')">⚡ Latency Analysis</button>
+            <button class="tab" onclick="showTab('geography')">🗺️ Geographic</button>
+        </div>
+
+        <!-- Network Topologies Tab -->
+        <div id="topologies" class="tab-content active">
+            <div class="network-workspace">
+                <div class="control-panel">
+                    <div class="control-group">
+                        <h3>🏗️ Topology Type</h3>
+                        <select id="topologySelect" onchange="generateTopology()">
+                            <option value="star">Star Topology</option>
+                            <option value="mesh">Full Mesh</option>
+                            <option value="ring">Ring Topology</option>
+                            <option value="tree">Hierarchical Tree</option>
+                            <option value="datacenter">Data Center</option>
+                            <option value="wan">Enterprise WAN</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>⚙️ Parameters</h3>
+                        <label>Nodes: <span id="nodeCountValue">8</span></label>
+                        <input type="range" id="nodeCount" min="4" max="20" value="8" oninput="updateNodeCount()">
+                        
+                        <label>Connection Speed:</label>
+                        <select id="connectionSpeed">
+                            <option value="100">100 Mbps</option>
+                            <option value="1000" selected>1 Gbps</option>
+                            <option value="10000">10 Gbps</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>🎮 Actions</h3>
+                        <button onclick="simulateTraffic()">🔄 Simulate Traffic</button>
+                        <button onclick="analyzePerformance()">📈 Analyze</button>
+                        <button onclick="showOptimalPath()">🎯 Optimal Path</button>
+                    </div>
+                </div>
+
+                <div class="network-canvas" id="networkCanvas"></div>
+            </div>
+
+            <div class="topology-info" id="topologyInfo">
+                <h3>📋 Current Topology: Star Network</h3>
+                <p>A star topology connects all devices to a central hub or switch.</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="totalNodes">8</div>
+                    <div class="metric-label">Total Nodes</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="totalConnections">7</div>
+                    <div class="metric-label">Connections</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="networkDiameter">2</div>
+                    <div class="metric-label">Diameter</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="redundancyLevel">0%</div>
+                    <div class="metric-label">Redundancy</div>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color router"></div>
+                    <span>Router</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color server"></div>
+                    <span>Server</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color cloud"></div>
+                    <span>Cloud</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color firewall"></div>
+                    <span>Firewall</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color switch"></div>
+                    <span>Switch</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color user"></div>
+                    <span>Device</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Other tabs would be similar but simplified for space -->
+        <div id="protocols" class="tab-content">
+            <h2>📚 Network Protocols & Standards</h2>
+            <p>OSI Model layers, routing protocols, and security standards...</p>
+        </div>
+
+        <div id="latency" class="tab-content">
+            <h2>⚡ Latency Analysis</h2>
+            <p>Network performance testing and optimization...</p>
+        </div>
+
+        <div id="geography" class="tab-content">
+            <h2>🗺️ Geographic Networks</h2>
+            <p>Global network architecture and regional connectivity...</p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentTopology = 'star';
+        let networkNodes = [];
+        let networkConnections = [];
+        let nodeCount = 8;
+
+        // Initialize the application
+        function init() {
+            generateTopology();
+        }
+
+        // Tab switching functionality
+        function showTab(tabName) {
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Network topology generation
+        function generateTopology() {
+            const topology = document.getElementById('topologySelect').value;
+            const canvas = document.getElementById('networkCanvas');
+            canvas.innerHTML = '';
+
+            currentTopology = topology;
+            networkNodes = [];
+            networkConnections = [];
+
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+
+            switch (topology) {
+                case 'star':
+                    generateStarTopology(canvas, width, height);
+                    break;
+                case 'mesh':
+                    generateMeshTopology(canvas, width, height);
+                    break;
+                case 'ring':
+                    generateRingTopology(canvas, width, height);
+                    break;
+                case 'tree':
+                    generateTreeTopology(canvas, width, height);
+                    break;
+                case 'datacenter':
+                    generateDatacenterTopology(canvas, width, height);
+                    break;
+                case 'wan':
+                    generateWanTopology(canvas, width, height);
+                    break;
+            }
+
+            updateTopologyInfo(topology);
+            updateMetrics();
+        }
+
+        function generateStarTopology(canvas, width, height) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.3;
+
+            // Central node
+            const centralNode = createNode(centerX, centerY, 'switch', 'SW1');
+            canvas.appendChild(centralNode);
+            networkNodes.push({ x: centerX, y: centerY, type: 'switch', id: 'SW1' });
+
+            // Peripheral nodes
+            for (let i = 0; i < nodeCount - 1; i++) {
+                const angle = (2 * Math.PI * i) / (nodeCount - 1);
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                
+                const nodeType = i % 3 === 0 ? 'server' : 'user';
+                const nodeId = nodeType === 'server' ? `SRV${Math.floor(i/3) + 1}` : `PC${i + 1}`;
+                
+                const node = createNode(x, y, nodeType, nodeId);
+                canvas.appendChild(node);
+                networkNodes.push({ x, y, type: nodeType, id: nodeId });
+
+                const connection = createConnection(centerX, centerY, x, y);
+                canvas.appendChild(connection);
+                networkConnections.push({ from: 'SW1', to: nodeId });
+            }
+        }
+
+        function generateMeshTopology(canvas, width, height) {
+            const cols = Math.ceil(Math.sqrt(nodeCount));
+            const rows = Math.ceil(nodeCount / cols);
+            const spacingX = width / (cols + 1);
+            const spacingY = height / (rows + 1);
+
+            for (let i = 0; i < nodeCount; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = spacingX * (col + 1);
+                const y = spacingY * (row + 1);
+                
+                const nodeType = i % 3 === 0 ? 'router' : 'user';
+                const nodeId = `N${i + 1}`;
+                
+                const node = createNode(x, y, nodeType, nodeId);
+                canvas.appendChild(node);
+                networkNodes.push({ x, y, type: nodeType, id: nodeId });
+            }
+
+            // Create mesh connections
+            for (let i = 0; i < networkNodes.length; i++) {
+                for (let j = i + 1; j < networkNodes.length; j++) {
+                    const node1 = networkNodes[i];
+                    const node2 = networkNodes[j];
+                    const connection = createConnection(node1.x, node1.y, node2.x, node2.y);
+                    canvas.appendChild(connection);
+                    networkConnections.push({ from: node1.id, to: node2.id });
+                }
+            }
+        }
+
+        function generateRingTopology(canvas, width, height) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.35;
+
+            for (let i = 0; i < nodeCount; i++) {
+                const angle = (2 * Math.PI * i) / nodeCount;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                
+                const nodeType = i % 3 === 0 ? 'router' : 'user';
+                const nodeId = `N${i + 1}`;
+                
+                const node = createNode(x, y, nodeType, nodeId);
+                canvas.appendChild(node);
+                networkNodes.push({ x, y, type: nodeType, id: nodeId });
+            }
+
+            for (let i = 0; i < networkNodes.length; i++) {
+                const current = networkNodes[i];
+                const next = networkNodes[(i + 1) % networkNodes.length];
+                const connection = createConnection(current.x, current.y, next.x, next.y);
+                canvas.appendChild(connection);
+                networkConnections.push({ from: current.id, to: next.id });
+            }
+        }
+
+        function generateTreeTopology(canvas, width, height) {
+            // Root node
+            const rootX = width / 2;
+            const rootY = height * 0.2;
+            const rootNode = createNode(rootX, rootY, 'router', 'ROOT');
+            canvas.appendChild(rootNode);
+            networkNodes.push({ x: rootX, y: rootY, type: 'router', id: 'ROOT' });
+
+            // Level 2 nodes
+            const level2Count = 3;
+            for (let i = 0; i < level2Count; i++) {
+                const x = width * (0.2 + 0.6 * i / (level2Count - 1));
+                const y = height * 0.5;
+                const nodeId = `L2-${i + 1}`;
+                const node = createNode(x, y, 'switch', nodeId);
+                canvas.appendChild(node);
+                networkNodes.push({ x, y, type: 'switch', id: nodeId });
+
+                const connection = createConnection(rootX, rootY, x, y);
+                canvas.appendChild(connection);
+                networkConnections.push({ from: 'ROOT', to: nodeId });
+
+                // Level 3 nodes
+                for (let j = 0; j < 2; j++) {
+                    const leafX = x + (j === 0 ? -40 : 40);
+                    const leafY = height * 0.8;
+                    const leafId = `L3-${i}-${j}`;
+                    const leafNode = createNode(leafX, leafY, 'user', leafId);
+                    canvas.appendChild(leafNode);
+                    networkNodes.push({ x: leafX, y: leafY, type: 'user', id: leafId });
+
+                    const leafConnection = createConnection(x, y, leafX, leafY);
+                    canvas.appendChild(leafConnection);
+                    networkConnections.push({ from: nodeId, to: leafId });
+                }
+            }
+        }
+
+        function generateDatacenterTopology(canvas, width, height) {
+            // Spine switches
+            const spineCount = 2;
+            for (let i = 0; i < spineCount; i++) {
+                const x = width * 0.3 + (width * 0.4 * i);
+                const y = height * 0.2;
+                const node = createNode(x, y, 'switch', `Spine${i + 1}`);
+                canvas.appendChild(node);
+                networkNodes.push({ x, y, type: 'switch', id: `Spine${i + 1}` });
+            }
+
+            // Leaf switches
+            const leafCount = 4;
+            for (let i = 0; i < leafCount; i++) {
+                const x = width * 0.15 + (width * 0.7 * i) / (leafCount - 1);
+                const y = height * 0.5;
+                const node = createNode(x, y, 'switch', `Leaf${i + 1}`);
+                canvas.appendChild(node);
+                networkNodes.push({ x, y, type: 'switch', id: `Leaf${i + 1}` });
+
+                // Connect to spine switches
+                for (let j = 0; j < spineCount; j++) {
+                    const spineNode = networkNodes[j];
+                    const connection = createConnection(spineNode.x, spineNode.y, x, y);
+                    canvas.appendChild(connection);
+                    networkConnections.push({ from: `Spine${j + 1}`, to: `Leaf${i + 1}` });
+                }
+
+                // Add servers
+                const serverX = x;
+                const serverY = height * 0.8;
+                const serverNode = createNode(serverX, serverY, 'server', `Srv${i + 1}`);
+                canvas.appendChild(serverNode);
+                networkNodes.push({ x: serverX, y: serverY, type: 'server', id: `Srv${i + 1}` });
+
+                const serverConnection = createConnection(x, y, serverX, serverY);
+                canvas.appendChild(serverConnection);
+                networkConnections.push({ from: `Leaf${i + 1}`, to: `Srv${i + 1}` });
+            }
+        }
+
+        function generateWanTopology(canvas, width, height) {
+            const sites = [
+                { x: width * 0.2, y: height * 0.3, id: 'HQ', type: 'router' },
+                { x: width * 0.8, y: height * 0.2, id: 'Branch1', type: 'router' },
+                { x: width * 0.7, y: height * 0.7, id: 'Branch2', type: 'router' },
+                { x: width * 0.3, y: height * 0.8, id: 'DC', type: 'server' },
+                { x: width * 0.5, y: height * 0.1, id: 'Cloud', type: 'cloud' }
+            ];
+
+            sites.forEach(site => {
+                const node = createNode(site.x, site.y, site.type, site.id);
+                canvas.appendChild(node);
+                networkNodes.push(site);
+            });
+
+            const connections = [
+                ['HQ', 'Branch1'], ['HQ', 'Branch2'], ['HQ', 'DC'], 
+                ['HQ', 'Cloud'], ['Branch1', 'Cloud'], ['Branch2', 'DC']
+            ];
+
+            connections.forEach(([from, to]) => {
+                const fromNode = networkNodes.find(n => n.id === from);
+                const toNode = networkNodes.find(n => n.id === to);
+                const connection = createConnection(fromNode.x, fromNode.y, toNode.x, toNode.y);
+                canvas.appendChild(connection);
+                networkConnections.push({ from, to });
+            });
+        }
+
+        function createNode(x, y, type, id) {
+            const node = document.createElement('div');
+            node.className = `node ${type}`;
+            node.style.left = (x - 25) + 'px';
+            node.style.top = (y - 25) + 'px';
+            node.textContent = id;
+            node.title = `${type.toUpperCase()}: ${id}`;
+            node.onclick = () => showNodeDetails(id, type);
+            return node;
+        }
+
+        function createConnection(x1, y1, x2, y2) {
+            const connection = document.createElement('div');
+            connection.className = 'connection animated-connection';
+            
+            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            
+            connection.style.left = x1 + 'px';
+            connection.style.top = (y1 - 1) + 'px';
+            connection.style.width = length + 'px';
+            connection.style.transform = `rotate(${angle}deg)`;
+            connection.style.zIndex = '1';
+            
+            return connection;
+        }
+
+        function updateNodeCount() {
+            nodeCount = document.getElementById('nodeCount').value;
+            document.getElementById('nodeCountValue').textContent = nodeCount;
+            generateTopology();
+        }
+
+        function updateTopologyInfo(topology) {
+            const info = document.getElementById('topologyInfo');
+            const topologyData = {
+                star: {
+                    title: 'Star Network',
+                    description: 'All devices connect to a central hub or switch.',
+                },
+                mesh: {
+                    title: 'Full Mesh Network',
+                    description: 'Every device connects to every other device.',
+                },
+                ring: {
+                    title: 'Ring Topology',
+                    description: 'Devices form a circular data path.',
+                },
+                tree: {
+                    title: 'Hierarchical Tree',
+                    description: 'Multi-level tree structure with root and branches.',
+                },
+                datacenter: {
+                    title: 'Data Center Spine-Leaf',
+                    description: 'Modern spine-leaf architecture for data centers.',
+                },
+                wan: {
+                    title: 'WAN Architecture',
+                    description: 'Wide area network connecting distributed sites.',
+                }
+            };
+
+            const data = topologyData[topology] || topologyData.star;
+            info.innerHTML = `
+                <h3>📋 Current Topology: ${data.title}</h3>
+                <p>${data.description}</p>
+            `;
+        }
+
+        function updateMetrics() {
+            document.getElementById('totalNodes').textContent = networkNodes.length;
+            document.getElementById('totalConnections').textContent = networkConnections.length;
+            
+            let diameter = 2;
+            if (currentTopology === 'mesh') diameter = 1;
+            else if (currentTopology === 'ring') diameter = Math.floor(nodeCount / 2);
+            else if (currentTopology === 'datacenter') diameter = 3;
+            
+            document.getElementById('networkDiameter').textContent = diameter;
+            
+            let redundancy = 0;
+            if (currentTopology === 'mesh') redundancy = 100;
+            else if (currentTopology === 'ring') redundancy = 50;
+            else if (currentTopology === 'datacenter') redundancy = 90;
+            
+            document.getElementById('redundancyLevel').textContent = redundancy + '%';
+        }
+
+        function simulateTraffic() {
+            const connections = document.querySelectorAll('.connection');
+            connections.forEach(connection => {
+                connection.style.animation = 'none';
+                setTimeout(() => {
+                    connection.style.animation = 'dataFlow 0.5s infinite';
+                }, 10);
+            });
+            
+            setTimeout(() => {
+                connections.forEach(connection => {
+                    connection.style.animation = 'dataFlow 2s infinite';
+                });
+            }, 3000);
+        }
+
+        function analyzePerformance() {
+            alert(`Performance Analysis:\\n\\nTopology: ${currentTopology.toUpperCase()}\\nNodes: ${networkNodes.length}\\nConnections: ${networkConnections.length}\\nEstimated Throughput: ${(Math.random() * 900 + 100).toFixed(0)} Mbps`);
+        }
+
+        function showOptimalPath() {
+            const connections = document.querySelectorAll('.connection');
+            connections.forEach(connection => {
+                connection.style.background = 'linear-gradient(90deg, #27ae60, #229954)';
+                connection.style.height = '4px';
+            });
+            
+            setTimeout(() => {
+                connections.forEach(connection => {
+                    connection.style.background = 'linear-gradient(90deg, #3498db, #8e44ad)';
+                    connection.style.height = '2px';
+                });
+            }, 2000);
+        }
+
+        function showNodeDetails(id, type) {
+            const cpu = Math.floor(Math.random() * 60 + 20);
+            const memory = Math.floor(Math.random() * 80 + 10);
+            const uptime = Math.floor(Math.random() * 365);
+            
+            alert(`Node Details:\\n\\nID: ${id}\\nType: ${type.toUpperCase()}\\nStatus: Online\\nCPU: ${cpu}%\\nMemory: ${memory}%\\nUptime: ${uptime} days`);
+        }
+
+        // Initialize when page loads
+        window.onload = init;
+    </script>
+</body>
+</html>
+        """
     
     def render_sidebar_controls(self):
         """Render sidebar configuration controls"""
@@ -1090,10 +2141,13 @@ class MigrationPlatform:
             self.render_security_tab(config, metrics)
         elif st.session_state.active_tab == "analytics":
             self.render_analytics_tab(config, metrics)
+        elif st.session_state.active_tab == "network_lab":
+            self.render_network_lab_tab()
         
-        # Render footer and sidebar status
-        self.render_footer(config, metrics)
-        self.render_sidebar_status(config, metrics)
+        # Render footer and sidebar status (not for network lab tab)
+        if st.session_state.active_tab != "network_lab":
+            self.render_footer(config, metrics)
+            self.render_sidebar_status(config, metrics)
 
 def main():
     """Main function to run the Enterprise AWS Migration Platform"""
