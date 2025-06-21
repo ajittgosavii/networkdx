@@ -9,6 +9,22 @@ import hashlib
 from typing import Dict, List, Tuple, Optional
 import uuid
 import time
+import base64
+from io import BytesIO
+
+# For PDF generation
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.graphics.shapes import Drawing
+    from reportlab.graphics.charts.piecharts import Pie
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
 
 # Optional: Import for real Claude AI integration
 try:
@@ -542,11 +558,387 @@ class EnterpriseCalculator:
             st.error(f"Claude AI API Error: {str(e)}")
             return None
 
+class PDFReportGenerator:
+    """Generate comprehensive PDF reports for migration analysis"""
+    
+    def __init__(self):
+        self.styles = getSampleStyleSheet()
+        self.title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=self.styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            textColor=colors.darkblue,
+            alignment=1  # Center alignment
+        )
+        self.heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=self.styles['Heading2'],
+            fontSize=16,
+            spaceAfter=12,
+            textColor=colors.darkblue,
+            leftIndent=0
+        )
+        self.subheading_style = ParagraphStyle(
+            'CustomSubHeading',
+            parent=self.styles['Heading3'],
+            fontSize=14,
+            spaceAfter=8,
+            textColor=colors.darkgreen,
+            leftIndent=20
+        )
+        self.body_style = ParagraphStyle(
+            'CustomBody',
+            parent=self.styles['Normal'],
+            fontSize=10,
+            spaceAfter=6,
+            leftIndent=20,
+            rightIndent=20
+        )
+        self.highlight_style = ParagraphStyle(
+            'Highlight',
+            parent=self.styles['Normal'],
+            fontSize=11,
+            spaceAfter=8,
+            backColor=colors.lightblue,
+            borderColor=colors.blue,
+            borderWidth=1,
+            borderPadding=5,
+            leftIndent=20,
+            rightIndent=20
+        )
+    
+    def generate_conclusion_report(self, config, metrics, recommendations):
+        """Generate comprehensive conclusion report"""
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+        
+        # Calculate recommendation scores
+        performance_score = min(100, (metrics['optimized_throughput'] / 1000) * 50)
+        cost_score = min(50, max(0, 50 - (metrics['cost_breakdown']['total'] / config['budget_allocated'] - 1) * 100))
+        timeline_score = min(30, max(0, 30 - (metrics['transfer_days'] / config['max_transfer_days'] - 1) * 100))
+        risk_score = {"Low": 20, "Medium": 15, "High": 10, "Critical": 5}.get(recommendations['risk_level'], 15)
+        overall_score = performance_score + cost_score + timeline_score + risk_score
+        
+        # Determine strategy status
+        if overall_score >= 140:
+            strategy_status = "RECOMMENDED"
+            strategy_action = "PROCEED"
+        elif overall_score >= 120:
+            strategy_status = "CONDITIONAL"
+            strategy_action = "PROCEED WITH OPTIMIZATIONS"
+        elif overall_score >= 100:
+            strategy_status = "REQUIRES MODIFICATION"
+            strategy_action = "REVISE CONFIGURATION"
+        else:
+            strategy_status = "NOT RECOMMENDED"
+            strategy_action = "RECONSIDER APPROACH"
+        
+        story = []
+        
+        # Title Page
+        story.append(Paragraph("Enterprise AWS Migration Strategy", self.title_style))
+        story.append(Paragraph("Comprehensive Analysis & Strategic Recommendation", self.styles['Heading2']))
+        story.append(Spacer(1, 30))
+        
+        # Executive Summary Box
+        exec_summary = f"""
+        <b>Project:</b> {config['project_name']}<br/>
+        <b>Data Volume:</b> {metrics['data_size_tb']:.1f} TB ({config['data_size_gb']:,} GB)<br/>
+        <b>Strategic Recommendation:</b> {strategy_status}<br/>
+        <b>Action Required:</b> {strategy_action}<br/>
+        <b>Overall Score:</b> {overall_score:.0f}/150<br/>
+        <b>Success Probability:</b> {85 + (overall_score - 100) * 0.3:.0f}%
+        """
+        story.append(Paragraph(exec_summary, self.highlight_style))
+        story.append(Spacer(1, 20))
+        
+        # Key Metrics Table
+        story.append(Paragraph("Key Performance Metrics", self.heading_style))
+        key_metrics_data = [
+            ['Metric', 'Value', 'Status'],
+            ['Expected Throughput', f"{recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps", 'Optimal'],
+            ['Estimated Timeline', f"{metrics['transfer_days']:.1f} days", 'On Track' if metrics['transfer_days'] <= config['max_transfer_days'] else 'At Risk'],
+            ['Total Investment', f"${metrics['cost_breakdown']['total']:,.0f}", 'Within Budget' if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else 'Over Budget'],
+            ['Risk Assessment', recommendations['risk_level'], 'Acceptable'],
+            ['Network Efficiency', f"{recommendations['estimated_performance']['network_efficiency']:.1%}", 'Good']
+        ]
+        
+        key_metrics_table = Table(key_metrics_data, colWidths=[2*inch, 2*inch, 1.5*inch])
+        key_metrics_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(key_metrics_table)
+        story.append(Spacer(1, 20))
+        
+        # AI Recommendations
+        story.append(Paragraph("AI-Powered Strategic Recommendations", self.heading_style))
+        
+        ai_recommendations = f"""
+        <b>Primary Migration Method:</b> {recommendations['primary_method']}<br/>
+        <b>Network Architecture:</b> {recommendations['networking_option']}<br/>
+        <b>Database Migration Tool:</b> {recommendations['db_migration_tool']}<br/>
+        <b>Secondary Method:</b> {recommendations['secondary_method']}<br/>
+        <b>Cost Efficiency:</b> {recommendations['cost_efficiency']}<br/>
+        <br/>
+        <b>AI Analysis:</b> {recommendations['rationale']}
+        """
+        story.append(Paragraph(ai_recommendations, self.body_style))
+        story.append(Spacer(1, 15))
+        
+        # Decision Matrix
+        story.append(Paragraph("Decision Matrix", self.heading_style))
+        decision_data = [
+            ['Factor', 'Score', 'Weight', 'Weighted Score', 'Status'],
+            ['Performance', f"{performance_score:.0f}/50", '50%', f"{performance_score:.0f}", 'Excellent' if performance_score >= 40 else 'Good' if performance_score >= 30 else 'Poor'],
+            ['Cost Efficiency', f"{cost_score:.0f}/50", '50%', f"{cost_score:.0f}", 'Excellent' if cost_score >= 40 else 'Good' if cost_score >= 30 else 'Poor'],
+            ['Timeline', f"{timeline_score:.0f}/30", '30%', f"{timeline_score:.0f}", 'Excellent' if timeline_score >= 25 else 'Good' if timeline_score >= 20 else 'Poor'],
+            ['Risk Management', f"{risk_score}/20", '20%', f"{risk_score}", 'Excellent' if risk_score >= 18 else 'Good' if risk_score >= 15 else 'Poor'],
+            ['TOTAL', f"{overall_score:.0f}/150", '100%', f"{overall_score:.0f}", strategy_status]
+        ]
+        
+        decision_table = Table(decision_data, colWidths=[1.5*inch, 1*inch, 0.8*inch, 1*inch, 1.2*inch])
+        decision_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.lightblue),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(decision_table)
+        story.append(Spacer(1, 20))
+        
+        # Implementation Roadmap
+        story.append(Paragraph("Implementation Roadmap", self.heading_style))
+        
+        phases = [
+            ("Phase 1: Preparation (Weeks 1-2)", [
+                f"Setup {config['num_datasync_agents']} DataSync agents with {config['datasync_instance_type']} instances",
+                f"Configure {recommendations['networking_option']} connectivity",
+                "Implement security controls and encryption",
+                "Setup monitoring and compliance tracking"
+            ]),
+            ("Phase 2: Pilot Migration (Weeks 3-4)", [
+                f"Migrate 10% of data using {recommendations['primary_method']}",
+                "Validate performance and security controls",
+                "Test disaster recovery procedures",
+                "Fine-tune configuration based on results"
+            ]),
+            (f"Phase 3: Full Migration (Weeks 5-{4 + max(2, int(metrics['transfer_days'] / 7))})", [
+                f"Execute full {metrics['data_size_tb']:.1f}TB migration",
+                f"Maintain {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput",
+                "Continuous monitoring and optimization",
+                "Regular checkpoints and progress reporting"
+            ]),
+            ("Phase 4: Validation & Cutover", [
+                "Data integrity verification",
+                "Performance validation",
+                "User acceptance testing",
+                "Production cutover and decommissioning"
+            ])
+        ]
+        
+        for phase_title, activities in phases:
+            story.append(Paragraph(phase_title, self.subheading_style))
+            for activity in activities:
+                story.append(Paragraph(f"• {activity}", self.body_style))
+            story.append(Spacer(1, 10))
+        
+        # Risk Mitigation
+        story.append(Paragraph("Risk Mitigation & Contingency Planning", self.heading_style))
+        
+        risk_mitigation = f"""
+        <b>Performance Risk:</b> Implement {recommendations['secondary_method']} as backup method<br/>
+        <b>Timeline Risk:</b> Maintain {config.get('dx_secondary_mbps', config['dx_bandwidth_mbps'])} Mbps redundant connectivity<br/>
+        <b>Security Risk:</b> Enable real-time monitoring for {config['data_classification']} data<br/>
+        <b>Compliance Risk:</b> Automated audit trail for {len(config['compliance_frameworks'])} frameworks<br/>
+        <b>Technical Risk:</b> 24/7 technical support and escalation procedures
+        """
+        story.append(Paragraph(risk_mitigation, self.body_style))
+        story.append(Spacer(1, 15))
+        
+        # Success Criteria
+        story.append(Paragraph("Success Criteria", self.heading_style))
+        success_criteria = f"""
+        <b>Performance Target:</b> Achieve ≥{recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput<br/>
+        <b>Timeline Target:</b> Complete migration within {config['max_transfer_days']} days<br/>
+        <b>Budget Target:</b> Stay within ${config['budget_allocated']:,.0f} allocated budget<br/>
+        <b>Security Target:</b> Maintain {config['data_classification']} data classification requirements<br/>
+        <b>Compliance Target:</b> Achieve 100% compliance with {len(config['compliance_frameworks'])} frameworks<br/>
+        <b>Business Target:</b> {metrics['business_impact']['level']} business impact mitigation
+        """
+        story.append(Paragraph(success_criteria, self.body_style))
+        story.append(Spacer(1, 20))
+        
+        # Final Recommendation
+        final_recommendation = f"""
+        <b>FINAL STRATEGIC DIRECTION:</b> {strategy_status}<br/>
+        <b>AI CONFIDENCE:</b> {85 + (overall_score - 100) * 0.3:.0f}% based on comprehensive analysis<br/>
+        <b>RECOMMENDED ACTION:</b> {strategy_action}<br/>
+        <br/>
+        <b>Next Steps:</b><br/>
+        1. Executive Approval: Present this analysis to stakeholders<br/>
+        2. Resource Allocation: Secure budget and technical resources<br/>
+        3. Team Formation: Assemble migration team with defined roles<br/>
+        4. Infrastructure Setup: Begin Phase 1 preparation activities<br/>
+        5. Communication Plan: Notify affected users and departments
+        """
+        story.append(Paragraph("Final Strategic Recommendation", self.heading_style))
+        story.append(Paragraph(final_recommendation, self.highlight_style))
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+    
+    def generate_cost_analysis_report(self, config, metrics):
+        """Generate detailed cost analysis report"""
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+        
+        story = []
+        
+        # Title
+        story.append(Paragraph("AWS Migration Cost Analysis", self.title_style))
+        story.append(Paragraph(f"Project: {config['project_name']}", self.styles['Heading2']))
+        story.append(Spacer(1, 30))
+        
+        # Cost Summary
+        story.append(Paragraph("Executive Cost Summary", self.heading_style))
+        cost_summary = f"""
+        <b>Total Migration Cost:</b> ${metrics['cost_breakdown']['total']:,.2f}<br/>
+        <b>Cost per TB:</b> ${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.2f}<br/>
+        <b>Budget Allocation:</b> ${config['budget_allocated']:,.0f}<br/>
+        <b>Budget Status:</b> {'Within Budget' if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else 'Over Budget'}<br/>
+        <b>Variance:</b> ${metrics['cost_breakdown']['total'] - config['budget_allocated']:+,.0f}
+        """
+        story.append(Paragraph(cost_summary, self.highlight_style))
+        story.append(Spacer(1, 20))
+        
+        # Detailed Cost Breakdown
+        story.append(Paragraph("Detailed Cost Breakdown", self.heading_style))
+        cost_data = [
+            ['Cost Category', 'Amount ($)', 'Percentage (%)', 'Per TB ($)'],
+            ['Compute (DataSync)', f"${metrics['cost_breakdown']['compute']:,.2f}", 
+             f"{(metrics['cost_breakdown']['compute']/metrics['cost_breakdown']['total'])*100:.1f}%",
+             f"${metrics['cost_breakdown']['compute']/metrics['data_size_tb']:.2f}"],
+            ['Data Transfer', f"${metrics['cost_breakdown']['transfer']:,.2f}", 
+             f"{(metrics['cost_breakdown']['transfer']/metrics['cost_breakdown']['total'])*100:.1f}%",
+             f"${metrics['cost_breakdown']['transfer']/metrics['data_size_tb']:.2f}"],
+            ['S3 Storage', f"${metrics['cost_breakdown']['storage']:,.2f}", 
+             f"{(metrics['cost_breakdown']['storage']/metrics['cost_breakdown']['total'])*100:.1f}%",
+             f"${metrics['cost_breakdown']['storage']/metrics['data_size_tb']:.2f}"],
+            ['Compliance', f"${metrics['cost_breakdown']['compliance']:,.2f}", 
+             f"{(metrics['cost_breakdown']['compliance']/metrics['cost_breakdown']['total'])*100:.1f}%",
+             f"${metrics['cost_breakdown']['compliance']/metrics['data_size_tb']:.2f}"],
+            ['Monitoring', f"${metrics['cost_breakdown']['monitoring']:,.2f}", 
+             f"{(metrics['cost_breakdown']['monitoring']/metrics['cost_breakdown']['total'])*100:.1f}%",
+             f"${metrics['cost_breakdown']['monitoring']/metrics['data_size_tb']:.2f}"],
+            ['TOTAL', f"${metrics['cost_breakdown']['total']:,.2f}", '100.0%',
+             f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.2f}"]
+        ]
+        
+        cost_table = Table(cost_data, colWidths=[1.8*inch, 1.5*inch, 1.2*inch, 1*inch])
+        cost_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.lightblue),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(cost_table)
+        story.append(Spacer(1, 20))
+        
+        # ROI Analysis
+        story.append(Paragraph("Return on Investment (ROI) Analysis", self.heading_style))
+        
+        # Calculate ROI metrics
+        on_premises_annual_cost = metrics['data_size_tb'] * 1000 * 12  # $1000/TB/month on-premises
+        aws_annual_cost = metrics['cost_breakdown']['storage'] * 12 + (metrics['cost_breakdown']['total'] * 0.1)
+        annual_savings = max(0, on_premises_annual_cost - aws_annual_cost)
+        roi_percentage = (annual_savings / metrics['cost_breakdown']['total']) * 100 if metrics['cost_breakdown']['total'] > 0 else 0
+        payback_period = metrics['cost_breakdown']['total'] / annual_savings if annual_savings > 0 else 0
+        
+        roi_data = [
+            ['Metric', 'Value', 'Analysis'],
+            ['On-premises Annual Cost', f"${on_premises_annual_cost:,.0f}", 'Current state'],
+            ['AWS Annual Cost', f"${aws_annual_cost:,.0f}", 'Target state'],
+            ['Annual Savings', f"${annual_savings:,.0f}", 'Cost reduction'],
+            ['ROI Percentage', f"{roi_percentage:.1f}%", 'Return rate'],
+            ['Payback Period', f"{payback_period:.1f} years" if payback_period > 0 and payback_period < 50 else "N/A", 'Break-even timeline']
+        ]
+        
+        roi_table = Table(roi_data, colWidths=[2*inch, 1.5*inch, 2*inch])
+        roi_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(roi_table)
+        story.append(Spacer(1, 20))
+        
+        # Cost Optimization Recommendations
+        story.append(Paragraph("Cost Optimization Opportunities", self.heading_style))
+        
+        optimizations = []
+        if config['s3_storage_class'] == 'Standard':
+            potential_savings = metrics['cost_breakdown']['storage'] * 0.4
+            optimizations.append(f"Switch to Standard-IA storage class: Save ~${potential_savings:.0f}")
+        
+        if not config['enable_lifecycle']:
+            lifecycle_savings = metrics['cost_breakdown']['storage'] * 0.2
+            optimizations.append(f"Enable lifecycle policies: Save ~${lifecycle_savings:.0f}")
+        
+        if config['num_datasync_agents'] > 3:
+            agent_savings = (config['num_datasync_agents'] - 3) * 50 * metrics['transfer_days']
+            optimizations.append(f"Optimize agent count: Save ~${agent_savings:.0f}")
+        
+        if not optimizations:
+            optimizations.append("Configuration is already cost-optimized!")
+        
+        for opt in optimizations:
+            story.append(Paragraph(f"• {opt}", self.body_style))
+        
+        story.append(Spacer(1, 20))
+        
+        # Risk Factors
+        story.append(Paragraph("Cost Risk Factors", self.heading_style))
+        risk_factors = f"""
+        <b>Data Growth:</b> {config['data_growth_rate']}% annual growth may increase future costs<br/>
+        <b>Compliance:</b> {len(config['compliance_frameworks'])} frameworks add ${len(config['compliance_frameworks']) * 500:,.0f} in compliance costs<br/>
+        <b>Network:</b> {config['dx_bandwidth_mbps']} Mbps Direct Connect provides cost-effective transfer<br/>
+        <b>Timeline:</b> {metrics['transfer_days']:.1f} day timeline minimizes extended operational costs<br/>
+        <b>Storage Class:</b> {config['s3_storage_class']} storage provides balance of cost and access
+        """
+        story.append(Paragraph(risk_factors, self.body_style))
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+
 class MigrationPlatform:
     """Main application class for the Enterprise AWS Migration Platform"""
     
     def __init__(self):
         self.calculator = EnterpriseCalculator()
+        self.pdf_generator = PDFReportGenerator() if PDF_AVAILABLE else None
         self.initialize_session_state()
         self.setup_custom_css()
         
@@ -574,128 +966,326 @@ class MigrationPlatform:
             st.session_state.config_change_count = 0
     
     def setup_custom_css(self):
-        """Setup custom CSS styling with real-time indicators"""
+        """Setup enhanced custom CSS styling with professional design"""
         st.markdown("""
         <style>
+            /* Main container styling */
             .main-header {
-                background: linear-gradient(90deg, #FF9900, #232F3E);
-                padding: 1rem;
-                border-radius: 10px;
+                background: linear-gradient(135deg, #FF9900 0%, #232F3E 100%);
+                padding: 2rem;
+                border-radius: 15px;
                 color: white;
                 text-align: center;
                 margin-bottom: 2rem;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             }
-            .metric-card {
-                background-color: #f8f9fa;
-                padding: 1rem;
-                border-radius: 8px;
-                border-left: 4px solid #FF9900;
-                margin: 0.5rem 0;
-                transition: all 0.3s ease;
-            }
-            .metric-card:hover {
-                background-color: #e9ecef;
-                transform: translateY(-2px);
-                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            }
-            .security-badge {
-                background-color: #28a745;
-                color: white;
-                padding: 0.2rem 0.5rem;
+            
+            /* Enhanced tab container */
+            .tab-container {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                padding: 1.5rem;
                 border-radius: 12px;
-                font-size: 0.8rem;
-                margin: 0.2rem;
+                margin-bottom: 2rem;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+                border: 1px solid #dee2e6;
             }
-            .compliance-item {
-                background-color: #e9ecef;
-                padding: 0.5rem;
-                margin: 0.2rem;
-                border-radius: 4px;
-                border-left: 3px solid #007bff;
+            
+            /* Standardized section headers */
+            .section-header {
+                background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                margin: 1.5rem 0 1rem 0;
+                font-size: 1.2rem;
+                font-weight: bold;
+                box-shadow: 0 2px 8px rgba(0,123,255,0.3);
             }
-            .networking-frame {
-                border: 2px solid #FF9900;
-                border-radius: 10px;
-                background: white;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                padding: 15px;
-                margin: 10px 0;
+            
+            /* Enhanced metric cards */
+            .metric-card {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                padding: 1.5rem;
+                border-radius: 12px;
+                border-left: 5px solid #FF9900;
+                margin: 0.75rem 0;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                border: 1px solid #e9ecef;
             }
+            
+            .metric-card:hover {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                transform: translateY(-3px);
+                box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            }
+            
+            /* Professional recommendation boxes */
             .recommendation-box {
                 background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
-                padding: 15px;
-                border-radius: 10px;
-                border-left: 4px solid #3498db;
-                margin: 10px 0;
-                animation: slideIn 0.5s ease-in;
+                padding: 1.5rem;
+                border-radius: 12px;
+                border-left: 5px solid #007bff;
+                margin: 1rem 0;
+                box-shadow: 0 3px 15px rgba(0,123,255,0.1);
+                border: 1px solid #b8daff;
             }
+            
+            /* Enhanced AI insight boxes */
             .ai-insight {
                 background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
-                padding: 12px;
-                border-radius: 8px;
-                border-left: 3px solid #007bff;
-                margin: 8px 0;
+                padding: 1.25rem;
+                border-radius: 10px;
+                border-left: 4px solid #007bff;
+                margin: 1rem 0;
                 font-style: italic;
-                animation: slideIn 0.5s ease-in;
+                box-shadow: 0 2px 10px rgba(0,123,255,0.1);
+                border: 1px solid #cce7ff;
             }
+            
+            /* Executive summary styling */
+            .executive-summary {
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                padding: 2rem;
+                border-radius: 15px;
+                margin: 1.5rem 0;
+                box-shadow: 0 6px 24px rgba(40,167,69,0.2);
+                text-align: center;
+            }
+            
+            /* Status indicators */
+            .status-indicator {
+                display: inline-block;
+                padding: 0.5rem 1rem;
+                border-radius: 20px;
+                font-weight: bold;
+                margin: 0.25rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            
+            .status-excellent {
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+            }
+            
+            .status-good {
+                background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+                color: white;
+            }
+            
+            .status-warning {
+                background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+                color: #212529;
+            }
+            
+            .status-danger {
+                background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                color: white;
+            }
+            
+            /* Security badges */
+            .security-badge {
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                padding: 0.4rem 0.8rem;
+                border-radius: 15px;
+                font-size: 0.85rem;
+                margin: 0.25rem;
+                display: inline-block;
+                box-shadow: 0 2px 6px rgba(40,167,69,0.3);
+            }
+            
+            /* Compliance items */
+            .compliance-item {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                padding: 0.75rem;
+                margin: 0.5rem 0;
+                border-radius: 8px;
+                border-left: 4px solid #007bff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            }
+            
+            /* Network frame */
+            .networking-frame {
+                border: 2px solid #FF9900;
+                border-radius: 15px;
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                box-shadow: 0 6px 20px rgba(255,153,0,0.1);
+                padding: 1.5rem;
+                margin: 1rem 0;
+            }
+            
+            /* Real-time indicators */
             .real-time-indicator {
                 display: inline-block;
-                width: 8px;
-                height: 8px;
-                background-color: #28a745;
+                width: 10px;
+                height: 10px;
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
                 border-radius: 50%;
                 animation: pulse 2s infinite;
-                margin-right: 5px;
+                margin-right: 8px;
+                box-shadow: 0 0 8px rgba(40,167,69,0.5);
             }
+            
             @keyframes pulse {
-                0% { opacity: 1; }
-                50% { opacity: 0.3; }
-                100% { opacity: 1; }
+                0% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.7; transform: scale(1.1); }
+                100% { opacity: 1; transform: scale(1); }
             }
+            
+            /* Enhanced animations */
             @keyframes slideIn {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
+                from { 
+                    opacity: 0; 
+                    transform: translateY(20px); 
+                }
+                to { 
+                    opacity: 1; 
+                    transform: translateY(0); 
+                }
             }
-            .status-good { color: #28a745; font-weight: bold; }
-            .status-warning { color: #ffc107; font-weight: bold; }
-            .status-danger { color: #dc3545; font-weight: bold; }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            /* Navigation buttons */
+            .nav-button {
+                background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                border: none;
+                color: white;
+                padding: 0.75rem 1.5rem;
+                border-radius: 8px;
+                margin: 0.25rem;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+            }
+            
+            .nav-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,123,255,0.4);
+            }
+            
+            /* Tables */
+            .dataframe {
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                border: 1px solid #dee2e6;
+            }
+            
+            /* Responsive design */
+            @media (max-width: 768px) {
+                .main-header {
+                    padding: 1rem;
+                }
+                
+                .metric-card {
+                    padding: 1rem;
+                }
+                
+                .recommendation-box {
+                    padding: 1rem;
+                }
+            }
+            
+            /* Enhanced conclusion page styling */
+            .conclusion-container {
+                background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+                border-radius: 15px;
+                padding: 2rem;
+                margin: 1rem 0;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                border: 1px solid #e9ecef;
+            }
+            
+            .decision-banner {
+                text-align: center;
+                padding: 2rem;
+                border-radius: 15px;
+                margin: 2rem 0;
+                font-size: 1.1rem;
+                font-weight: bold;
+                box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+            }
+            
+            .phase-container {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                border-left: 5px solid #17a2b8;
+                box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            }
+            
+            /* Success criteria styling */
+            .success-criteria {
+                background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                border: 1px solid #c3e6cb;
+                border-radius: 10px;
+                padding: 1.25rem;
+                margin: 1rem 0;
+                border-left: 5px solid #28a745;
+            }
+            
+            .risk-mitigation {
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border: 1px solid #ffeaa7;
+                border-radius: 10px;
+                padding: 1.25rem;
+                margin: 1rem 0;
+                border-left: 5px solid #ffc107;
+            }
         </style>
         """, unsafe_allow_html=True)
     
+    def create_download_link(self, content, filename, button_text):
+        """Create a download link for PDF content"""
+        b64 = base64.b64encode(content).decode()
+        href = f'<a href="data:application/pdf;base64,{b64}" download="{filename}" class="download-button">{button_text}</a>'
+        return href
+    
     def render_header(self):
-        """Render the main header"""
+        """Render the enhanced main header"""
         st.markdown("""
         <div class="main-header">
             <h1>🏢 Enterprise AWS Migration Strategy Platform</h1>
-            <p>AI-Powered Migration Planning • Security-First • Compliance-Ready • Enterprise-Scale</p>
+            <p style="font-size: 1.1rem; margin-top: 0.5rem;">AI-Powered Migration Planning • Security-First • Compliance-Ready • Enterprise-Scale</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.9;">Comprehensive Analysis • Real-time Optimization • Professional Reporting</p>
         </div>
         """, unsafe_allow_html=True)
     
     def render_navigation(self):
-        """Render the top navigation bar"""
+        """Render enhanced navigation bar with consistent styling"""
+        st.markdown('<div class="tab-container">', unsafe_allow_html=True)
+        
         col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 2, 2, 2, 2, 2, 2])
         
         with col1:
-            if st.button("🏠 Dashboard"):
+            if st.button("🏠 Dashboard", key="nav_dashboard"):
                 st.session_state.active_tab = "dashboard"
         with col2:
-            if st.button("🌐 Network Analysis"):
+            if st.button("🌐 Network Analysis", key="nav_network"):
                 st.session_state.active_tab = "network"
         with col3:
-            if st.button("📊 Migration Planner"):
+            if st.button("📊 Migration Planner", key="nav_planner"):
                 st.session_state.active_tab = "planner"
         with col4:
-            if st.button("⚡ Performance"):
+            if st.button("⚡ Performance", key="nav_performance"):
                 st.session_state.active_tab = "performance"
         with col5:
-            if st.button("🔒 Security"):
+            if st.button("🔒 Security", key="nav_security"):
                 st.session_state.active_tab = "security"
         with col6:
-            if st.button("📈 Analytics"):
+            if st.button("📈 Analytics", key="nav_analytics"):
                 st.session_state.active_tab = "analytics"
         with col7:
-            if st.button("🎯 Conclusion"):
+            if st.button("🎯 Conclusion", key="nav_conclusion"):
                 st.session_state.active_tab = "conclusion"
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
     def render_sidebar_controls(self):
         """Render sidebar configuration controls"""
@@ -1041,8 +1631,8 @@ class MigrationPlatform:
             }
     
     def render_dashboard_tab(self, config, metrics):
-        """Render the dashboard tab with real-time data and enhanced AI display"""
-        st.header("🏠 Enterprise Migration Dashboard")
+        """Render the dashboard tab with enhanced styling"""
+        st.markdown('<div class="section-header">🏠 Enterprise Migration Dashboard</div>', unsafe_allow_html=True)
         
         # Calculate dynamic executive summary metrics
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -1108,7 +1698,7 @@ class MigrationPlatform:
             st.metric("Compliance Score", f"{compliance_score:.0f}%", compliance_change)
         
         # Current project overview with real-time metrics
-        st.subheader("📊 Current Project Overview")
+        st.markdown('<div class="section-header">📊 Current Project Overview</div>', unsafe_allow_html=True)
         
         col1, col2, col3, col4 = st.columns(4)
         
@@ -1145,7 +1735,7 @@ class MigrationPlatform:
             st.markdown('</div>', unsafe_allow_html=True)
         
         # Enhanced Real-time AI-Powered Recommendations Section
-        st.subheader("🤖 AI-Powered Recommendations")
+        st.markdown('<div class="section-header">🤖 AI-Powered Recommendations</div>', unsafe_allow_html=True)
         recommendations = metrics['networking_recommendations']
         
         ai_type = "Real-time Claude AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "Built-in AI"
@@ -1200,7 +1790,7 @@ class MigrationPlatform:
                 st.write(f"**Optimizations:** {total_optimization:.2f}x multiplier")
         
         # Performance comparison table
-        st.subheader("📊 Performance Comparison: Theoretical vs Your Config vs AI Recommendation")
+        st.markdown('<div class="section-header">📊 Performance Comparison: Theoretical vs Your Config vs AI Recommendation</div>', unsafe_allow_html=True)
         
         comparison_data = pd.DataFrame({
             "Metric": ["Throughput (Mbps)", "Duration (Days)", "Efficiency (%)", "Agents Used", "Instance Type"],
@@ -1274,7 +1864,7 @@ class MigrationPlatform:
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("📋 Real-time Activities")
+            st.markdown('<div class="section-header">📋 Real-time Activities</div>', unsafe_allow_html=True)
             
             # Dynamic activities based on current configuration
             current_time = datetime.now().strftime("%H:%M")
@@ -1293,7 +1883,7 @@ class MigrationPlatform:
                 st.write(f"• {activity}")
         
         with col2:
-            st.subheader("⚠️ Real-time Alerts & Status")
+            st.markdown('<div class="section-header">⚠️ Real-time Alerts & Status</div>', unsafe_allow_html=True)
             
             alerts = []
             
@@ -1352,7 +1942,7 @@ class MigrationPlatform:
                 st.write(alert)
         
         # Real-time project health dashboard
-        st.subheader("🏥 Project Health Dashboard")
+        st.markdown('<div class="section-header">🏥 Project Health Dashboard</div>', unsafe_allow_html=True)
         
         # Calculate overall project health score
         health_factors = {
@@ -1469,8 +2059,8 @@ class MigrationPlatform:
         return fig
     
     def render_network_tab(self, config, metrics):
-        """Render the network analysis tab"""
-        st.header("🌐 Network Analysis & Architecture Optimization")
+        """Render the network analysis tab with enhanced styling"""
+        st.markdown('<div class="section-header">🌐 Network Analysis & Architecture Optimization</div>', unsafe_allow_html=True)
         
         # Network performance dashboard
         col1, col2, col3, col4 = st.columns(4)
@@ -1495,7 +2085,7 @@ class MigrationPlatform:
         
         # Real-world vs Theoretical Performance Analysis
         if 'theoretical_throughput' in metrics and 'real_world_efficiency' in metrics:
-            st.subheader("🌍 Real-world vs Theoretical Performance")
+            st.markdown('<div class="section-header">🌍 Real-world vs Theoretical Performance</div>', unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
             
@@ -1559,7 +2149,7 @@ class MigrationPlatform:
             """, unsafe_allow_html=True)
         
         # AI-Powered Network Architecture Recommendations
-        st.subheader("🤖 AI-Powered Network Architecture Recommendations")
+        st.markdown('<div class="section-header">🤖 AI-Powered Network Architecture Recommendations</div>', unsafe_allow_html=True)
         
         recommendations = metrics['networking_recommendations']
         
@@ -1603,7 +2193,7 @@ class MigrationPlatform:
         
         # Real AI Analysis (if enabled)
         if recommendations.get('ai_analysis'):
-            st.subheader("🤖 Advanced Claude AI Analysis")
+            st.markdown('<div class="section-header">🤖 Advanced Claude AI Analysis</div>', unsafe_allow_html=True)
             st.markdown(f"""
             <div class="ai-insight">
                 <strong>🔮 Real-time Claude AI Insights:</strong><br>
@@ -1612,7 +2202,7 @@ class MigrationPlatform:
             """, unsafe_allow_html=True)
         
         # Database Migration Tools Comparison
-        st.subheader("🗄️ Database Migration Tools Analysis")
+        st.markdown('<div class="section-header">🗄️ Database Migration Tools Analysis</div>', unsafe_allow_html=True)
         
         db_tools_data = []
         for tool_key, tool_info in self.calculator.db_migration_tools.items():
@@ -1636,7 +2226,7 @@ class MigrationPlatform:
         st.dataframe(df_db_tools, use_container_width=True, hide_index=True)
         
         # Network quality assessment
-        st.subheader("📡 Network Quality Assessment")
+        st.markdown('<div class="section-header">📡 Network Quality Assessment</div>', unsafe_allow_html=True)
         
         utilization_pct = (metrics['optimized_throughput'] / config['dx_bandwidth_mbps']) * 100
         
@@ -1658,11 +2248,11 @@ class MigrationPlatform:
         st.dataframe(quality_metrics, use_container_width=True, hide_index=True)
     
     def render_planner_tab(self, config, metrics):
-        """Render the migration planner tab"""
-        st.header("📊 Migration Planning & Strategy")
+        """Render the migration planner tab with enhanced styling"""
+        st.markdown('<div class="section-header">📊 Migration Planning & Strategy</div>', unsafe_allow_html=True)
         
         # AI Recommendations at the top
-        st.subheader("🤖 AI-Powered Migration Strategy")
+        st.markdown('<div class="section-header">🤖 AI-Powered Migration Strategy</div>', unsafe_allow_html=True)
         recommendations = metrics['networking_recommendations']
         
         st.markdown(f"""
@@ -1674,7 +2264,7 @@ class MigrationPlatform:
         """, unsafe_allow_html=True)
         
         # Migration method comparison
-        st.subheader("🔍 Migration Method Analysis")
+        st.markdown('<div class="section-header">🔍 Migration Method Analysis</div>', unsafe_allow_html=True)
         
         migration_methods = []
         
@@ -1739,7 +2329,7 @@ class MigrationPlatform:
         st.dataframe(df_methods, use_container_width=True, hide_index=True)
         
         # Geographic Optimization Analysis
-        st.subheader("🗺️ Geographic Route Optimization")
+        st.markdown('<div class="section-header">🗺️ Geographic Route Optimization</div>', unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
         
@@ -1783,7 +2373,7 @@ class MigrationPlatform:
                 st.plotly_chart(fig_latency, use_container_width=True)
         
         # Business impact assessment
-        st.subheader("📈 Business Impact Analysis")
+        st.markdown('<div class="section-header">📈 Business Impact Analysis</div>', unsafe_allow_html=True)
         
         col1, col2, col3 = st.columns(3)
         
@@ -1805,8 +2395,8 @@ class MigrationPlatform:
         """, unsafe_allow_html=True)
     
     def render_performance_tab(self, config, metrics):
-        """Render the performance optimization tab"""
-        st.header("⚡ Performance Optimization")
+        """Render the performance optimization tab with enhanced styling"""
+        st.markdown('<div class="section-header">⚡ Performance Optimization</div>', unsafe_allow_html=True)
         
         # Performance metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -1833,7 +2423,7 @@ class MigrationPlatform:
             st.metric("Cost per TB", f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}")
         
         # AI-Powered Optimization Recommendations
-        st.subheader("🤖 AI-Powered Optimization Recommendations")
+        st.markdown('<div class="section-header">🤖 AI-Powered Optimization Recommendations</div>', unsafe_allow_html=True)
         recommendations = metrics['networking_recommendations']
         
         st.markdown(f"""
@@ -1845,7 +2435,7 @@ class MigrationPlatform:
         """, unsafe_allow_html=True)
         
         # Optimization recommendations
-        st.subheader("🎯 Specific Optimization Recommendations")
+        st.markdown('<div class="section-header">🎯 Specific Optimization Recommendations</div>', unsafe_allow_html=True)
         
         recommendations_list = []
         
@@ -1881,7 +2471,7 @@ class MigrationPlatform:
             st.success("✅ Configuration is already well optimized!")
         
         # Performance comparison chart
-        st.subheader("📊 Optimization Impact Analysis")
+        st.markdown('<div class="section-header">📊 Optimization Impact Analysis</div>', unsafe_allow_html=True)
         
         # Include AI recommendations in the chart
         optimization_scenarios = {
@@ -1910,8 +2500,8 @@ class MigrationPlatform:
         st.plotly_chart(fig_opt, use_container_width=True)
     
     def render_security_tab(self, config, metrics):
-        """Render the security and compliance tab"""
-        st.header("🔒 Security & Compliance Management")
+        """Render the security and compliance tab with enhanced styling"""
+        st.markdown('<div class="section-header">🔒 Security & Compliance Management</div>', unsafe_allow_html=True)
         
         # Security dashboard
         col1, col2, col3, col4 = st.columns(4)
@@ -1933,7 +2523,7 @@ class MigrationPlatform:
         
         # AI Security Analysis
         recommendations = metrics['networking_recommendations']
-        st.subheader("🤖 AI Security & Compliance Analysis")
+        st.markdown('<div class="section-header">🤖 AI Security & Compliance Analysis</div>', unsafe_allow_html=True)
         
         security_analysis = f"""
         Based on your data classification ({config['data_classification']}) and compliance requirements 
@@ -1949,7 +2539,7 @@ class MigrationPlatform:
         """, unsafe_allow_html=True)
         
         # Security controls matrix
-        st.subheader("🛡️ Security Controls Matrix")
+        st.markdown('<div class="section-header">🛡️ Security Controls Matrix</div>', unsafe_allow_html=True)
         
         security_controls = pd.DataFrame({
             "Control": [
@@ -1998,24 +2588,24 @@ class MigrationPlatform:
         
         # Compliance frameworks
         if config['compliance_frameworks']:
-            st.subheader("🏛️ Compliance Frameworks")
+            st.markdown('<div class="section-header">🏛️ Compliance Frameworks</div>', unsafe_allow_html=True)
             
             for framework in config['compliance_frameworks']:
                 st.markdown(f'<span class="security-badge">{framework}</span>', unsafe_allow_html=True)
         
         # Compliance risks
         if metrics['compliance_risks']:
-            st.subheader("⚠️ Compliance Risks")
+            st.markdown('<div class="section-header">⚠️ Compliance Risks</div>', unsafe_allow_html=True)
             for risk in metrics['compliance_risks']:
                 st.warning(risk)
     
     def render_analytics_tab(self, config, metrics):
-        """Render the analytics and reporting tab"""
-        st.header("📈 Analytics & Reporting")
+        """Render the analytics and reporting tab with enhanced styling"""
+        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)
         
         # AI-Generated Executive Summary
         recommendations = metrics['networking_recommendations']
-        st.subheader("🤖 AI-Generated Executive Summary")
+        st.markdown('<div class="section-header">🤖 AI-Generated Executive Summary</div>', unsafe_allow_html=True)
         
         executive_summary = f"""
         **Migration Project:** {config['project_name']} | **Data Volume:** {metrics['data_size_tb']:.1f}TB | 
@@ -2034,7 +2624,7 @@ class MigrationPlatform:
         """, unsafe_allow_html=True)
         
         # Cost breakdown section with both table and chart
-        st.subheader("💰 Cost Analysis")
+        st.markdown('<div class="section-header">💰 Cost Analysis</div>', unsafe_allow_html=True)
         
         col1, col2 = st.columns([1, 1])
         
@@ -2105,7 +2695,7 @@ class MigrationPlatform:
             st.plotly_chart(fig_costs, use_container_width=True)
         
         # Performance trends (simulated)
-        st.subheader("📊 Performance Trends")
+        st.markdown('<div class="section-header">📊 Performance Trends</div>', unsafe_allow_html=True)
         
         dates = pd.date_range(start="2024-01-01", end="2024-12-31", freq="M")
         throughput_trend = np.random.normal(metrics['optimized_throughput'], metrics['optimized_throughput']*0.1, len(dates))
@@ -2140,7 +2730,7 @@ class MigrationPlatform:
         st.plotly_chart(fig_trend, use_container_width=True)
         
         # ROI Analysis
-        st.subheader("💡 ROI Analysis with AI Insights")
+        st.markdown('<div class="section-header">💡 ROI Analysis with AI Insights</div>', unsafe_allow_html=True)
         
         col1, col2, col3 = st.columns(3)
         
@@ -2173,8 +2763,10 @@ class MigrationPlatform:
         """, unsafe_allow_html=True)
     
     def render_conclusion_tab(self, config, metrics):
-        """Render the conclusion tab with comprehensive recommendations"""
-        st.header("🎯 Final Recommendation & Strategic Decision")
+        """Render the enhanced conclusion tab with professional formatting and PDF download"""
+        st.markdown('<div class="conclusion-container">', unsafe_allow_html=True)
+        
+        st.markdown('<div class="section-header">🎯 Final Strategic Recommendation & Executive Decision</div>', unsafe_allow_html=True)
         
         recommendations = metrics['networking_recommendations']
         
@@ -2191,65 +2783,143 @@ class MigrationPlatform:
             strategy_status = "✅ RECOMMENDED"
             strategy_color = "#28a745"
             strategy_action = "PROCEED"
+            banner_bg = "linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)"
         elif overall_score >= 120:
             strategy_status = "⚠️ CONDITIONAL"
             strategy_color = "#ffc107"
             strategy_action = "PROCEED WITH OPTIMIZATIONS"
+            banner_bg = "linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%)"
         elif overall_score >= 100:
             strategy_status = "🔄 REQUIRES MODIFICATION"
             strategy_color = "#fd7e14"
             strategy_action = "REVISE CONFIGURATION"
+            banner_bg = "linear-gradient(135deg, #ffe8cc 0%, #ffdbbb 100%)"
         else:
             strategy_status = "❌ NOT RECOMMENDED"
             strategy_color = "#dc3545"
             strategy_action = "RECONSIDER APPROACH"
+            banner_bg = "linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)"
         
-        # Main recommendation banner
+        # Executive Summary Banner
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, {strategy_color}20 0%, {strategy_color}10 100%); 
-                    padding: 20px; border-radius: 15px; border-left: 5px solid {strategy_color}; margin-bottom: 20px;">
-            <h2 style="color: {strategy_color}; margin: 0;">🎯 STRATEGIC RECOMMENDATION: {strategy_status}</h2>
-            <h3 style="margin: 10px 0; color: #2c3e50;">Action Required: {strategy_action}</h3>
-            <p style="font-size: 1.1em; margin: 5px 0;"><strong>Overall Strategy Score: {overall_score:.0f}/150</strong></p>
+        <div class="executive-summary" style="background: {banner_bg}; color: {strategy_color};">
+            <h1>🎯 STRATEGIC RECOMMENDATION: {strategy_status}</h1>
+            <h2 style="margin: 15px 0; color: #2c3e50;">Action Required: {strategy_action}</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <div style="text-align: left;">
+                    <strong>Overall Strategy Score: {overall_score:.0f}/150</strong><br>
+                    <strong>Success Probability: {85 + (overall_score - 100) * 0.3:.0f}%</strong>
+                </div>
+                <div style="text-align: right;">
+                    <strong>Project: {config['project_name']}</strong><br>
+                    <strong>Data Volume: {metrics['data_size_tb']:.1f} TB</strong>
+                </div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Key recommendation summary
-        st.subheader("🚀 Executive Summary & Action Plan")
+        # PDF Download Section
+        if self.pdf_generator and PDF_AVAILABLE:
+            st.markdown('<div class="section-header">📥 Download Professional Reports</div>', unsafe_allow_html=True)
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("📋 Download Conclusion Report", type="primary"):
+                    try:
+                        pdf_buffer = self.pdf_generator.generate_conclusion_report(config, metrics, recommendations)
+                        pdf_bytes = pdf_buffer.getvalue()
+                        
+                        st.download_button(
+                            label="📥 Download Executive Summary PDF",
+                            data=pdf_bytes,
+                            file_name=f"{config['project_name']}_Executive_Summary_{datetime.now().strftime('%Y%m%d')}.pdf",
+                            mime="application/pdf"
+                        )
+                        st.success("✅ Conclusion report generated successfully!")
+                    except Exception as e:
+                        st.error(f"❌ Error generating PDF: {str(e)}")
+            
+            with col2:
+                if st.button("💰 Download Cost Analysis", type="primary"):
+                    try:
+                        pdf_buffer = self.pdf_generator.generate_cost_analysis_report(config, metrics)
+                        pdf_bytes = pdf_buffer.getvalue()
+                        
+                        st.download_button(
+                            label="📥 Download Cost Analysis PDF",
+                            data=pdf_bytes,
+                            file_name=f"{config['project_name']}_Cost_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
+                            mime="application/pdf"
+                        )
+                        st.success("✅ Cost analysis report generated successfully!")
+                    except Exception as e:
+                        st.error(f"❌ Error generating PDF: {str(e)}")
+            
+            with col3:
+                if st.button("📊 Download Complete Report", type="primary"):
+                    try:
+                        # Generate both reports
+                        conclusion_pdf = self.pdf_generator.generate_conclusion_report(config, metrics, recommendations)
+                        cost_pdf = self.pdf_generator.generate_cost_analysis_report(config, metrics)
+                        
+                        # For now, download the conclusion report (in a full implementation, you could merge PDFs)
+                        pdf_bytes = conclusion_pdf.getvalue()
+                        
+                        st.download_button(
+                            label="📥 Download Complete Analysis PDF",
+                            data=pdf_bytes,
+                            file_name=f"{config['project_name']}_Complete_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
+                            mime="application/pdf"
+                        )
+                        st.success("✅ Complete analysis report generated successfully!")
+                    except Exception as e:
+                        st.error(f"❌ Error generating PDF: {str(e)}")
+        else:
+            st.warning("📋 PDF generation requires reportlab library. Install with: pip install reportlab")
+        
+        # Key Strategic Metrics
+        st.markdown('<div class="section-header">📊 Key Strategic Metrics</div>', unsafe_allow_html=True)
         
         col1, col2 = st.columns([2, 1])
         
         with col1:
             st.markdown(f"""
             <div class="recommendation-box">
-                <h4>📋 Recommended Migration Strategy</h4>
-                <p><strong>🎯 Primary Method:</strong> {recommendations['primary_method']}</p>
-                <p><strong>🌐 Network Architecture:</strong> {recommendations['networking_option']}</p>
-                <p><strong>🗄️ Database Migration:</strong> {recommendations['db_migration_tool']}</p>
-                <p><strong>📊 Expected Performance:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps</p>
-                <p><strong>⏱️ Estimated Timeline:</strong> {metrics['transfer_days']:.1f} days</p>
-                <p><strong>💰 Total Investment:</strong> ${metrics['cost_breakdown']['total']:,.0f}</p>
-                <p><strong>⚠️ Risk Assessment:</strong> {recommendations['risk_level']} risk level</p>
-                <p><strong>🎯 Success Probability:</strong> {85 + (overall_score - 100) * 0.3:.0f}%</p>
+                <h3>🚀 Strategic Migration Plan</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
+                    <div>
+                        <strong>🎯 Primary Method:</strong> {recommendations['primary_method']}<br>
+                        <strong>🌐 Network Architecture:</strong> {recommendations['networking_option']}<br>
+                        <strong>🗄️ Database Migration:</strong> {recommendations['db_migration_tool']}<br>
+                        <strong>⚡ Expected Performance:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps
+                    </div>
+                    <div>
+                        <strong>⏱️ Estimated Timeline:</strong> {metrics['transfer_days']:.1f} days<br>
+                        <strong>💰 Total Investment:</strong> ${metrics['cost_breakdown']['total']:,.0f}<br>
+                        <strong>⚠️ Risk Assessment:</strong> {recommendations['risk_level']} risk level<br>
+                        <strong>📊 Business Impact:</strong> {metrics['business_impact']['level']} priority
+                    </div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
             # Decision matrix
             decision_factors = pd.DataFrame({
-                "Factor": ["Performance", "Cost Efficiency", "Timeline", "Risk Management"],
+                "Factor": ["Performance", "Cost", "Timeline", "Risk"],
                 "Score": [f"{performance_score:.0f}/50", f"{cost_score:.0f}/50", f"{timeline_score:.0f}/30", f"{risk_score}/20"],
                 "Status": [
-                    "✅ Excellent" if performance_score >= 40 else "⚠️ Good" if performance_score >= 30 else "❌ Poor",
-                    "✅ Excellent" if cost_score >= 40 else "⚠️ Good" if cost_score >= 30 else "❌ Poor",
-                    "✅ Excellent" if timeline_score >= 25 else "⚠️ Good" if timeline_score >= 20 else "❌ Poor",
-                    "✅ Excellent" if risk_score >= 18 else "⚠️ Good" if risk_score >= 15 else "❌ Poor"
+                    "🟢 Excellent" if performance_score >= 40 else "🟡 Good" if performance_score >= 30 else "🔴 Poor",
+                    "🟢 Excellent" if cost_score >= 40 else "🟡 Good" if cost_score >= 30 else "🔴 Poor",
+                    "🟢 Excellent" if timeline_score >= 25 else "🟡 Good" if timeline_score >= 20 else "🔴 Poor",
+                    "🟢 Excellent" if risk_score >= 18 else "🟡 Good" if risk_score >= 15 else "🔴 Poor"
                 ]
             })
             st.dataframe(decision_factors, use_container_width=True, hide_index=True)
         
         # AI-powered specific recommendations
-        st.subheader("🤖 AI-Powered Specific Recommendations")
+        st.markdown('<div class="section-header">🤖 AI-Powered Strategic Recommendations</div>', unsafe_allow_html=True)
         
         # Generate tailored recommendations based on the analysis
         specific_recommendations = []
@@ -2260,7 +2930,8 @@ class MigrationPlatform:
                 "category": "🚀 Performance Optimization",
                 "recommendation": f"Upgrade to {config['num_datasync_agents'] + 2} DataSync agents with c5.4xlarge instances to achieve 2x throughput improvement",
                 "impact": "High",
-                "effort": "Medium"
+                "effort": "Medium",
+                "timeline": "2-3 weeks"
             })
         
         # Cost recommendations
@@ -2270,7 +2941,8 @@ class MigrationPlatform:
                 "category": "💰 Cost Optimization",
                 "recommendation": f"Switch to Standard-IA storage and optimize transfer schedule to save ${savings_opportunity:,.0f}",
                 "impact": "High",
-                "effort": "Low"
+                "effort": "Low",
+                "timeline": "1 week"
             })
         
         # Timeline recommendations
@@ -2279,7 +2951,8 @@ class MigrationPlatform:
                 "category": "⏱️ Timeline Acceleration",
                 "recommendation": f"Implement parallel {recommendations['primary_method']} with {recommendations['secondary_method']} to meet {config['max_transfer_days']}-day deadline",
                 "impact": "Critical",
-                "effort": "High"
+                "effort": "High",
+                "timeline": "2-4 weeks"
             })
         
         # Security recommendations
@@ -2288,7 +2961,8 @@ class MigrationPlatform:
                 "category": "🔒 Security Enhancement",
                 "recommendation": "Enable encryption at rest and implement additional access controls for classified data",
                 "impact": "Critical",
-                "effort": "Medium"
+                "effort": "Medium",
+                "timeline": "1-2 weeks"
             })
         
         # Network recommendations
@@ -2297,138 +2971,134 @@ class MigrationPlatform:
                 "category": "🌐 Network Optimization",
                 "recommendation": f"Optimize routing or consider regional data centers to reduce {config['network_latency']}ms latency",
                 "impact": "Medium",
-                "effort": "High"
-            })
-        
-        # Compliance recommendations
-        if len(config['compliance_frameworks']) > 3:
-            specific_recommendations.append({
-                "category": "📋 Compliance Streamlining",
-                "recommendation": f"Implement unified compliance monitoring for {len(config['compliance_frameworks'])} frameworks to reduce overhead",
-                "impact": "Medium",
-                "effort": "Medium"
+                "effort": "High",
+                "timeline": "4-6 weeks"
             })
         
         # Display recommendations in a structured format
         if specific_recommendations:
             for i, rec in enumerate(specific_recommendations, 1):
-                impact_color = {"Critical": "#dc3545", "High": "#fd7e14", "Medium": "#ffc107", "Low": "#28a745"}
-                effort_color = {"High": "#dc3545", "Medium": "#ffc107", "Low": "#28a745"}
+                impact_colors = {"Critical": "#dc3545", "High": "#fd7e14", "Medium": "#ffc107", "Low": "#28a745"}
+                effort_colors = {"High": "#dc3545", "Medium": "#ffc107", "Low": "#28a745"}
                 
                 st.markdown(f"""
-                <div class="recommendation-box" style="margin-bottom: 15px;">
-                    <h5>{i}. {rec['category']}</h5>
-                    <p>{rec['recommendation']}</p>
-                    <p><strong>Impact:</strong> <span style="color: {impact_color[rec['impact']]};">●</span> {rec['impact']} | 
-                       <strong>Effort:</strong> <span style="color: {effort_color[rec['effort']]};">●</span> {rec['effort']}</p>
+                <div class="phase-container">
+                    <h4>{i}. {rec['category']}</h4>
+                    <p><strong>Recommendation:</strong> {rec['recommendation']}</p>
+                    <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                        <span><strong>Impact:</strong> <span style="color: {impact_colors[rec['impact']]};">●</span> {rec['impact']}</span>
+                        <span><strong>Effort:</strong> <span style="color: {effort_colors[rec['effort']]};">●</span> {rec['effort']}</span>
+                        <span><strong>Timeline:</strong> {rec['timeline']}</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.success("✅ Your current configuration is already optimized across all dimensions!")
+            st.markdown("""
+            <div class="success-criteria">
+                <h4>✅ Optimal Configuration Achieved</h4>
+                <p>Your current configuration is already optimized across all dimensions! No immediate changes required.</p>
+            </div>
+            """, unsafe_allow_html=True)
         
         # Implementation roadmap
-        st.subheader("🗺️ Implementation Roadmap")
+        st.markdown('<div class="section-header">🗺️ Phased Implementation Roadmap</div>', unsafe_allow_html=True)
         
         # Create a phased implementation plan
-        phases = []
+        phases = [
+            {
+                "title": "1️⃣ Preparation & Setup",
+                "duration": "Weeks 1-2",
+                "activities": [
+                    f"Setup {config['num_datasync_agents']} DataSync agents with {config['datasync_instance_type']} instances",
+                    f"Configure {recommendations['networking_option']} connectivity",
+                    "Implement security controls and encryption",
+                    "Setup monitoring and compliance tracking"
+                ],
+                "deliverables": "Infrastructure ready, security validated",
+                "dependencies": "Network infrastructure, Security approval"
+            },
+            {
+                "title": "2️⃣ Pilot Migration",
+                "duration": "Weeks 3-4",
+                "activities": [
+                    f"Migrate 10% of data using {recommendations['primary_method']}",
+                    "Validate performance and security controls",
+                    "Test disaster recovery procedures",
+                    "Fine-tune configuration based on results"
+                ],
+                "deliverables": "Pilot completed, lessons learned documented",
+                "dependencies": "Phase 1 completion, Stakeholder approval"
+            },
+            {
+                "title": f"3️⃣ Full Migration",
+                "duration": f"Weeks 5-{4 + max(2, int(metrics['transfer_days'] / 7))}",
+                "activities": [
+                    f"Execute full {metrics['data_size_tb']:.1f}TB migration",
+                    f"Maintain {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput",
+                    "Continuous monitoring and optimization",
+                    "Regular checkpoints and progress reporting"
+                ],
+                "deliverables": "Complete data migration",
+                "dependencies": "Successful pilot completion"
+            },
+            {
+                "title": "4️⃣ Validation & Cutover",
+                "duration": f"Week {5 + max(2, int(metrics['transfer_days'] / 7))}",
+                "activities": [
+                    "Data integrity verification",
+                    "Performance validation",
+                    "User acceptance testing",
+                    "Production cutover and decommissioning"
+                ],
+                "deliverables": "Live production system",
+                "dependencies": "Migration completion, Testing approval"
+            }
+        ]
         
-        # Phase 1: Preparation
-        phases.append({
-            "Phase": "1️⃣ Preparation (Weeks 1-2)",
-            "Activities": [
-                f"Setup {config['num_datasync_agents']} DataSync agents with {config['datasync_instance_type']} instances",
-                f"Configure {recommendations['networking_option']} connectivity",
-                "Implement security controls and encryption",
-                "Setup monitoring and compliance tracking"
-            ],
-            "Duration": "2 weeks",
-            "Dependencies": "Network infrastructure, Security approval"
-        })
-        
-        # Phase 2: Pilot
-        phases.append({
-            "Phase": "2️⃣ Pilot Migration (Weeks 3-4)",
-            "Activities": [
-                f"Migrate 10% of data using {recommendations['primary_method']}",
-                "Validate performance and security controls",
-                "Test disaster recovery procedures",
-                "Fine-tune configuration based on results"
-            ],
-            "Duration": "2 weeks",
-            "Dependencies": "Phase 1 completion, Stakeholder approval"
-        })
-        
-        # Phase 3: Full Migration
-        migration_weeks = max(2, int(metrics['transfer_days'] / 7))
-        phases.append({
-            "Phase": f"3️⃣ Full Migration (Weeks 5-{4 + migration_weeks})",
-            "Activities": [
-                f"Execute full {metrics['data_size_tb']:.1f}TB migration",
-                f"Maintain {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput",
-                "Continuous monitoring and optimization",
-                "Regular checkpoints and progress reporting"
-            ],
-            "Duration": f"{migration_weeks} weeks",
-            "Dependencies": "Successful pilot completion"
-        })
-        
-        # Phase 4: Validation
-        phases.append({
-            "Phase": f"4️⃣ Validation & Cutover (Week {5 + migration_weeks})",
-            "Activities": [
-                "Data integrity verification",
-                "Performance validation",
-                "User acceptance testing",
-                "Production cutover and decommissioning"
-            ],
-            "Duration": "1 week",
-            "Dependencies": "Migration completion, Testing approval"
-        })
-        
-        # Display roadmap
+        # Display roadmap in expandable sections
         for phase in phases:
-            with st.expander(phase["Phase"]):
-                st.write(f"**Duration:** {phase['Duration']}")
-                st.write(f"**Dependencies:** {phase['Dependencies']}")
-                st.write("**Key Activities:**")
-                for activity in phase["Activities"]:
-                    st.write(f"• {activity}")
+            with st.expander(f"{phase['title']} ({phase['duration']})"):
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.write(f"**🎯 Key Activities:**")
+                    for activity in phase["activities"]:
+                        st.write(f"• {activity}")
+                    st.write(f"**📋 Deliverables:** {phase['deliverables']}")
+                with col2:
+                    st.write(f"**⏱️ Duration:** {phase['duration']}")
+                    st.write(f"**🔗 Dependencies:** {phase['dependencies']}")
         
         # Risk mitigation and contingency planning
-        st.subheader("⚠️ Risk Mitigation & Contingency Planning")
+        st.markdown('<div class="section-header">🛡️ Risk Mitigation & Contingency Strategy</div>', unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**🛡️ Risk Mitigation Strategies**")
-            
-            risk_strategies = [
-                f"**Performance Risk:** Implement {recommendations['secondary_method']} as backup method",
-                f"**Timeline Risk:** Maintain {config['dx_secondary_mbps'] if config.get('dx_redundant') else config['dx_bandwidth_mbps']} Mbps redundant connectivity",
-                f"**Security Risk:** Enable real-time monitoring for {config['data_classification']} data",
-                f"**Compliance Risk:** Automated audit trail for {len(config['compliance_frameworks'])} frameworks",
-                "**Technical Risk:** 24/7 technical support and escalation procedures"
-            ]
-            
-            for strategy in risk_strategies:
-                st.write(f"• {strategy}")
+            st.markdown(f"""
+            <div class="risk-mitigation">
+                <h4>🛡️ Risk Mitigation Strategies</h4>
+                <p><strong>Performance Risk:</strong> Implement {recommendations['secondary_method']} as backup method</p>
+                <p><strong>Timeline Risk:</strong> Maintain {config['dx_secondary_mbps'] if config.get('dx_redundant') else config['dx_bandwidth_mbps']} Mbps redundant connectivity</p>
+                <p><strong>Security Risk:</strong> Enable real-time monitoring for {config['data_classification']} data</p>
+                <p><strong>Compliance Risk:</strong> Automated audit trail for {len(config['compliance_frameworks'])} frameworks</p>
+                <p><strong>Technical Risk:</strong> 24/7 technical support and escalation procedures</p>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
-            st.markdown("**🚨 Contingency Plans**")
-            
-            contingencies = [
-                "**Plan A:** Primary migration path as recommended",
-                f"**Plan B:** Fallback to {recommendations['secondary_method']} if performance issues",
-                "**Plan C:** Snowball Edge for bandwidth-constrained scenarios",
-                f"**Emergency:** Pause/resume capability with {metrics['available_hours_per_day']}-hour windows",
-                "**Rollback:** Complete rollback procedure within 4 hours"
-            ]
-            
-            for contingency in contingencies:
-                st.write(f"• {contingency}")
+            st.markdown("""
+            <div class="risk-mitigation">
+                <h4>🚨 Contingency Plans</h4>
+                <p><strong>Plan A:</strong> Primary migration path as recommended</p>
+                <p><strong>Plan B:</strong> Fallback to Snowball Edge if performance issues</p>
+                <p><strong>Plan C:</strong> Hybrid approach with Storage Gateway</p>
+                <p><strong>Emergency:</strong> Pause/resume capability with rollback option</p>
+                <p><strong>Escalation:</strong> Executive decision matrix for critical issues</p>
+            </div>
+            """, unsafe_allow_html=True)
         
-        # Final decision framework
-        st.subheader("🎯 Final Decision Framework")
+        # Success criteria and final decision framework
+        st.markdown('<div class="section-header">🎯 Success Criteria & Decision Framework</div>', unsafe_allow_html=True)
         
         # Success criteria
         success_criteria = {
@@ -2444,6 +3114,9 @@ class MigrationPlatform:
         criteria_met = 0
         total_criteria = len(success_criteria)
         
+        st.markdown('<div class="success-criteria">', unsafe_allow_html=True)
+        st.markdown("### 🎯 Project Success Criteria")
+        
         for criterion, target in success_criteria.items():
             if ("Performance" in criterion and metrics['optimized_throughput'] >= recommendations['estimated_performance']['throughput_mbps'] * 0.9) or \
                ("Timeline" in criterion and metrics['transfer_days'] <= config['max_transfer_days']) or \
@@ -2451,10 +3124,12 @@ class MigrationPlatform:
                ("Security" in criterion) or \
                ("Compliance" in criterion and not metrics['compliance_risks']) or \
                ("Business" in criterion):
-                st.write(f"✅ {criterion}: {target}")
+                st.write(f"✅ **{criterion}:** {target}")
                 criteria_met += 1
             else:
-                st.write(f"⚠️ {criterion}: {target}")
+                st.write(f"⚠️ **{criterion}:** {target}")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # Final go/no-go decision
         success_rate = (criteria_met / total_criteria) * 100
@@ -2469,51 +3144,65 @@ class MigrationPlatform:
             final_decision = "🔴 NO-GO - Significant reconfiguration required"
             decision_color = "#dc3545"
         
+        # Final recommendation with comprehensive summary
         st.markdown(f"""
-        <div style="background: {decision_color}20; padding: 20px; border-radius: 10px; 
-                    border-left: 5px solid {decision_color}; margin: 20px 0;">
-            <h3 style="color: {decision_color}; margin: 0;">🎯 FINAL DECISION: {final_decision}</h3>
-            <p><strong>Success Criteria Met:</strong> {criteria_met}/{total_criteria} ({success_rate:.0f}%)</p>
-            <p><strong>Overall Confidence Level:</strong> {85 + (overall_score - 100) * 0.3:.0f}%</p>
+        <div class="decision-banner" style="background: linear-gradient(135deg, {decision_color}20 0%, {decision_color}10 100%); border: 2px solid {decision_color};">
+            <h2 style="color: {decision_color}; margin: 0;">🎯 FINAL STRATEGIC DECISION</h2>
+            <h3 style="margin: 10px 0 20px 0; color: #2c3e50;">{final_decision}</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; text-align: left;">
+                <div>
+                    <p><strong>📊 Success Criteria Met:</strong> {criteria_met}/{total_criteria} ({success_rate:.0f}%)</p>
+                    <p><strong>🤖 AI Confidence Level:</strong> {85 + (overall_score - 100) * 0.3:.0f}%</p>
+                    <p><strong>⚡ Expected Throughput:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps</p>
+                    <p><strong>⏱️ Projected Duration:</strong> {metrics['transfer_days']:.1f} days</p>
+                </div>
+                <div>
+                    <p><strong>💰 Total Investment:</strong> ${metrics['cost_breakdown']['total']:,.0f}</p>
+                    <p><strong>⚠️ Risk Assessment:</strong> {recommendations['risk_level']} risk level</p>
+                    <p><strong>🎯 Recommended Action:</strong> {strategy_action}</p>
+                    <p><strong>📈 Business Impact:</strong> {metrics['business_impact']['level']} priority</p>
+                </div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
         # Next steps
-        st.subheader("🚀 Immediate Next Steps")
+        st.markdown('<div class="section-header">🚀 Immediate Next Steps</div>', unsafe_allow_html=True)
         
         next_steps = []
         
         if success_rate >= 80:
             next_steps = [
-                "1. **Executive Approval:** Present this analysis to stakeholders for final approval",
-                "2. **Resource Allocation:** Secure budget and technical resources",
-                "3. **Team Formation:** Assemble migration team with defined roles",
-                "4. **Infrastructure Setup:** Begin Phase 1 preparation activities",
-                "5. **Communication Plan:** Notify affected users and departments"
+                "**1. Executive Approval:** Present this analysis to stakeholders for final approval",
+                "**2. Resource Allocation:** Secure budget and technical resources immediately",
+                "**3. Team Formation:** Assemble migration team with defined roles and responsibilities",
+                "**4. Infrastructure Setup:** Begin Phase 1 preparation activities within 1 week",
+                "**5. Communication Plan:** Notify affected users and departments of timeline"
             ]
         elif success_rate >= 60:
             next_steps = [
-                "1. **Risk Assessment:** Address identified performance and cost concerns",
-                "2. **Configuration Optimization:** Implement recommended improvements",
-                "3. **Stakeholder Review:** Present modified plan to stakeholders",
-                "4. **Pilot Planning:** Prepare for limited pilot migration",
-                "5. **Contingency Preparation:** Finalize backup plans"
+                "**1. Risk Mitigation:** Address identified performance and cost concerns",
+                "**2. Configuration Optimization:** Implement recommended improvements",
+                "**3. Stakeholder Review:** Present modified plan to stakeholders",
+                "**4. Pilot Planning:** Prepare for limited pilot migration",
+                "**5. Contingency Preparation:** Finalize backup plans and procedures"
             ]
         else:
             next_steps = [
-                "1. **Strategy Revision:** Fundamental reassessment of migration approach",
-                "2. **Alternative Analysis:** Evaluate different migration methods",
-                "3. **Budget Review:** Reassess budget allocation and timeline",
-                "4. **Technical Consultation:** Engage additional technical expertise",
-                "5. **Requirement Clarification:** Revisit business requirements and constraints"
+                "**1. Strategy Revision:** Fundamental reassessment of migration approach",
+                "**2. Alternative Analysis:** Evaluate different migration methods and tools",
+                "**3. Budget Review:** Reassess budget allocation and timeline requirements",
+                "**4. Technical Consultation:** Engage additional technical expertise",
+                "**5. Requirement Clarification:** Revisit business requirements and constraints"
             ]
         
         for step in next_steps:
-            st.write(f"**{step}**")
+            st.markdown(f"• {step}")
         
         # Contact and support information
         st.markdown("---")
-        st.subheader("📞 Support & Contacts")
+        st.markdown('<div class="section-header">📞 Support & Emergency Contacts</div>', unsafe_allow_html=True)
         
         col1, col2, col3 = st.columns(3)
         
@@ -2544,18 +3233,27 @@ class MigrationPlatform:
             - Escalation: cto@company.com
             """)
         
-        # Final summary box
+        # Document information and signature block
+        st.markdown("---")
+        current_timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+        
         st.markdown(f"""
         <div class="ai-insight">
-            <strong>🎯 Final Strategic Direction:</strong> {final_decision}<br>
-            <strong>🤖 AI Confidence:</strong> {85 + (overall_score - 100) * 0.3:.0f}% based on comprehensive analysis<br>
-            <strong>📊 Key Metrics:</strong> {metrics['optimized_throughput']:.0f} Mbps throughput, {metrics['transfer_days']:.1f} days duration, ${metrics['cost_breakdown']['total']:,.0f} total cost<br>
-            <strong>⚡ Recommended Action:</strong> {strategy_action}
+            <strong>📋 Document Information</strong><br>
+            <strong>Generated:</strong> {current_timestamp}<br>
+            <strong>AI Analysis by:</strong> Claude Sonnet 4 (Real-time Analysis)<br>
+            <strong>Report Version:</strong> Enterprise v2.0<br>
+            <strong>Analyst:</strong> {st.session_state.user_profile["role"]} - {st.session_state.user_profile["organization"]}<br>
+            <strong>Classification:</strong> {config['data_classification']} - Handle According to Policy<br><br>
+            <em>This analysis is based on current configuration and real-time AI recommendations. 
+            Results may vary based on actual network conditions and implementation specifics.</em>
         </div>
         """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     def render_sidebar_status(self, config, metrics):
-        """Render real-time status in sidebar"""
+        """Render real-time status in sidebar with enhanced styling"""
         with st.sidebar:
             st.markdown("---")
             st.subheader("🚦 Real-time Status")
@@ -2658,7 +3356,7 @@ class MigrationPlatform:
             # Quick actions with real-time context
             st.subheader("⚡ Smart Actions")
             
-            if st.button("🔄 Refresh Analysis"):
+            if st.button("🔄 Refresh Analysis", type="secondary"):
                 # Log the refresh action
                 st.session_state.audit_log.append({
                     "timestamp": datetime.now().isoformat(),
@@ -2670,19 +3368,19 @@ class MigrationPlatform:
             
             # Dynamic action recommendations
             if recommendations['primary_method'] != "DataSync":
-                if st.button(f"🤖 Switch to {recommendations['primary_method']}"):
+                if st.button(f"🤖 Switch to {recommendations['primary_method']}", type="secondary"):
                     st.info(f"AI recommends switching to {recommendations['primary_method']} for optimal performance")
             
             # Performance optimization action
             if 'theoretical_throughput' in metrics:
                 efficiency = metrics['optimized_throughput'] / metrics['theoretical_throughput']
                 if efficiency < 0.7:
-                    if st.button("🚀 Apply Performance Optimizations"):
+                    if st.button("🚀 Apply Performance Optimizations", type="secondary"):
                         st.info("Performance optimizations would upgrade instance type, increase agents, and optimize network settings")
             
             # Budget optimization action
             if metrics['cost_breakdown']['total'] > config['budget_allocated']:
-                if st.button("💰 Optimize Costs"):
+                if st.button("💰 Optimize Costs", type="secondary"):
                     st.info("Cost optimizations would adjust storage class, instance types, and transfer schedule")
             
             # Real-time configuration summary
@@ -2705,14 +3403,14 @@ class MigrationPlatform:
         st.session_state.audit_log.append(event)
     
     def render_footer(self, config, metrics):
-        """Render footer with configuration management"""
+        """Render footer with enhanced configuration management"""
         st.markdown("---")
         
         # Configuration management
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("💾 Save Configuration"):
+            if st.button("💾 Save Configuration", type="primary"):
                 project_config = {
                     "project_name": config['project_name'],
                     "data_size_gb": config['data_size_gb'],
@@ -2736,7 +3434,7 @@ class MigrationPlatform:
                 st.success(f"✅ Configuration saved for project: {config['project_name']}")
         
         with col2:
-            if st.button("📋 View Audit Log"):
+            if st.button("📋 View Audit Log", type="secondary"):
                 if st.session_state.audit_log:
                     audit_df = pd.DataFrame(st.session_state.audit_log)
                     st.dataframe(audit_df, use_container_width=True)
@@ -2744,7 +3442,7 @@ class MigrationPlatform:
                     st.info("No audit events recorded yet.")
         
         with col3:
-            if st.button("📤 Export AI Report"):
+            if st.button("📤 Export AI Report", type="secondary"):
                 report_data = {
                     "project_summary": {
                         "name": config['project_name'],
@@ -2770,28 +3468,31 @@ class MigrationPlatform:
                     mime="application/json"
                 )
         
-        # Footer information
+        # Enhanced footer information
         st.markdown("---")
         col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown("**🏢 Enterprise AWS Migration Platform v2.0**")
             st.markdown("*AI-Powered • Security-First • Compliance-Ready*")
+            st.markdown("*Professional PDF Reports • Real-time Analysis*")
         
         with col2:
             st.markdown("**🤖 AI-Powered Features**")
             st.markdown("• Intelligent Architecture Recommendations")
             st.markdown("• Automated Performance Optimization")
             st.markdown("• Smart Cost Analysis")
+            st.markdown("• Professional PDF Report Generation")
         
         with col3:
             st.markdown("**🔒 Security & Privacy**")
             st.markdown("• SOC2 Type II Certified")
             st.markdown("• End-to-end Encryption")
             st.markdown("• Zero Trust Architecture")
+            st.markdown("• Enterprise-grade Compliance")
     
     def run(self):
-        """Main application entry point with real-time updates"""
+        """Main application entry point with enhanced real-time updates"""
         # Render header and navigation
         self.render_header()
         self.render_navigation()
@@ -2816,11 +3517,11 @@ class MigrationPlatform:
         # Display last update time in the header
         st.markdown(f"""
         <div style="text-align: right; color: #666; font-size: 0.8em; margin-bottom: 1rem;">
-            Last updated: {current_time.strftime('%H:%M:%S')} | Auto-refresh: {time_since_update}s ago
+            <span class="real-time-indicator"></span>Last updated: {current_time.strftime('%H:%M:%S')} | Auto-refresh: {time_since_update}s ago
         </div>
         """, unsafe_allow_html=True)
         
-        # Render appropriate tab based on selection
+        # Render appropriate tab based on selection with enhanced styling
         if st.session_state.active_tab == "dashboard":
             self.render_dashboard_tab(config, metrics)
         elif st.session_state.active_tab == "network":
@@ -2844,7 +3545,7 @@ class MigrationPlatform:
         self.render_sidebar_status(config, metrics)
 
 def main():
-    """Main function to run the Enterprise AWS Migration Platform"""
+    """Main function to run the Enhanced Enterprise AWS Migration Platform"""
     try:
         # Initialize and run the migration platform
         platform = MigrationPlatform()
