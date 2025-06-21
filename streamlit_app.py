@@ -1817,26 +1817,58 @@ class MigrationPlatform:
             ]
         })
         
-        # Color-code the comparison table based on performance
+# Color-code the comparison table based on performance
         def highlight_best_performance(row):
-            if row.name == 0:  # Throughput row - higher is better
-                values = [float(val) for val in row[1:]]
-                max_val = max(values)
-                return ['background-color: lightgreen' if float(val) == max_val else '' for val in row]
-            elif row.name == 1:  # Duration row - lower is better
-                values = [float(val) for val in row[1:]]
-                min_val = min(values)
-                return ['background-color: lightgreen' if float(val) == min_val else '' for val in row]
-            elif row.name == 2:  # Efficiency row - higher is better
-                values = [float(val.strip('%')) for val in row[1:]]
-                max_val = max(values)
-                return ['background-color: lightgreen' if float(val.strip('%')) == max_val else '' for val in row]
+            try:
+                if row.name == 0:  # Throughput row - higher is better
+                    numeric_values = []
+                    for val in row[1:]:
+                        try:
+                            numeric_values.append(float(val))
+                        except (ValueError, TypeError):
+                            numeric_values.append(0)
+                    
+                    if numeric_values:
+                        max_val = max(numeric_values)
+                        return [''] + ['background-color: lightgreen' if float(val) == max_val else '' 
+                                     for val in row[1:] if val.replace('.','').isdigit()]
+                elif row.name == 1:  # Duration row - lower is better
+                    numeric_values = []
+                    for val in row[1:]:
+                        try:
+                            numeric_values.append(float(val))
+                        except (ValueError, TypeError):
+                            numeric_values.append(float('inf'))
+                    
+                    if numeric_values:
+                        min_val = min(numeric_values)
+                        return [''] + ['background-color: lightgreen' if float(val) == min_val else '' 
+                                     for val in row[1:] if val.replace('.','').isdigit()]
+                elif row.name == 2:  # Efficiency row - higher is better
+                    numeric_values = []
+                    for val in row[1:]:
+                        try:
+                            clean_val = val.strip('%') if isinstance(val, str) else str(val)
+                            numeric_values.append(float(clean_val))
+                        except (ValueError, TypeError):
+                            numeric_values.append(0)
+                    
+                    if numeric_values:
+                        max_val = max(numeric_values)
+                        return [''] + ['background-color: lightgreen' if float(val.strip('%')) == max_val else '' 
+                                     for val in row[1:] if isinstance(val, str) and '%' in val]
+            except Exception:
+                pass
             return [''] * len(row)
         
-        # Display the styled dataframe
-        styled_df = comparison_data.style.apply(highlight_best_performance, axis=1)
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
-        
+        # Display the styled dataframe with error handling
+        try:
+            styled_df = comparison_data.style.apply(highlight_best_performance, axis=1)
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        except Exception:
+            # Fallback to unstyled dataframe if styling fails
+            st.dataframe(comparison_data, use_container_width=True, hide_index=True)
+                    
         # Show real AI analysis if available
         if recommendations.get('ai_analysis'):
             st.markdown(f"""
