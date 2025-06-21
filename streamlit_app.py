@@ -3821,7 +3821,7 @@ def render_conclusion_tab(self, config, metrics):
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    def render_sidebar_status(self, config, metrics):
+def render_sidebar_status(self, config, metrics):
         """Render real-time status in sidebar with enhanced styling"""
         with st.sidebar:
             st.markdown("---")
@@ -3961,7 +3961,7 @@ def render_conclusion_tab(self, config, metrics):
             st.write(f"**Duration:** {metrics['transfer_days']:.1f} days")
             st.write(f"**Cost:** ${metrics['cost_breakdown']['total']:,.0f}")
     
-    def log_audit_event(self, event_type, details):
+def log_audit_event(self, event_type, details):
         """Log audit events"""
         event = {
             "timestamp": datetime.now().isoformat(),
@@ -3971,7 +3971,7 @@ def render_conclusion_tab(self, config, metrics):
         }
         st.session_state.audit_log.append(event)
     
-    def render_footer(self, config, metrics):
+def render_footer(self, config, metrics):
         """Render footer with enhanced configuration management"""
         st.markdown("---")
         
@@ -4060,7 +4060,7 @@ def render_conclusion_tab(self, config, metrics):
             st.markdown("• Zero Trust Architecture")
             st.markdown("• Enterprise-grade Compliance")
     
-    def run(self):
+def run(self):
         """Main application entry point with enhanced real-time updates"""
         # Render header and navigation
         self.render_header()
