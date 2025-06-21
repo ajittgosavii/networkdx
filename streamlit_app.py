@@ -559,13 +559,23 @@ class EnterpriseCalculator:
             st.error(f"Claude AI API Error: {str(e)}")
             return None
         
+# STEP 1: FIRST, let's add debugging to see if the new method is being called
+# Add this at the very beginning of your new get_intelligent_datasync_recommendations method
+
     def get_intelligent_datasync_recommendations(self, config, metrics):
         """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
         try:
+            # DEBUG: Add this line to confirm new method is running
+            print("🔧 DEBUG: NEW DataSync optimization method is running!")
+            st.write("🔧 DEBUG: Using improved DataSync logic") # This will show in Streamlit
+            
             current_instance = config['datasync_instance_type']
             current_agents = config['num_datasync_agents']
             data_size_gb = config['data_size_gb']
             data_size_tb = data_size_gb / 1024
+            
+            # DEBUG: Show current configuration
+            st.write(f"🔧 DEBUG: Current config - {current_agents}x {current_instance}, {data_size_tb:.1f}TB")
             
             # Define instance hierarchy with incremental upgrade paths
             instance_hierarchy = {
@@ -624,6 +634,9 @@ class EnterpriseCalculator:
             has_many_small_files = config.get('avg_file_size', '') in ['< 1MB (Many small files)', '1-10MB (Small files)']
             high_bandwidth = config.get('dx_bandwidth_mbps', 0) >= 10000
             network_latency = config.get('network_latency', 25)
+            
+            # DEBUG: Show workload analysis
+            st.write(f"🔧 DEBUG: Workload - DBs:{has_databases}, LargeFiles:{has_large_files}, SmallFiles:{has_many_small_files}, HighBW:{high_bandwidth}")
             
             # Calculate performance efficiency of current configuration
             current_throughput = metrics.get('optimized_throughput', 100)
@@ -736,6 +749,10 @@ class EnterpriseCalculator:
             recommended_agents = get_optimal_agent_count()
             agent_change_needed = recommended_agents - current_agents
             
+            # DEBUG: Show recommendations
+            st.write(f"🔧 DEBUG: Recommendations - Instance: {current_instance} → {recommended_instance} (upgrade needed: {instance_upgrade_needed})")
+            st.write(f"🔧 DEBUG: Agents: {current_agents} → {recommended_agents} (change: {agent_change_needed:+d})")
+            
             # Calculate performance and cost impacts
             if instance_upgrade_needed:
                 rec_specs = instance_hierarchy[recommended_instance]
@@ -832,7 +849,7 @@ class EnterpriseCalculator:
                     "description": "Reduce costs while maintaining acceptable performance"
                 })
             
-            return {
+            result = {
                 "current_analysis": {
                     "current_efficiency": current_efficiency,
                     "performance_rating": performance_rating,
@@ -871,7 +888,15 @@ class EnterpriseCalculator:
                 "alternative_configurations": alternatives
             }
             
+            # DEBUG: Show final result
+            st.write(f"🔧 DEBUG: Final recommendation - {result['recommended_instance']['recommended_instance']} with {result['recommended_agents']['recommended_agents']} agents")
+            
+            return result
+            
         except Exception as e:
+            # DEBUG: Show if we hit the error case
+            st.error(f"🔧 DEBUG: Error in new method - {str(e)}")
+            
             # Return safe defaults if analysis fails
             return {
                 "current_analysis": {
@@ -883,14 +908,14 @@ class EnterpriseCalculator:
                 "recommended_instance": {
                     "recommended_instance": config['datasync_instance_type'],
                     "upgrade_needed": False,
-                    "reason": "Current configuration analysis unavailable",
+                    "reason": "Current configuration analysis unavailable - using fallback",
                     "expected_performance_gain": 0,
                     "cost_impact_percent": 0
                 },
                 "recommended_agents": {
                     "recommended_agents": config['num_datasync_agents'],
                     "change_needed": 0,
-                    "reasoning": "Current agent count maintained",
+                    "reasoning": "Current agent count maintained - using fallback",
                     "performance_change_percent": 0,
                     "cost_change_percent": 0
                 },
@@ -900,8 +925,7 @@ class EnterpriseCalculator:
                     "efficiency_ranking": 10
                 },
                 "alternative_configurations": []
-            }
-            
+            }            
 
 
 class PDFReportGenerator:
