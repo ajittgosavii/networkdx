@@ -1878,6 +1878,280 @@ class MigrationPlatform:
             </div>
             """, unsafe_allow_html=True)
         
+        # Add this to the render_dashboard_tab method after the AI recommendations section
+
+        # Enhanced Real-time DataSync Optimization Section
+        st.markdown('<div class="section-header">🚀 Real-time DataSync Optimization Analysis</div>', unsafe_allow_html=True)
+
+        # Get intelligent DataSync recommendations
+        try:
+            datasync_recommendations = self.calculator.get_intelligent_datasync_recommendations(config, metrics)
+            
+            col1, col2, col3 = st.columns([1, 1, 1])
+            
+            with col1:
+                st.markdown("**🔍 Current Configuration Analysis**")
+                current_analysis = datasync_recommendations["current_analysis"]
+                
+                # Dynamic status indicators based on efficiency
+                efficiency = current_analysis['current_efficiency']
+                if efficiency >= 80:
+                    efficiency_status = "🟢 Excellent"
+                    efficiency_color = "#28a745"
+                elif efficiency >= 60:
+                    efficiency_status = "🟡 Good"
+                    efficiency_color = "#ffc107"
+                else:
+                    efficiency_status = "🔴 Needs Optimization"
+                    efficiency_color = "#dc3545"
+                
+                st.markdown(f"""
+                <div style="background: {efficiency_color}20; padding: 10px; border-radius: 8px; border-left: 4px solid {efficiency_color};">
+                    <strong>Current Setup:</strong> {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
+                    <strong>Efficiency:</strong> {efficiency:.1f}% - {efficiency_status}<br>
+                    <strong>Performance Rating:</strong> {current_analysis['performance_rating']}<br>
+                    <strong>Scaling:</strong> {current_analysis['scaling_effectiveness']['scaling_rating']}
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("**🎯 AI Optimization Recommendations**")
+                instance_rec = datasync_recommendations["recommended_instance"]
+                agent_rec = datasync_recommendations["recommended_agents"]
+                
+                # Show recommendation status
+                if instance_rec["upgrade_needed"] or agent_rec["change_needed"] != 0:
+                    rec_color = "#007bff"
+                    rec_status = "🔧 Optimization Available"
+                    
+                    changes = []
+                    if instance_rec["upgrade_needed"]:
+                        changes.append(f"Instance: {config['datasync_instance_type']} → {instance_rec['recommended_instance']}")
+                    if agent_rec["change_needed"] != 0:
+                        changes.append(f"Agents: {config['num_datasync_agents']} → {agent_rec['recommended_agents']}")
+                    
+                    change_text = "<br>".join(changes)
+                    
+                    st.markdown(f"""
+                    <div style="background: {rec_color}20; padding: 10px; border-radius: 8px; border-left: 4px solid {rec_color};">
+                        <strong>{rec_status}</strong><br>
+                        {change_text}<br>
+                        <strong>Expected Gain:</strong> {agent_rec['performance_change_percent']:+.1f}%<br>
+                        <strong>Cost Impact:</strong> {instance_rec['cost_impact_percent']:+.1f}%
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div style="background: #28a74520; padding: 10px; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <strong>✅ Already Optimized</strong><br>
+                        Configuration: {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
+                        <strong>Status:</strong> Optimal for workload<br>
+                        <strong>Efficiency:</strong> {efficiency:.1f}%
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with col3:
+                st.markdown("**📊 Cost-Performance Analysis**")
+                cost_perf = datasync_recommendations["cost_performance_analysis"]
+                
+                ranking = cost_perf['efficiency_ranking']
+                if ranking <= 3:
+                    rank_status = "🏆 Top Tier"
+                    rank_color = "#28a745"
+                elif ranking <= 10:
+                    rank_status = "⭐ Good"
+                    rank_color = "#ffc107"
+                else:
+                    rank_status = "📈 Improvement Potential"
+                    rank_color = "#dc3545"
+                
+                st.markdown(f"""
+                <div style="background: {rank_color}20; padding: 10px; border-radius: 8px; border-left: 4px solid {rank_color};">
+                    <strong>Cost Efficiency:</strong><br>
+                    ${cost_perf['current_cost_efficiency']:.3f} per Mbps<br>
+                    <strong>Ranking:</strong> #{ranking} - {rank_status}<br>
+                    <strong>Status:</strong> {'Excellent efficiency' if ranking <= 5 else 'Room for improvement'}
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Bottleneck Analysis
+            bottlenecks, bottleneck_recs = datasync_recommendations["bottleneck_analysis"]
+            if bottlenecks:
+                st.markdown("### ⚠️ Performance Bottlenecks Identified")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**🔍 Current Bottlenecks:**")
+                    for bottleneck in bottlenecks[:3]:  # Show top 3 bottlenecks
+                        st.write(f"• {bottleneck}")
+                
+                with col2:
+                    st.markdown("**💡 AI Recommendations:**")
+                    for rec in bottleneck_recs[:3]:  # Show top 3 recommendations
+                        st.write(f"• {rec}")
+            
+            # Alternative Configurations
+            alternatives = datasync_recommendations["alternative_configurations"]
+            if alternatives:
+                st.markdown("### 🔀 Alternative DataSync Configurations")
+                
+                alt_cols = st.columns(len(alternatives))
+                for idx, alt in enumerate(alternatives):
+                    with alt_cols[idx]:
+                        st.markdown(f"""
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <strong>{alt['name']}</strong><br>
+                            <strong>Config:</strong> {alt['agents']}x {alt['instance']}<br>
+                            <em>{alt['description']}</em>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            # Real-time optimization suggestions
+            st.markdown("### 🚀 Real-time Optimization Suggestions")
+            
+            optimization_suggestions = []
+            
+            # Dynamic suggestions based on current vs optimal
+            if instance_rec["upgrade_needed"]:
+                perf_gain = instance_rec["expected_performance_gain"]
+                optimization_suggestions.append(
+                    f"🔧 **Instance Upgrade**: Switch to {instance_rec['recommended_instance']} for {perf_gain:.0f}% performance boost"
+                )
+            
+            if abs(agent_rec["change_needed"]) > 0:
+                if agent_rec["change_needed"] > 0:
+                    optimization_suggestions.append(
+                        f"📈 **Scale Up**: Add {agent_rec['change_needed']} agents for {agent_rec['performance_change_percent']:.1f}% throughput increase"
+                    )
+                else:
+                    optimization_suggestions.append(
+                        f"💰 **Scale Down**: Reduce {abs(agent_rec['change_needed'])} agents for {abs(agent_rec['cost_change_percent']):.1f}% cost savings"
+                    )
+            
+            # Performance-based suggestions
+            if efficiency < 60:
+                optimization_suggestions.append(
+                    "⚡ **Critical**: Current efficiency is below 60% - immediate optimization recommended"
+                )
+            
+            # Network utilization suggestions
+            network_util = (metrics['optimized_throughput'] / config['dx_bandwidth_mbps']) * 100
+            if network_util < 30:
+                optimization_suggestions.append(
+                    f"🌐 **Network**: Only {network_util:.0f}% bandwidth utilization - opportunity for more aggressive scaling"
+                )
+            elif network_util > 80:
+                optimization_suggestions.append(
+                    f"🌐 **Network**: {network_util:.0f}% bandwidth utilization - approaching saturation"
+                )
+            
+            # Cost optimization suggestions
+            if cost_perf['efficiency_ranking'] > 10:
+                optimization_suggestions.append(
+                    "💰 **Cost**: Configuration is not cost-optimal - review alternative setups"
+                )
+            
+            if not optimization_suggestions:
+                optimization_suggestions.append("✅ **Optimal**: Your current configuration is well-optimized for your workload")
+            
+            # Display suggestions in a nice format
+            for suggestion in optimization_suggestions:
+                st.write(suggestion)
+
+        except Exception as e:
+            st.error(f"Error generating DataSync recommendations: {str(e)}")
+            st.write("Falling back to basic analysis...")
+            
+            # Fallback to basic recommendations
+            st.markdown(f"""
+            <div class="ai-insight">
+                <strong>🔍 Basic Configuration Analysis:</strong><br>
+                Current: {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
+                Throughput: {metrics['optimized_throughput']:.0f} Mbps<br>
+                <strong>Note:</strong> Enable advanced DataSync analysis for detailed optimization recommendations.
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Add this comparison table to show the difference
+        st.markdown("### 📊 Current vs AI-Recommended Configuration Comparison")
+
+        try:
+            if 'datasync_recommendations' in locals():
+                instance_rec = datasync_recommendations["recommended_instance"]
+                agent_rec = datasync_recommendations["recommended_agents"]
+                
+                comparison_data = pd.DataFrame({
+                    "Aspect": [
+                        "Instance Type",
+                        "Number of Agents", 
+                        "Expected Throughput",
+                        "Hourly Cost",
+                        "Efficiency Rating",
+                        "Cost per Mbps",
+                        "Performance Rating"
+                    ],
+                    "Current Configuration": [
+                        config['datasync_instance_type'],
+                        config['num_datasync_agents'],
+                        f"{metrics['optimized_throughput']:.0f} Mbps",
+                        f"${self.calculator.instance_performance[config['datasync_instance_type']]['cost_hour'] * config['num_datasync_agents']:.2f}",
+                        f"{current_analysis['current_efficiency']:.1f}%",
+                        f"${cost_perf['current_cost_efficiency']:.3f}",
+                        current_analysis['performance_rating']
+                    ],
+                    "AI Recommended": [
+                        instance_rec['recommended_instance'],
+                        agent_rec['recommended_agents'],
+                        f"{metrics['optimized_throughput'] * (1 + agent_rec['performance_change_percent']/100):.0f} Mbps",
+                        f"${self.calculator.instance_performance[instance_rec['recommended_instance']]['cost_hour'] * agent_rec['recommended_agents']:.2f}",
+                        f"{min(95, current_analysis['current_efficiency'] + abs(agent_rec['performance_change_percent'])):.1f}%",
+                        f"${cost_perf['current_cost_efficiency'] * (1 + instance_rec['cost_impact_percent']/100):.3f}",
+                        "Optimized"
+                    ],
+                    "Improvement": [
+                        "✅ Optimized" if not instance_rec['upgrade_needed'] else f"⬆️ Upgrade",
+                        "✅ Optimal" if agent_rec['change_needed'] == 0 else f"{'⬆️' if agent_rec['change_needed'] > 0 else '⬇️'} {agent_rec['change_needed']:+d}",
+                        f"{agent_rec['performance_change_percent']:+.1f}%",
+                        f"{instance_rec['cost_impact_percent']:+.1f}%",
+                        f"+{abs(agent_rec['performance_change_percent']):.1f}%" if abs(agent_rec['performance_change_percent']) > 0 else "✅",
+                        f"{instance_rec['cost_impact_percent']:+.1f}%",
+                        "Enhanced" if instance_rec['upgrade_needed'] or agent_rec['change_needed'] != 0 else "✅"
+                    ]
+                })
+                
+                st.dataframe(comparison_data, use_container_width=True, hide_index=True)
+                
+                # Summary recommendation
+                if instance_rec['upgrade_needed'] or agent_rec['change_needed'] != 0:
+                    st.markdown(f"""
+                    <div class="recommendation-box">
+                        <h4>🎯 Summary Recommendation</h4>
+                        <p><strong>Action:</strong> {instance_rec['reason']}</p>
+                        <p><strong>Agent Optimization:</strong> {agent_rec['reasoning']}</p>
+                        <p><strong>Expected Benefits:</strong> {agent_rec['performance_change_percent']:+.1f}% performance, {instance_rec['cost_impact_percent']:+.1f}% cost impact</p>
+                        <p><strong>Implementation:</strong> Can be applied during next maintenance window</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.success("✅ Your current DataSync configuration is already optimal for your workload!")
+                    
+        except Exception as e:
+            st.warning(f"Could not generate detailed comparison: {str(e)}")
+
+        # Add real-time monitoring indicators
+        st.markdown("---")
+        current_time = datetime.now().strftime("%H:%M:%S")
+        st.markdown(f"""
+        <div style="text-align: center; color: #666; font-size: 0.9em;">
+            <span class="real-time-indicator"></span>DataSync Analysis updated: {current_time} | 
+            Configuration: {config['num_datasync_agents']}x {config['datasync_instance_type']} | 
+            Performance Mode: {'Real-world' if config.get('real_world_mode') else 'Theoretical'}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        
+        
         # Configuration change tracker
         if st.session_state.config_change_count > 0:
             st.markdown(f"""
