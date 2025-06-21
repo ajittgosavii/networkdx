@@ -557,6 +557,318 @@ class EnterpriseCalculator:
         except Exception as e:
             st.error(f"Claude AI API Error: {str(e)}")
             return None
+        
+    def get_intelligent_datasync_recommendations(self, config, metrics):
+        """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
+        try:
+            current_instance = config['datasync_instance_type']
+            current_agents = config['num_datasync_agents']
+            data_size_gb = config['data_size_gb']
+            data_size_tb = data_size_gb / 1024
+            
+            # Analyze current instance characteristics
+            current_specs = self.instance_performance[current_instance]
+            current_cpu = current_specs['cpu']
+            current_memory = current_specs['memory']
+            current_network = current_specs['network']
+            current_cost_hour = current_specs['cost_hour']
+            
+            # Workload analysis factors
+            has_databases = len(config.get('database_types', [])) > 0
+            has_large_files = config.get('avg_file_size', '') in ['100MB-1GB (Large files)', '> 1GB (Very large files)']
+            has_many_small_files = config.get('avg_file_size', '') in ['< 1MB (Many small files)', '1-10MB (Small files)']
+            high_bandwidth = config.get('dx_bandwidth_mbps', 0) >= 10000
+            network_latency = config.get('network_latency', 25)
+            
+            # Calculate workload complexity score
+            complexity_score = 0
+            if has_databases: complexity_score += 3
+            if has_large_files: complexity_score += 2
+            if has_many_small_files: complexity_score += 1
+            if data_size_tb > 10: complexity_score += 2
+            if data_size_tb > 100: complexity_score += 2
+            if high_bandwidth: complexity_score += 1
+            if network_latency < 30: complexity_score += 1
+            
+            # Determine optimal instance type based on workload
+            def get_optimal_instance_type():
+                # For database-heavy workloads, prioritize memory
+                if has_databases and data_size_tb > 5:
+                    if complexity_score >= 8:
+                        return "r5.4xlarge"  # High memory for large database workloads
+                    elif complexity_score >= 6:
+                        return "r5.2xlarge"  # Medium memory
+                    else:
+                        return "m5.2xlarge"  # Balanced
+                
+                # For large file workloads, prioritize CPU and network
+                elif has_large_files:
+                    if data_size_tb > 50 and high_bandwidth:
+                        return "c5.9xlarge"  # Maximum CPU for large files + high bandwidth
+                    elif data_size_tb > 20:
+                        return "c5.4xlarge"  # High CPU
+                    elif data_size_tb > 5:
+                        return "c5.2xlarge"  # Medium CPU
+                    else:
+                        return "m5.xlarge"   # Balanced for smaller datasets
+                
+                # For many small files, prioritize CPU for metadata processing
+                elif has_many_small_files:
+                    if data_size_tb > 20:
+                        return "c5.4xlarge"  # High CPU for metadata overhead
+                    elif data_size_tb > 5:
+                        return "c5.2xlarge"  # Medium CPU
+                    else:
+                        return "m5.xlarge"   # Balanced
+                
+                # General workloads - balanced approach
+                else:
+                    if data_size_tb > 50:
+                        return "m5.8xlarge"  # Large balanced
+                    elif data_size_tb > 20:
+                        return "m5.4xlarge"  # Medium-large balanced
+                    elif data_size_tb > 5:
+                        return "m5.2xlarge"  # Medium balanced
+                    else:
+                        return "m5.xlarge"   # Small-medium balanced
+            
+            # Determine optimal number of agents with diminishing returns
+            def get_optimal_agent_count():
+                base_agents = max(1, min(10, int(data_size_tb / 10)))  # Base: 1 agent per 10TB
+                
+                # Adjust based on file characteristics
+                if has_databases:
+                    # Databases benefit from fewer, more powerful agents to avoid lock contention
+                    agent_multiplier = 0.8
+                elif has_large_files:
+                    # Large files can use more agents efficiently
+                    agent_multiplier = 1.3
+                elif has_many_small_files:
+                    # Small files need more agents for parallelism
+                    agent_multiplier = 1.5
+                else:
+                    agent_multiplier = 1.0
+                
+                # Network bandwidth consideration
+                if high_bandwidth:
+                    agent_multiplier *= 1.2
+                
+                # Calculate optimal with practical limits
+                optimal_agents = max(1, min(20, int(base_agents * agent_multiplier)))
+                
+                # Ensure we don't recommend the same number if current is already reasonable
+                if abs(optimal_agents - current_agents) <= 1 and current_agents <= 10:
+                    optimal_agents = current_agents
+                
+                return optimal_agents
+            
+            # Get recommendations
+            recommended_instance = get_optimal_instance_type()
+            recommended_agents = get_optimal_agent_count()
+            
+            # Calculate performance and cost impacts
+            rec_specs = self.instance_performance[recommended_instance]
+            
+            # Performance calculation
+            current_total_cpu = current_cpu * current_agents
+            recommended_total_cpu = rec_specs['cpu'] * recommended_agents
+            cpu_performance_change = (recommended_total_cpu - current_total_cpu) / current_total_cpu
+            
+            current_total_memory = current_memory * current_agents
+            recommended_total_memory = rec_specs['memory'] * recommended_agents
+            memory_performance_change = (recommended_total_memory - current_total_memory) / current_total_memory
+            
+            # Network throughput consideration
+            current_baseline_throughput = current_specs['baseline_throughput'] * current_agents
+            recommended_baseline_throughput = rec_specs['baseline_throughput'] * recommended_agents
+            throughput_change = (recommended_baseline_throughput - current_baseline_throughput) / current_baseline_throughput
+            
+            # Overall performance change (weighted average)
+            if has_databases:
+                # Databases are more memory-sensitive
+                performance_change_percent = (cpu_performance_change * 0.3 + memory_performance_change * 0.5 + throughput_change * 0.2) * 100
+            elif has_large_files:
+                # Large files are more CPU and throughput sensitive
+                performance_change_percent = (cpu_performance_change * 0.5 + memory_performance_change * 0.2 + throughput_change * 0.3) * 100
+            else:
+                # Balanced workload
+                performance_change_percent = (cpu_performance_change * 0.4 + memory_performance_change * 0.3 + throughput_change * 0.3) * 100
+            
+            # Cost calculation
+            current_hourly_cost = current_cost_hour * current_agents
+            recommended_hourly_cost = rec_specs['cost_hour'] * recommended_agents
+            cost_impact_percent = ((recommended_hourly_cost - current_hourly_cost) / current_hourly_cost) * 100
+            
+            # Scaling effectiveness analysis
+            def analyze_scaling_effectiveness():
+                if current_agents <= 2:
+                    return {"scaling_rating": "Under-scaled", "efficiency": 0.6}
+                elif current_agents <= 5:
+                    return {"scaling_rating": "Well-scaled", "efficiency": 0.85}
+                elif current_agents <= 10:
+                    return {"scaling_rating": "Optimally-scaled", "efficiency": 0.95}
+                else:
+                    return {"scaling_rating": "Over-scaled", "efficiency": 0.75}
+            
+            scaling_analysis = analyze_scaling_effectiveness()
+            
+            # Current efficiency assessment
+            current_efficiency = min(100, max(20, 85 - abs(current_agents - recommended_agents) * 5 + scaling_analysis["efficiency"] * 15))
+            
+            # Performance rating
+            if current_efficiency >= 85:
+                performance_rating = "Optimal"
+            elif current_efficiency >= 70:
+                performance_rating = "Good"
+            elif current_efficiency >= 55:
+                performance_rating = "Fair"
+            else:
+                performance_rating = "Poor"
+            
+            # Generate intelligent recommendations
+            instance_upgrade_needed = recommended_instance != current_instance
+            agent_change_needed = recommended_agents - current_agents
+            
+            # Instance recommendation reasoning
+            if instance_upgrade_needed:
+                if has_databases and "r5" in recommended_instance:
+                    instance_reason = f"Database workloads benefit from memory-optimized {recommended_instance} instances"
+                elif has_large_files and "c5" in recommended_instance:
+                    instance_reason = f"Large file transfers are CPU-intensive, {recommended_instance} provides optimal processing power"
+                elif has_many_small_files and "c5" in recommended_instance:
+                    instance_reason = f"Small file overhead requires CPU optimization, {recommended_instance} handles metadata efficiently"
+                else:
+                    instance_reason = f"Workload characteristics suggest {recommended_instance} for balanced performance"
+            else:
+                instance_reason = f"Current {current_instance} instance type is optimal for your workload"
+            
+            # Agent recommendation reasoning
+            if agent_change_needed > 0:
+                agent_reasoning = f"Scale up to {recommended_agents} agents for improved parallelism and {abs(performance_change_percent):.1f}% performance gain"
+            elif agent_change_needed < 0:
+                agent_reasoning = f"Scale down to {recommended_agents} agents to reduce costs by {abs(cost_impact_percent):.1f}% while maintaining performance"
+            else:
+                agent_reasoning = f"Current {current_agents} agents is optimal for your {data_size_tb:.1f}TB dataset"
+            
+            # Bottleneck analysis
+            bottlenecks = []
+            bottleneck_recommendations = []
+            
+            if current_instance == "m5.large" and data_size_tb > 5:
+                bottlenecks.append("Instance CPU/Memory constraints for large dataset")
+                bottleneck_recommendations.append("Upgrade to m5.2xlarge or larger for better resource allocation")
+            
+            if current_agents < 3 and data_size_tb > 10:
+                bottlenecks.append("Insufficient parallelism for large dataset")
+                bottleneck_recommendations.append("Increase agent count to improve concurrent transfer capability")
+            
+            if has_databases and current_agents > 8:
+                bottlenecks.append("Too many agents may cause database lock contention")
+                bottleneck_recommendations.append("Reduce agents to 4-6 for database workloads to avoid locking issues")
+            
+            if current_specs['network'] < 2000 and config.get('dx_bandwidth_mbps', 0) > 5000:
+                bottlenecks.append("Instance network performance limiting high-bandwidth utilization")
+                bottleneck_recommendations.append("Use network-optimized instances for high-bandwidth scenarios")
+            
+            # Cost-performance analysis
+            current_cost_efficiency = current_hourly_cost / max(1, metrics.get('optimized_throughput', 100))
+            
+            # Rank current configuration against alternatives
+            efficiency_ranking = 1
+            for instance_type in self.instance_performance.keys():
+                for agent_count in range(1, 11):
+                    test_cost = self.instance_performance[instance_type]['cost_hour'] * agent_count
+                    test_throughput = self.instance_performance[instance_type]['baseline_throughput'] * agent_count * 0.8  # Realistic throughput
+                    test_efficiency = test_cost / max(1, test_throughput)
+                    if test_efficiency < current_cost_efficiency:
+                        efficiency_ranking += 1
+            
+            # Alternative configurations
+            alternatives = []
+            if instance_upgrade_needed or abs(agent_change_needed) > 0:
+                alternatives.append({
+                    "name": "AI Recommended",
+                    "instance": recommended_instance,
+                    "agents": recommended_agents,
+                    "description": f"Optimized for your {complexity_score}-point complexity workload"
+                })
+            
+            if has_databases:
+                alternatives.append({
+                    "name": "Database Optimized",
+                    "instance": "r5.2xlarge",
+                    "agents": min(6, max(2, recommended_agents)),
+                    "description": "Memory-optimized for database migrations"
+                })
+            
+            if data_size_tb > 50:
+                alternatives.append({
+                    "name": "High Volume",
+                    "instance": "c5.9xlarge",
+                    "agents": min(8, max(4, recommended_agents)),
+                    "description": "Maximum throughput for large datasets"
+                })
+            
+            return {
+                "current_analysis": {
+                    "current_efficiency": current_efficiency,
+                    "performance_rating": performance_rating,
+                    "scaling_effectiveness": scaling_analysis,
+                    "workload_complexity": complexity_score
+                },
+                "recommended_instance": {
+                    "recommended_instance": recommended_instance,
+                    "upgrade_needed": instance_upgrade_needed,
+                    "reason": instance_reason,
+                    "expected_performance_gain": abs(performance_change_percent),
+                    "cost_impact_percent": cost_impact_percent
+                },
+                "recommended_agents": {
+                    "recommended_agents": recommended_agents,
+                    "change_needed": agent_change_needed,
+                    "reasoning": agent_reasoning,
+                    "performance_change_percent": performance_change_percent,
+                    "cost_change_percent": cost_impact_percent
+                },
+                "bottleneck_analysis": (bottlenecks, bottleneck_recommendations),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": current_cost_efficiency,
+                    "efficiency_ranking": efficiency_ranking
+                },
+                "alternative_configurations": alternatives
+            }
+            
+        except Exception as e:
+            # Return safe defaults if analysis fails
+            return {
+                "current_analysis": {
+                    "current_efficiency": 75,
+                    "performance_rating": "Good",
+                    "scaling_effectiveness": {"scaling_rating": "Well-scaled", "efficiency": 0.8},
+                    "workload_complexity": 5
+                },
+                "recommended_instance": {
+                    "recommended_instance": config['datasync_instance_type'],
+                    "upgrade_needed": False,
+                    "reason": "Current configuration is adequate",
+                    "expected_performance_gain": 0,
+                    "cost_impact_percent": 0
+                },
+                "recommended_agents": {
+                    "recommended_agents": config['num_datasync_agents'],
+                    "change_needed": 0,
+                    "reasoning": "Current agent count is suitable",
+                    "performance_change_percent": 0,
+                    "cost_change_percent": 0
+                },
+                "bottleneck_analysis": ([], []),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": 0.1,
+                    "efficiency_ranking": 10
+                },
+                "alternative_configurations": []
+            } 
+       
 
 class PDFReportGenerator:
     """Generate comprehensive PDF reports for migration analysis"""
