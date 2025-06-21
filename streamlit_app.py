@@ -867,9 +867,7 @@ class EnterpriseCalculator:
                     "efficiency_ranking": 10
                 },
                 "alternative_configurations": []
-            } 
-       
-
+            }
 class PDFReportGenerator:
     """Generate comprehensive PDF reports for migration analysis"""
     
