@@ -573,71 +573,76 @@ class EnterpriseCalculator:
 
     def get_intelligent_datasync_recommendations(self, config, metrics):
         """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
-    # FIRST LINE - DEBUG MESSAGE
-    st.write("🔧 DEBUG: NEW DataSync method called!")
-    st.success("🔧 DEBUG: Method is definitely running!")
-    print("🔧 DEBUG: Console - method called")
-    
-    try:
-                st.write("🔧 DEBUG: Inside try block")
-                
-                current_instance = config['datasync_instance_type']
-                current_agents = config['num_datasync_agents']
-                data_size_gb = config['data_size_gb']
-                data_size_tb = data_size_gb / 1024
-            
-                st.write(f"🔧 DEBUG: Config parsed - {current_agents}x {current_instance}, {data_size_tb:.1f}TB")
+        # FIRST LINE - DEBUG MESSAGE
+        st.write("🔧 DEBUG: NEW DataSync method called!")
+        st.success("🔧 DEBUG: Method is definitely running!")
+        print("🔧 DEBUG: Console - method called")
         
-        # Return a simple result for testing
-                return {
+        
+        try:
+            # DEBUG: Add this line to confirm new method is running
+            #print("🔧 DEBUG: NEW DataSync optimization method is running!")
+            st.write("🔧 DEBUG: Inside try block")
+            
+            current_instance = config['datasync_instance_type']
+            current_agents = config['num_datasync_agents']
+            data_size_gb = config['data_size_gb']
+            data_size_tb = data_size_gb / 1024
+            
+            # DEBUG: Show current configuration
+            st.write(f"🔧 DEBUG: Config parsed - {current_agents}x {current_instance}, {data_size_tb:.1f}TB")
+            
+           # Return a simple result for testing
+            return {
                 "current_analysis": {
                     "current_efficiency": 85,
                     "performance_rating": "DEBUG MODE ACTIVE",
                     "scaling_effectiveness": {"scaling_rating": "Debug", "efficiency": 0.85}
-                },
-                "recommended_instance": {
-                    "recommended_instance": current_instance,
-                    "upgrade_needed": False,
-                    "reason": "DEBUG: Method is working correctly!",
-                    "expected_performance_gain": 0,
-                    "cost_impact_percent": 0
-                },
-                "recommended_agents": {
-                    "recommended_agents": current_agents,
-                    "change_needed": 0,
-                    "reasoning": "DEBUG: Current configuration detected successfully",
-                    "performance_change_percent": 0,
-                    "cost_change_percent": 0
-                },
-                "bottleneck_analysis": ([], ["DEBUG: No bottlenecks in debug mode"]),
-                "cost_performance_analysis": {
-                    "current_cost_efficiency": 0.1,
-                    "efficiency_ranking": 1
-                },
-                "alternative_configurations": [
-                    {
-                        "name": "DEBUG CONFIG",
-                        "instance": current_instance,
-                        "agents": current_agents,
-                        "description": "Debug mode active - method working!"
-                    }
-                ]
-            }
-            
+            },
+            "recommended_instance": {
+                "recommended_instance": current_instance,
+                "upgrade_needed": False,
+                "reason": "DEBUG: Method is working correctly!",
+                "expected_performance_gain": 0,
+                "cost_impact_percent": 0
+            },
+            "recommended_agents": {
+                "recommended_agents": current_agents,
+                "change_needed": 0,
+                "reasoning": "DEBUG: Current configuration detected successfully",
+                "performance_change_percent": 0,
+                "cost_change_percent": 0
+            },
+            "bottleneck_analysis": ([], ["DEBUG: No bottlenecks in debug mode"]),
+            "cost_performance_analysis": {
+                "current_cost_efficiency": 0.1,
+                "efficiency_ranking": 1
+            },
+            "alternative_configurations": [
+                {
+                    "name": "DEBUG CONFIG",
+                    "instance": current_instance,
+                    "agents": current_agents,
+                    "description": "Debug mode active - method working!"
+                }
+            ]
+        }
+        
         except Exception as e:
-                    st.error(f"🔧 DEBUG: Exception in method: {str(e)}")
-                    import traceback
-                    st.code(traceback.format_exc())
-                    
-                    # Return safe fallback
-                    return {
-                        "current_analysis": {"current_efficiency": 75, "performance_rating": "Error Mode"},
-                        "recommended_instance": {"recommended_instance": config['datasync_instance_type'], "upgrade_needed": False, "reason": f"Error: {str(e)}"},
-                        "recommended_agents": {"recommended_agents": config['num_datasync_agents'], "change_needed": 0, "reasoning": "Error fallback"},
-                        "bottleneck_analysis": ([], []),
-                        "cost_performance_analysis": {"current_cost_efficiency": 0.1, "efficiency_ranking": 10},
-                        "alternative_configurations": []
-                    }
+            st.error(f"🔧 DEBUG: Exception in method: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+            
+            # Return safe fallback
+            return {
+                "current_analysis": {"current_efficiency": 75, "performance_rating": "Error Mode"},
+                "recommended_instance": {"recommended_instance": config['datasync_instance_type'], "upgrade_needed": False, "reason": f"Error: {str(e)}"},
+                "recommended_agents": {"recommended_agents": config['num_datasync_agents'], "change_needed": 0, "reasoning": "Error fallback"},
+                "bottleneck_analysis": ([], []),
+                "cost_performance_analysis": {"current_cost_efficiency": 0.1, "efficiency_ranking": 10},
+                "alternative_configurations": []
+            }
+
 
 class PDFReportGenerator:
     """Generate comprehensive PDF reports for migration analysis"""
