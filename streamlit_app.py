@@ -2926,516 +2926,435 @@ class MigrationPlatform:
         """, unsafe_allow_html=True)
     
     def render_conclusion_tab(self, config, metrics):
-        """Render the enhanced conclusion tab with professional formatting and comprehensive recommendations"""
-        st.markdown('<div class="conclusion-container">', unsafe_allow_html=True)
+        """Render the enhanced conclusion tab with clean Streamlit formatting"""
         
-        st.markdown('<div class="section-header">🎯 Final Strategic Recommendation & Executive Decision</div>', unsafe_allow_html=True)
+        st.title("🎯 Final Strategic Recommendation & Executive Decision")
         
         recommendations = metrics['networking_recommendations']
         
-        # Overall recommendation score calculation
-        performance_score = min(100, (metrics['optimized_throughput'] / 1000) * 50)  # Max 50 points for performance
-        cost_score = min(50, max(0, 50 - (metrics['cost_breakdown']['total'] / config['budget_allocated'] - 1) * 100))  # 50 points for cost efficiency
-        timeline_score = min(30, max(0, 30 - (metrics['transfer_days'] / config['max_transfer_days'] - 1) * 100))  # 30 points for timeline
-        risk_score = {"Low": 20, "Medium": 15, "High": 10, "Critical": 5}.get(recommendations['risk_level'], 15)  # 20 points for risk
+        # Calculate overall recommendation score
+        performance_score = min(100, (metrics['optimized_throughput'] / 1000) * 50)
+        cost_score = min(50, max(0, 50 - (metrics['cost_breakdown']['total'] / config['budget_allocated'] - 1) * 100))
+        timeline_score = min(30, max(0, 30 - (metrics['transfer_days'] / config['max_transfer_days'] - 1) * 100))
+        risk_score = {"Low": 20, "Medium": 15, "High": 10, "Critical": 5}.get(recommendations['risk_level'], 15)
         
         overall_score = performance_score + cost_score + timeline_score + risk_score
         
-        # Strategic recommendation based on score
+        # Determine strategy status
         if overall_score >= 140:
             strategy_status = "✅ RECOMMENDED"
-            strategy_color = "#28a745"
             strategy_action = "PROCEED"
-            banner_bg = "linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)"
+            status_color = "success"
         elif overall_score >= 120:
             strategy_status = "⚠️ CONDITIONAL"
-            strategy_color = "#ffc107"
             strategy_action = "PROCEED WITH OPTIMIZATIONS"
-            banner_bg = "linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%)"
+            status_color = "warning"
         elif overall_score >= 100:
             strategy_status = "🔄 REQUIRES MODIFICATION"
-            strategy_color = "#fd7e14"
             strategy_action = "REVISE CONFIGURATION"
-            banner_bg = "linear-gradient(135deg, #ffe8cc 0%, #ffdbbb 100%)"
+            status_color = "info"
         else:
             strategy_status = "❌ NOT RECOMMENDED"
-            strategy_color = "#dc3545"
             strategy_action = "RECONSIDER APPROACH"
-            banner_bg = "linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)"
+            status_color = "error"
         
-        # Executive Summary Banner
-        executive_summary_html = f"""
-        <div class="executive-summary" style="background: {banner_bg}; color: {strategy_color};">
-            <h1>🎯 STRATEGIC RECOMMENDATION: {strategy_status}</h1>
-            <h2 style="margin: 15px 0; color: #2c3e50;">Action Required: {strategy_action}</h2>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
-                <div style="text-align: left;">
-                    <strong>Overall Strategy Score: {overall_score:.0f}/150</strong><br>
-                    <strong>Success Probability: {85 + (overall_score - 100) * 0.3:.0f}%</strong>
-                </div>
-                <div style="text-align: right;">
-                    <strong>Project: {config['project_name']}</strong><br>
-                    <strong>Data Volume: {metrics['data_size_tb']:.1f} TB</strong>
-                </div>
-            </div>
-        </div>
-        """
-        st.markdown(executive_summary_html, unsafe_allow_html=True)
-
-        # NEW SECTION: DataSync Configuration Recommendations
-        st.markdown('<div class="section-header">🚀 DataSync Configuration Optimization Recommendations</div>', unsafe_allow_html=True)
+        # Executive Summary Section
+        st.header("📋 Executive Summary")
+        
+        if status_color == "success":
+            st.success(f"""
+            **STRATEGIC RECOMMENDATION: {strategy_status}**
+            
+            **Action Required:** {strategy_action}
+            
+            **Overall Strategy Score:** {overall_score:.0f}/150
+            
+            **Success Probability:** {85 + (overall_score - 100) * 0.3:.0f}%
+            """)
+        elif status_color == "warning":
+            st.warning(f"""
+            **STRATEGIC RECOMMENDATION: {strategy_status}**
+            
+            **Action Required:** {strategy_action}
+            
+            **Overall Strategy Score:** {overall_score:.0f}/150
+            
+            **Success Probability:** {85 + (overall_score - 100) * 0.3:.0f}%
+            """)
+        elif status_color == "info":
+            st.info(f"""
+            **STRATEGIC RECOMMENDATION: {strategy_status}**
+            
+            **Action Required:** {strategy_action}
+            
+            **Overall Strategy Score:** {overall_score:.0f}/150
+            
+            **Success Probability:** {85 + (overall_score - 100) * 0.3:.0f}%
+            """)
+        else:
+            st.error(f"""
+            **STRATEGIC RECOMMENDATION: {strategy_status}**
+            
+            **Action Required:** {strategy_action}
+            
+            **Overall Strategy Score:** {overall_score:.0f}/150
+            
+            **Success Probability:** {85 + (overall_score - 100) * 0.3:.0f}%
+            """)
+        
+        # Project Overview Metrics
+        st.header("📊 Project Overview")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Project", config['project_name'])
+            st.metric("Data Volume", f"{metrics['data_size_tb']:.1f} TB")
+        
+        with col2:
+            st.metric("Expected Throughput", f"{recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps")
+            st.metric("Estimated Duration", f"{metrics['transfer_days']:.1f} days")
+        
+        with col3:
+            st.metric("Total Investment", f"${metrics['cost_breakdown']['total']:,.0f}")
+            st.metric("Cost per TB", f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}")
+        
+        with col4:
+            st.metric("Risk Assessment", recommendations['risk_level'])
+            st.metric("Business Impact", metrics['business_impact']['level'])
+        
+        # DataSync Configuration Optimization
+        st.header("🚀 DataSync Configuration Optimization")
         
         try:
-            # Get intelligent DataSync recommendations
             datasync_recommendations = self.calculator.get_intelligent_datasync_recommendations(config, metrics)
             
-            col1, col2 = st.columns([3, 2])
+            col1, col2 = st.columns([2, 1])
             
             with col1:
-                # Current vs Recommended Configuration
                 current_analysis = datasync_recommendations["current_analysis"]
                 instance_rec = datasync_recommendations["recommended_instance"]
                 agent_rec = datasync_recommendations["recommended_agents"]
                 
                 current_efficiency = current_analysis['current_efficiency']
-                
-                # Determine optimization status
                 needs_optimization = instance_rec["upgrade_needed"] or agent_rec["change_needed"] != 0
                 
                 if needs_optimization:
-                    opt_color = "#007bff"
-                    opt_status = "🔧 OPTIMIZATION AVAILABLE"
+                    st.info("🔧 **OPTIMIZATION AVAILABLE**")
                     
-                    # Calculate potential improvements
-                    potential_throughput_gain = max(
+                    st.write("**Current Configuration:**")
+                    st.write(f"• Instance Type: {config['datasync_instance_type']}")
+                    st.write(f"• Number of Agents: {config['num_datasync_agents']}")
+                    st.write(f"• Current Throughput: {metrics['optimized_throughput']:.0f} Mbps")
+                    st.write(f"• Current Efficiency: {current_efficiency:.1f}%")
+                    
+                    st.write("**AI Recommended Configuration:**")
+                    st.write(f"• Instance Type: {instance_rec['recommended_instance']}")
+                    st.write(f"• Number of Agents: {agent_rec['recommended_agents']}")
+                    
+                    potential_gain = max(
                         instance_rec.get("expected_performance_gain", 0),
                         abs(agent_rec.get("performance_change_percent", 0))
                     )
+                    st.write(f"• Performance Gain: +{potential_gain:.1f}%")
                     
-                    # Calculate new estimated throughput
-                    optimized_throughput = metrics['optimized_throughput'] * (1 + potential_throughput_gain / 100)
-                    optimized_days = (metrics['effective_data_gb'] * 8) / (optimized_throughput * metrics['available_hours_per_day'] * 3600) / 1000
-                    time_savings = metrics['transfer_days'] - optimized_days
+                    st.write("**AI Reasoning:**")
+                    st.write(f"• Instance: {instance_rec['reason']}")
+                    st.write(f"• Agents: {agent_rec['reasoning']}")
                     
                 else:
-                    opt_color = "#28a745"
-                    opt_status = "✅ ALREADY OPTIMIZED"
-                    potential_throughput_gain = 0
-                    optimized_throughput = metrics['optimized_throughput']
-                    optimized_days = metrics['transfer_days']  # Use current transfer days when already optimized
-                    time_savings = 0
-                
-                # Build HTML content using separate variables to avoid complex f-string
-                current_instance = config['datasync_instance_type']
-                current_agents = config['num_datasync_agents']
-                current_throughput = metrics['optimized_throughput']
-                recommended_instance = instance_rec['recommended_instance']
-                recommended_agents = agent_rec['recommended_agents']
-                agent_change = agent_rec["change_needed"]
-                
-                # Create upgrade text
-                instance_upgrade_text = " (Upgrade)" if instance_rec['upgrade_needed'] else ""
-                agent_change_text = f" ({agent_change:+d})" if agent_change != 0 else ""
-                
-                # Create the HTML in smaller, manageable chunks
-                header_html = f"""
-                <div style="background: {opt_color}15; padding: 20px; border-radius: 12px; border-left: 5px solid {opt_color}; margin-bottom: 20px;">
-                    <h3 style="color: {opt_color}; margin-top: 0;">{opt_status}</h3>
-                """
-                
-                configuration_grid_html = f"""
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
-                        <div>
-                            <h4>📊 Current Configuration</h4>
-                            <p><strong>Instance Type:</strong> {current_instance}</p>
-                            <p><strong>Number of Agents:</strong> {current_agents}</p>
-                            <p><strong>Current Throughput:</strong> {current_throughput:.0f} Mbps</p>
-                            <p><strong>Current Efficiency:</strong> {current_efficiency:.1f}%</p>
-                            <p><strong>Transfer Time:</strong> {metrics['transfer_days']:.1f} days</p>
-                        </div>
-                        <div>
-                            <h4>🎯 AI Recommended Configuration</h4>
-                            <p><strong>Instance Type:</strong> {recommended_instance}{instance_upgrade_text}</p>
-                            <p><strong>Number of Agents:</strong> {recommended_agents}{agent_change_text}</p>
-                            <p><strong>Expected Throughput:</strong> {optimized_throughput:.0f} Mbps</p>
-                            <p><strong>Performance Gain:</strong> +{potential_throughput_gain:.1f}%</p>
-                            <p><strong>Optimized Time:</strong> {optimized_days:.1f} days ({time_savings:.1f} days saved)</p>
-                        </div>
-                    </div>
-                """
-                
-                reasoning_html = f"""
-                    <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                        <h4 style="margin-top: 0;">🧠 AI Reasoning</h4>
-                        <p><strong>Instance Recommendation:</strong> {instance_rec['reason']}</p>
-                        <p><strong>Agent Scaling:</strong> {agent_rec['reasoning']}</p>
-                        <p><strong>Cost Impact:</strong> {instance_rec['cost_impact_percent']:+.1f}% infrastructure, {agent_rec['cost_change_percent']:+.1f}% scaling costs</p>
-                    </div>
-                </div>
-                """
-                
-                # Combine all HTML parts
-                complete_html = header_html + configuration_grid_html + reasoning_html
-                st.markdown(complete_html, unsafe_allow_html=True)
+                    st.success("✅ **CONFIGURATION ALREADY OPTIMIZED**")
+                    st.write(f"Current setup ({config['num_datasync_agents']}x {config['datasync_instance_type']}) is optimal for your workload")
+                    st.write(f"Efficiency: {current_efficiency:.1f}%")
             
             with col2:
-                # Performance optimization chart
-                fig_datasync = go.Figure()
-                
-                scenarios = [
-                    "Current Config",
-                    "AI Recommended",
-                    "Theoretical Max"
-                ]
-                
-                throughputs = [
-                    metrics['optimized_throughput'],
-                    optimized_throughput,
-                    metrics.get('theoretical_throughput', metrics['optimized_throughput'] * 1.5)
-                ]
-                
-                colors = ['lightblue', 'lightgreen', 'lightcoral']
-                
-                fig_datasync.add_trace(go.Bar(
-                    x=scenarios,
-                    y=throughputs,
-                    marker_color=colors,
-                    text=[f"{t:.0f} Mbps" for t in throughputs],
-                    textposition='auto'
-                ))
-                
-                fig_datasync.update_layout(
-                    title="DataSync Performance Optimization",
-                    yaxis_title="Throughput (Mbps)",
-                    height=350,
-                    showlegend=False
-                )
-                st.plotly_chart(fig_datasync, use_container_width=True)
-                
                 # Cost-Performance Analysis
                 cost_perf = datasync_recommendations["cost_performance_analysis"]
                 ranking = cost_perf['efficiency_ranking']
                 
                 if ranking <= 3:
-                    rank_status = "🏆 Top Tier"
-                    rank_color = "#28a745"
+                    st.success("🏆 **Top Tier Cost Efficiency**")
                 elif ranking <= 10:
-                    rank_status = "⭐ Good"
-                    rank_color = "#ffc107"
+                    st.info("⭐ **Good Cost Efficiency**")
                 else:
-                    rank_status = "📈 Needs Improvement"
-                    rank_color = "#dc3545"
+                    st.warning("📈 **Improvement Potential**")
                 
-                cost_analysis_html = f"""
-                <div style="background: {rank_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {rank_color};">
-                    <h4 style="color: {rank_color}; margin-top: 0;">💰 Cost Efficiency Analysis</h4>
-                    <p><strong>Cost per Mbps:</strong> ${cost_perf['current_cost_efficiency']:.3f}</p>
-                    <p><strong>Industry Ranking:</strong> #{ranking} - {rank_status}</p>
-                    <p><strong>Optimization Status:</strong> {'Excellent' if ranking <= 5 else 'Room for improvement'}</p>
-                </div>
-                """
-                st.markdown(cost_analysis_html, unsafe_allow_html=True)
+                st.write(f"Cost per Mbps: ${cost_perf['current_cost_efficiency']:.3f}")
+                st.write(f"Industry Ranking: #{ranking}")
         
         except Exception as e:
-            st.error(f"Error generating DataSync recommendations: {str(e)}")
-
-        # NEW SECTION: Bandwidth and Network Optimization Recommendations  
-        st.markdown('<div class="section-header">🌐 Bandwidth & Network Pattern Optimization</div>', unsafe_allow_html=True)
+            st.warning(f"DataSync optimization analysis unavailable: {str(e)}")
         
-        col1, col2 = st.columns([2, 1])
+        # Network & Bandwidth Optimization
+        st.header("🌐 Network & Bandwidth Optimization")
+        
+        current_utilization = (metrics['optimized_throughput'] / config['dx_bandwidth_mbps']) * 100
+        optimal_bandwidth = metrics['optimized_throughput'] / 0.7
+        
+        col1, col2 = st.columns(2)
         
         with col1:
-            # Calculate current bandwidth utilization and recommendations
-            current_utilization = (metrics['optimized_throughput'] / config['dx_bandwidth_mbps']) * 100
-            optimal_bandwidth = metrics['optimized_throughput'] / 0.7  # Target 70% utilization
-            bandwidth_recommendation = max(config['dx_bandwidth_mbps'], optimal_bandwidth)
+            st.subheader("Current Network Status")
+            st.write(f"• DX Bandwidth: {config['dx_bandwidth_mbps']} Mbps")
+            st.write(f"• Utilization: {current_utilization:.1f}%")
+            st.write(f"• Latency: {config['network_latency']}ms")
+            st.write(f"• Network Type: {config['network_topology']}")
             
-            # Network pattern analysis
             if config['dx_bandwidth_mbps'] >= 10000:
-                network_tier = "🏆 Enterprise Tier"
-                network_color = "#28a745"
-                network_recommendation = "Maintain current high-bandwidth Direct Connect"
+                st.success("🏆 Enterprise Tier Network")
             elif config['dx_bandwidth_mbps'] >= 1000:
-                network_tier = "⭐ Business Tier"
-                network_color = "#ffc107"
-                network_recommendation = "Consider upgrading to 10Gbps for optimal performance"
+                st.info("⭐ Business Tier Network")
             else:
-                network_tier = "📈 Standard Tier"
-                network_color = "#dc3545"
-                network_recommendation = "Upgrade to 1Gbps+ Direct Connect strongly recommended"
-            
-            st.markdown(f"""
-            <div style="background: {network_color}15; padding: 20px; border-radius: 12px; border-left: 5px solid {network_color};">
-                <h3 style="color: {network_color}; margin-top: 0;">🌐 Network Optimization Analysis - {network_tier}</h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
-                    <div>
-                        <h4>📊 Current Network Status</h4>
-                        <p><strong>DX Bandwidth:</strong> {config['dx_bandwidth_mbps']} Mbps</p>
-                        <p><strong>Utilization:</strong> {current_utilization:.1f}%</p>
-                        <p><strong>Dedicated Allocation:</strong> {config['dedicated_bandwidth']}%</p>
-                        <p><strong>Latency:</strong> {config['network_latency']}ms</p>
-                        <p><strong>Network Type:</strong> {config['network_topology']}</p>
-                    </div>
-                    <div>
-                        <h4>🎯 Optimized Recommendations</h4>
-                        <p><strong>Recommended Bandwidth:</strong> {bandwidth_recommendation:.0f} Mbps</p>
-                        <p><strong>Target Utilization:</strong> 60-70%</p>
-                        <p><strong>Recommended Allocation:</strong> 80% (for migration)</p>
-                        <p><strong>Latency Target:</strong> <50ms</p>
-                        <p><strong>Architecture:</strong> {recommendations['networking_option']}</p>
-                    </div>
-                </div>
-                
-                <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                    <h4 style="margin-top: 0;">🚀 Network Pattern Recommendations</h4>
-                    <p><strong>Primary Strategy:</strong> {network_recommendation}</p>
-                    <p><strong>AI Analysis:</strong> {recommendations['rationale']}</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                st.warning("📈 Standard Tier - Consider Upgrade")
         
         with col2:
-            # Network optimization techniques
-            optimization_techniques = []
+            st.subheader("AI Recommendations")
+            st.write(f"• Recommended Bandwidth: {optimal_bandwidth:.0f} Mbps")
+            st.write(f"• Target Utilization: 60-70%")
+            st.write(f"• Architecture: {recommendations['networking_option']}")
+            st.write(f"• Primary Method: {recommendations['primary_method']}")
             
-            if config['tcp_window_size'] == "Default":
-                optimization_techniques.append("🔧 TCP Window Scaling (2MB) - +25% throughput")
-            
-            if config['mtu_size'] == "1500 (Standard)":
-                optimization_techniques.append("📡 Jumbo Frames (9000 MTU) - +15% throughput")
-            
-            if config['network_congestion_control'] == "Cubic (Default)":
-                optimization_techniques.append("⚡ BBR Algorithm - +20% throughput")
-            
-            if not config['wan_optimization']:
-                optimization_techniques.append("🚀 WAN Optimization - +30% throughput")
-            
-            if not config['use_transfer_acceleration']:
-                optimization_techniques.append("🌐 S3 Transfer Acceleration - +50-500% throughput")
-            
-            if config['parallel_streams'] < 20:
-                optimization_techniques.append("🔄 Parallel Streams (20+) - +10% throughput")
-            
-            st.markdown("**🛠️ Network Optimization Techniques**")
-            
-            if optimization_techniques:
-                for technique in optimization_techniques[:6]:  # Show top 6
-                    st.write(f"• {technique}")
-            else:
-                st.success("✅ Network fully optimized!")
-            
-            # Network redundancy recommendations
-            st.markdown("**🔄 Redundancy & Resilience**")
-            if config['dx_redundant']:
-                st.write("✅ Redundant DX configured")
-            else:
-                st.write("⚠️ Consider redundant DX")
-            
-            if "Hybrid" in config['network_topology']:
-                st.write("✅ Hybrid connectivity enabled")
-            else:
-                st.write("💡 Consider hybrid approach")
-
-        # NEW SECTION: Migration Acceleration Strategies
-        st.markdown('<div class="section-header">⚡ Migration Acceleration Strategies</div>', unsafe_allow_html=True)
+            st.info(f"**AI Analysis:** {recommendations['rationale']}")
+        
+        # Migration Acceleration Strategies
+        st.header("⚡ Migration Acceleration Strategies")
         
         acceleration_strategies = []
         
-        # Physical transfer recommendations
-        if metrics['data_size_tb'] > 50:
-            if config['dx_bandwidth_mbps'] < 1000:
-                acceleration_strategies.append({
-                    "strategy": "🚛 AWS Snowball Edge",
-                    "benefit": f"Transfer {metrics['data_size_tb']:.0f}TB in 7-10 days",
-                    "use_case": "Large datasets with limited bandwidth",
-                    "cost": "~$300 per 80TB device",
-                    "recommendation": "Primary method for bulk transfer"
-                })
+        # Physical transfer for large datasets
+        if metrics['data_size_tb'] > 50 and config['dx_bandwidth_mbps'] < 1000:
+            acceleration_strategies.append({
+                "strategy": "🚛 AWS Snowball Edge",
+                "benefit": f"Transfer {metrics['data_size_tb']:.0f}TB in 7-10 days",
+                "cost": "~$300 per 80TB device"
+            })
         
-        # Parallel transfer strategies
+        # Multi-agent scaling
         if config['num_datasync_agents'] < 5:
             potential_agents = min(10, int(metrics['data_size_tb'] / 10) + 3)
             acceleration_strategies.append({
                 "strategy": f"🔄 Multi-Agent DataSync ({potential_agents} agents)",
-                "benefit": f"Scale from {config['num_datasync_agents']} to {potential_agents} agents",
-                "use_case": "Parallel processing acceleration",
-                "cost": f"~${self.calculator.instance_performance[config['datasync_instance_type']]['cost_hour'] * potential_agents * 24:.0f}/day",
-                "recommendation": f"Increase to {potential_agents} agents for {((potential_agents - config['num_datasync_agents']) * 15):.0f}% speedup"
+                "benefit": f"Scale to {potential_agents} agents for {((potential_agents - config['num_datasync_agents']) * 15):.0f}% speedup",
+                "cost": f"~${self.calculator.instance_performance[config['datasync_instance_type']]['cost_hour'] * potential_agents * 24:.0f}/day"
             })
         
-        # Network optimization strategies
+        # Bandwidth optimization
         if current_utilization < 50:
             acceleration_strategies.append({
                 "strategy": "📈 Bandwidth Scaling",
-                "benefit": f"Increase from {current_utilization:.0f}% to 70% utilization",
-                "use_case": "Underutilized network capacity",
-                "cost": "Configuration optimization only",
-                "recommendation": f"Optimize for {(70 * config['dx_bandwidth_mbps'] / 100):.0f} Mbps target throughput"
+                "benefit": f"Increase utilization from {current_utilization:.0f}% to 70%",
+                "cost": "Configuration optimization only"
             })
         
-        # Hybrid approach for critical data
-        if len(config['database_types']) > 0:
-            acceleration_strategies.append({
-                "strategy": "🗄️ Hybrid Database Migration",
-                "benefit": "Minimize downtime with DMS continuous replication",
-                "use_case": "Mission-critical databases",
-                "cost": "~20% premium over standard migration",
-                "recommendation": "Use DMS for databases, DataSync for files"
-            })
+        # Network optimizations
+        optimization_techniques = []
+        if config['tcp_window_size'] == "Default":
+            optimization_techniques.append("🔧 TCP Window Scaling (2MB) - +25% throughput")
+        if config['mtu_size'] == "1500 (Standard)":
+            optimization_techniques.append("📡 Jumbo Frames (9000 MTU) - +15% throughput")
+        if config['network_congestion_control'] == "Cubic (Default)":
+            optimization_techniques.append("⚡ BBR Algorithm - +20% throughput")
+        if not config['wan_optimization']:
+            optimization_techniques.append("🚀 WAN Optimization - +30% throughput")
+        if not config['use_transfer_acceleration']:
+            optimization_techniques.append("🌐 S3 Transfer Acceleration - +50-500% throughput")
         
-        # Display acceleration strategies
-        if acceleration_strategies:
-            for i, strategy in enumerate(acceleration_strategies):
-                col1, col2 = st.columns([3, 1])
-                
-                with col1:
-                    st.markdown(f"""
-                    <div class="phase-container">
-                        <h4>{strategy['strategy']}</h4>
-                        <p><strong>Benefit:</strong> {strategy['benefit']}</p>
-                        <p><strong>Use Case:</strong> {strategy['use_case']}</p>
-                        <p><strong>Recommendation:</strong> {strategy['recommendation']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with col2:
-                    st.markdown(f"""
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
-                        <strong>💰 Cost</strong><br>
-                        {strategy['cost']}
-                    </div>
-                    """, unsafe_allow_html=True)
-
-        # PDF Download Section
-        if self.pdf_generator and PDF_AVAILABLE:
-            st.markdown('<div class="section-header">📥 Download Professional Reports</div>', unsafe_allow_html=True)
+        # Display strategies and optimizations
+        if acceleration_strategies or optimization_techniques:
+            col1, col2 = st.columns(2)
             
+            with col1:
+                if acceleration_strategies:
+                    st.subheader("📈 Acceleration Strategies")
+                    for strategy in acceleration_strategies:
+                        with st.expander(strategy['strategy']):
+                            st.write(f"**Benefit:** {strategy['benefit']}")
+                            st.write(f"**Cost:** {strategy['cost']}")
+            
+            with col2:
+                if optimization_techniques:
+                    st.subheader("🛠️ Network Optimizations")
+                    for technique in optimization_techniques:
+                        st.write(f"• {technique}")
+                else:
+                    st.success("✅ Network fully optimized!")
+        
+        # Strategic Decision Matrix
+        st.header("📊 Strategic Decision Matrix")
+        
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.subheader("🚀 Final Migration Plan")
+            
+            plan_summary = f"""
+            **Primary Method:** {recommendations['primary_method']}
+            
+            **Network Architecture:** {recommendations['networking_option']}
+            
+            **Database Migration:** {recommendations['db_migration_tool']}
+            
+            **Expected Performance:** {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps
+            
+            **Estimated Timeline:** {metrics['transfer_days']:.1f} days
+            
+            **Total Investment:** ${metrics['cost_breakdown']['total']:,.0f}
+            
+            **Risk Assessment:** {recommendations['risk_level']} risk level
+            
+            **Business Impact:** {metrics['business_impact']['level']} priority
+            """
+            
+            st.info(plan_summary)
+        
+        with col2:
+            st.subheader("📋 Decision Factors")
+            
+            st.metric("Performance Score", f"{performance_score:.0f}/50")
+            st.metric("Cost Score", f"{cost_score:.0f}/50") 
+            st.metric("Timeline Score", f"{timeline_score:.0f}/30")
+            st.metric("Risk Score", f"{risk_score}/20")
+            
+            st.metric("**TOTAL SCORE**", f"**{overall_score:.0f}/150**")
+        
+        # Final Decision Banner
+        st.header("🎯 FINAL STRATEGIC DECISION")
+        
+        success_probability = 85 + (overall_score - 100) * 0.3
+        
+        decision_summary = f"""
+        **Status:** {strategy_status}
+        
+        **Recommended Action:** {strategy_action}
+        
+        **AI Confidence Level:** {success_probability:.0f}%
+        
+        **Expected Throughput:** {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps
+        
+        **Projected Duration:** {metrics['transfer_days']:.1f} days
+        
+        **Total Investment:** ${metrics['cost_breakdown']['total']:,.0f}
+        
+        **Risk Assessment:** {recommendations['risk_level']} risk level
+        """
+        
+        if overall_score >= 140:
+            st.success(decision_summary)
+        elif overall_score >= 120:
+            st.warning(decision_summary)
+        elif overall_score >= 100:
+            st.info(decision_summary)
+        else:
+            st.error(decision_summary)
+        
+        # PDF Download Section
+        st.header("📥 Download Professional Reports")
+        
+        if self.pdf_generator and PDF_AVAILABLE:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("📋 Download Conclusion Report", type="primary"):
+                if st.button("📋 Executive Summary", type="primary"):
                     try:
                         pdf_buffer = self.pdf_generator.generate_conclusion_report(config, metrics, recommendations)
                         if pdf_buffer:
-                            pdf_bytes = pdf_buffer.getvalue()
-                            
                             st.download_button(
                                 label="📥 Download Executive Summary PDF",
-                                data=pdf_bytes,
+                                data=pdf_buffer.getvalue(),
                                 file_name=f"{config['project_name']}_Executive_Summary_{datetime.now().strftime('%Y%m%d')}.pdf",
                                 mime="application/pdf"
                             )
-                            st.success("✅ Conclusion report generated successfully!")
-                        else:
-                            st.error("❌ Error generating PDF: PDF generator not available")
+                            st.success("✅ Report generated!")
                     except Exception as e:
-                        st.error(f"❌ Error generating PDF: {str(e)}")
+                        st.error(f"Error: {str(e)}")
             
             with col2:
-                if st.button("💰 Download Cost Analysis", type="primary"):
+                if st.button("💰 Cost Analysis", type="primary"):
                     try:
                         pdf_buffer = self.pdf_generator.generate_cost_analysis_report(config, metrics)
                         if pdf_buffer:
-                            pdf_bytes = pdf_buffer.getvalue()
-                            
                             st.download_button(
                                 label="📥 Download Cost Analysis PDF",
-                                data=pdf_bytes,
+                                data=pdf_buffer.getvalue(),
                                 file_name=f"{config['project_name']}_Cost_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
                                 mime="application/pdf"
                             )
-                            st.success("✅ Cost analysis report generated successfully!")
-                        else:
-                            st.error("❌ Error generating PDF: PDF generator not available")
+                            st.success("✅ Report generated!")
                     except Exception as e:
-                        st.error(f"❌ Error generating PDF: {str(e)}")
+                        st.error(f"Error: {str(e)}")
             
             with col3:
-                if st.button("📊 Download Complete Report", type="primary"):
+                if st.button("📊 Complete Report", type="primary"):
                     try:
-                        # Generate conclusion report (primary report)
-                        conclusion_pdf = self.pdf_generator.generate_conclusion_report(config, metrics, recommendations)
-                        
-                        if conclusion_pdf:
-                            pdf_bytes = conclusion_pdf.getvalue()
-                            
+                        pdf_buffer = self.pdf_generator.generate_conclusion_report(config, metrics, recommendations)
+                        if pdf_buffer:
                             st.download_button(
                                 label="📥 Download Complete Analysis PDF",
-                                data=pdf_bytes,
+                                data=pdf_buffer.getvalue(),
                                 file_name=f"{config['project_name']}_Complete_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
                                 mime="application/pdf"
                             )
-                            st.success("✅ Complete analysis report generated successfully!")
-                        else:
-                            st.error("❌ Error generating PDF: PDF generator not available")
+                            st.success("✅ Report generated!")
                     except Exception as e:
-                        st.error(f"❌ Error generating PDF: {str(e)}")
+                        st.error(f"Error: {str(e)}")
         else:
             st.warning("📋 PDF generation requires reportlab library. Install with: pip install reportlab")
         
-        # Key Strategic Metrics
-        st.markdown('<div class="section-header">📊 Key Strategic Metrics</div>', unsafe_allow_html=True)
+        # AI Summary and Next Steps
+        st.header("🤖 AI Summary & Next Steps")
         
-        col1, col2 = st.columns([2, 1])
+        next_steps = []
         
-        with col1:
-            st.markdown(f"""
-            <div class="recommendation-box">
-                <h3>🚀 Strategic Migration Plan</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
-                    <div>
-                        <strong>🎯 Primary Method:</strong> {recommendations['primary_method']}<br>
-                        <strong>🌐 Network Architecture:</strong> {recommendations['networking_option']}<br>
-                        <strong>🗄️ Database Migration:</strong> {recommendations['db_migration_tool']}<br>
-                        <strong>⚡ Expected Performance:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps
-                    </div>
-                    <div>
-                        <strong>⏱️ Estimated Timeline:</strong> {metrics['transfer_days']:.1f} days<br>
-                        <strong>💰 Total Investment:</strong> ${metrics['cost_breakdown']['total']:,.0f}<br>
-                        <strong>⚠️ Risk Assessment:</strong> {recommendations['risk_level']} risk level<br>
-                        <strong>📊 Business Impact:</strong> {metrics['business_impact']['level']} priority
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        if strategy_action == "PROCEED":
+            next_steps = [
+                "1. ✅ Finalize migration timeline and resource allocation",
+                "2. 🔧 Implement recommended DataSync configuration", 
+                "3. 🌐 Configure network optimizations (TCP, MTU, WAN)",
+                "4. 🔒 Set up security controls and compliance monitoring",
+                "5. 📊 Establish performance monitoring and alerting",
+                "6. 🚀 Begin pilot migration with non-critical data",
+                "7. 📈 Scale to full production migration"
+            ]
+        elif strategy_action == "PROCEED WITH OPTIMIZATIONS":
+            next_steps = [
+                "1. ⚠️ Address identified performance bottlenecks",
+                "2. 💰 Review and optimize cost configuration",
+                "3. 🔧 Implement AI-recommended instance upgrades",
+                "4. 🌐 Upgrade network bandwidth if needed",
+                "5. ✅ Re-validate configuration and projections", 
+                "6. 📊 Begin controlled pilot migration",
+                "7. 📈 Monitor and adjust based on results"
+            ]
+        elif strategy_action == "REVISE CONFIGURATION":
+            next_steps = [
+                "1. 🔄 Review and modify current configuration",
+                "2. 📊 Reassess data size and transfer requirements",
+                "3. 🌐 Evaluate network infrastructure upgrades",
+                "4. 💰 Adjust budget allocation and timeline",
+                "5. 🤖 Recalculate with AI recommendations",
+                "6. ✅ Validate revised approach",
+                "7. 📋 Restart planning with optimized settings"
+            ]
+        else:
+            next_steps = [
+                "1. ❌ Fundamental review of migration strategy required",
+                "2. 📊 Reassess business requirements and constraints",
+                "3. 💰 Evaluate budget and timeline feasibility",
+                "4. 🌐 Consider alternative migration approaches",
+                "5. 🤝 Consult with AWS migration specialists",
+                "6. 📋 Develop alternative strategic options",
+                "7. ⚖️ Present revised recommendations to stakeholders"
+            ]
         
-        with col2:
-            # Decision matrix
-            decision_factors = pd.DataFrame({
-                "Factor": ["Performance", "Cost", "Timeline", "Risk"],
-                "Score": [f"{performance_score:.0f}/50", f"{cost_score:.0f}/50", f"{timeline_score:.0f}/30", f"{risk_score}/20"],
-                "Status": [
-                    "🟢 Excellent" if performance_score >= 40 else "🟡 Good" if performance_score >= 30 else "🔴 Poor",
-                    "🟢 Excellent" if cost_score >= 40 else "🟡 Good" if cost_score >= 30 else "🔴 Poor",
-                    "🟢 Excellent" if timeline_score >= 25 else "🟡 Good" if timeline_score >= 20 else "🔴 Poor",
-                    "🟢 Excellent" if risk_score >= 18 else "🟡 Good" if risk_score >= 15 else "🔴 Poor"
-                ]
-            })
-            self.safe_dataframe_display(decision_factors)
+        st.info("**Recommended Next Steps:**")
+        for step in next_steps:
+            st.write(step)
         
-        # Final recommendation with comprehensive summary
-        st.markdown(f"""
-        <div class="decision-banner" style="background: linear-gradient(135deg, {strategy_color}20 0%, {strategy_color}10 100%); border: 2px solid {strategy_color};">
-            <h2 style="color: {strategy_color}; margin: 0;">🎯 FINAL STRATEGIC DECISION</h2>
-            <h3 style="margin: 10px 0 20px 0; color: #2c3e50;">{strategy_status}</h3>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; text-align: left;">
-                <div>
-                    <p><strong>🤖 AI Confidence Level:</strong> {85 + (overall_score - 100) * 0.3:.0f}%</p>
-                    <p><strong>⚡ Expected Throughput:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps</p>
-                    <p><strong>⏱️ Projected Duration:</strong> {metrics['transfer_days']:.1f} days</p>
-                </div>
-                <div>
-                    <p><strong>💰 Total Investment:</strong> ${metrics['cost_breakdown']['total']:,.0f}</p>
-                    <p><strong>⚠️ Risk Assessment:</strong> {recommendations['risk_level']} risk level</p>
-                    <p><strong>🎯 Recommended Action:</strong> {strategy_action}</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Claude AI Final Recommendation
+        if recommendations.get('ai_analysis'):
+            st.subheader("🔮 Advanced Claude AI Final Insights")
+            st.info(recommendations['ai_analysis'])
         
-        st.markdown('</div>', unsafe_allow_html=True)   
+        st.success("🎯 **Migration analysis complete!** Use the recommendations above to proceed with your AWS migration strategy.")
         
          
     def render_sidebar_status(self, config, metrics):
