@@ -1585,7 +1585,253 @@ def render_pricing_info_section(self, config, metrics):
                 },
                 "alternative_configurations": []
             }
-
+    def __init__(self):
+        """Initialize the calculator with all required data structures"""
+        # Instance performance data
+        self.instance_performance = {
+            "m5.large": {"cpu": 2, "memory": 8, "network": 750, "baseline_throughput": 150, "cost_hour": 0.096},
+            "m5.xlarge": {"cpu": 4, "memory": 16, "network": 750, "baseline_throughput": 250, "cost_hour": 0.192},
+            "m5.2xlarge": {"cpu": 8, "memory": 32, "network": 1000, "baseline_throughput": 400, "cost_hour": 0.384},
+            "m5.4xlarge": {"cpu": 16, "memory": 64, "network": 2000, "baseline_throughput": 600, "cost_hour": 0.768},
+            "m5.8xlarge": {"cpu": 32, "memory": 128, "network": 4000, "baseline_throughput": 1000, "cost_hour": 1.536},
+            "c5.2xlarge": {"cpu": 8, "memory": 16, "network": 2000, "baseline_throughput": 500, "cost_hour": 0.34},
+            "c5.4xlarge": {"cpu": 16, "memory": 32, "network": 4000, "baseline_throughput": 800, "cost_hour": 0.68},
+            "c5.9xlarge": {"cpu": 36, "memory": 72, "network": 10000, "baseline_throughput": 1500, "cost_hour": 1.53},
+            "r5.2xlarge": {"cpu": 8, "memory": 64, "network": 2000, "baseline_throughput": 450, "cost_hour": 0.504},
+            "r5.4xlarge": {"cpu": 16, "memory": 128, "network": 4000, "baseline_throughput": 700, "cost_hour": 1.008}
+        }
+        
+        self.file_size_multipliers = {
+            "< 1MB (Many small files)": 0.25,
+            "1-10MB (Small files)": 0.45,
+            "10-100MB (Medium files)": 0.70,
+            "100MB-1GB (Large files)": 0.90,
+            "> 1GB (Very large files)": 0.95
+        }
+        
+        # Database migration tools
+        self.db_migration_tools = {
+            "DMS": {
+                "name": "Database Migration Service",
+                "best_for": ["Homogeneous", "Heterogeneous", "Continuous Replication"],
+                "data_size_limit": "Large (TB scale)",
+                "downtime": "Minimal",
+                "cost_factor": 1.0,
+                "complexity": "Medium"
+            },
+            "DataSync": {
+                "name": "AWS DataSync",
+                "best_for": ["File Systems", "Object Storage", "Large Files"],
+                "data_size_limit": "Very Large (PB scale)",
+                "downtime": "None",
+                "cost_factor": 0.8,
+                "complexity": "Low"
+            }
+        }
+    
+    def get_intelligent_datasync_recommendations(self, config, metrics):
+        """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
+        
+        try:
+            current_instance = config['datasync_instance_type']
+            current_agents = config['num_datasync_agents']
+            data_size_gb = config['data_size_gb']
+            data_size_tb = data_size_gb / 1024
+            
+            # Current efficiency analysis
+            if 'theoretical_throughput' in metrics and metrics['theoretical_throughput'] > 0:
+                current_efficiency = (metrics['optimized_throughput'] / metrics['theoretical_throughput']) * 100
+            else:
+                max_theoretical = config['dx_bandwidth_mbps'] * 0.8
+                current_efficiency = (metrics['optimized_throughput'] / max_theoretical) * 100 if max_theoretical > 0 else 70
+            
+            # Performance rating
+            if current_efficiency >= 80:
+                performance_rating = "Excellent"
+            elif current_efficiency >= 60:
+                performance_rating = "Good"
+            elif current_efficiency >= 40:
+                performance_rating = "Fair"
+            else:
+                performance_rating = "Poor"
+            
+            # Scaling effectiveness analysis
+            if current_agents == 1:
+                scaling_rating = "Under-scaled"
+                scaling_efficiency = 0.6
+            elif current_agents <= 3:
+                scaling_rating = "Well-scaled"
+                scaling_efficiency = 0.85
+            elif current_agents <= 6:
+                scaling_rating = "Optimal"
+                scaling_efficiency = 0.95
+            else:
+                scaling_rating = "Over-scaled"
+                scaling_efficiency = 0.7
+            
+            # Instance recommendation logic
+            current_instance_info = self.instance_performance.get(current_instance, self.instance_performance["m5.large"])
+            recommended_instance = current_instance
+            upgrade_needed = False
+            
+            # Check if we need a more powerful instance
+            if data_size_tb > 50 and current_instance == "m5.large":
+                recommended_instance = "m5.2xlarge"
+                upgrade_needed = True
+                reason = f"Large dataset ({data_size_tb:.1f}TB) requires more CPU/memory for optimal performance"
+                expected_gain = 25
+                cost_impact = 100  # Percentage increase
+            elif data_size_tb > 100 and "m5.large" in current_instance:
+                recommended_instance = "c5.4xlarge"
+                upgrade_needed = True
+                reason = f"Very large dataset ({data_size_tb:.1f}TB) benefits from compute-optimized instances"
+                expected_gain = 40
+                cost_impact = 150
+            else:
+                reason = "Current instance type is appropriate for workload"
+                expected_gain = 0
+                cost_impact = 0
+            
+            # Agent recommendation logic
+            optimal_agents = max(1, min(10, int(data_size_tb / 10) + 1))
+            
+            if current_agents < optimal_agents:
+                agent_change = optimal_agents - current_agents
+                agent_reasoning = f"Scale up to {optimal_agents} agents for optimal parallelization"
+                performance_change = agent_change * 15  # 15% improvement per agent
+                cost_change = agent_change * 100  # 100% cost increase per agent
+            elif current_agents > optimal_agents:
+                agent_change = optimal_agents - current_agents
+                agent_reasoning = f"Scale down to {optimal_agents} agents for cost optimization"
+                performance_change = agent_change * 10  # 10% reduction per agent removed
+                cost_change = agent_change * 100  # 100% cost reduction per agent removed
+            else:
+                agent_change = 0
+                agent_reasoning = f"Current {current_agents} agents is optimal for this workload"
+                performance_change = 0
+                cost_change = 0
+            
+            # Bottleneck analysis
+            bottlenecks = []
+            recommendations_list = []
+            
+            if current_instance == "m5.large" and data_size_tb > 20:
+                bottlenecks.append("Instance CPU/Memory constraints for large dataset")
+                recommendations_list.append("Upgrade to m5.2xlarge or c5.2xlarge for better performance")
+            
+            if current_agents == 1 and data_size_tb > 5:
+                bottlenecks.append("Single agent limiting parallel processing")
+                recommendations_list.append("Scale to 3-5 agents for optimal throughput")
+            
+            if config.get('network_latency', 25) > 50:
+                bottlenecks.append("High network latency affecting transfer efficiency")
+                recommendations_list.append("Consider regional optimization or network tuning")
+            
+            # Cost-performance analysis
+            hourly_cost = current_instance_info["cost_hour"] * current_agents
+            cost_per_mbps = hourly_cost / max(1, metrics['optimized_throughput'])
+            
+            # Efficiency ranking (1-20, where 1 is best)
+            if cost_per_mbps < 0.001:
+                efficiency_ranking = 1
+            elif cost_per_mbps < 0.002:
+                efficiency_ranking = 3
+            elif cost_per_mbps < 0.005:
+                efficiency_ranking = 6
+            elif cost_per_mbps < 0.01:
+                efficiency_ranking = 10
+            else:
+                efficiency_ranking = 15
+            
+            # Alternative configurations
+            alternatives = []
+            
+            # Cost-optimized alternative
+            if current_instance != "m5.large":
+                alternatives.append({
+                    "name": "Cost-Optimized",
+                    "instance": "m5.large",
+                    "agents": max(2, current_agents),
+                    "description": "Lower cost with acceptable performance"
+                })
+            
+            # Performance-optimized alternative
+            if current_instance != "c5.4xlarge":
+                alternatives.append({
+                    "name": "Performance-Optimized", 
+                    "instance": "c5.4xlarge",
+                    "agents": min(current_agents, 6),
+                    "description": "Maximum throughput with premium pricing"
+                })
+            
+            # Balanced alternative
+            alternatives.append({
+                "name": "Balanced",
+                "instance": "m5.xlarge",
+                "agents": optimal_agents,
+                "description": "Optimal balance of cost and performance"
+            })
+            
+            return {
+                "current_analysis": {
+                    "current_efficiency": current_efficiency,
+                    "performance_rating": performance_rating,
+                    "scaling_effectiveness": {
+                        "scaling_rating": scaling_rating,
+                        "efficiency": scaling_efficiency
+                    }
+                },
+                "recommended_instance": {
+                    "recommended_instance": recommended_instance,
+                    "upgrade_needed": upgrade_needed,
+                    "reason": reason,
+                    "expected_performance_gain": expected_gain,
+                    "cost_impact_percent": cost_impact
+                },
+                "recommended_agents": {
+                    "recommended_agents": optimal_agents,
+                    "change_needed": agent_change,
+                    "reasoning": agent_reasoning,
+                    "performance_change_percent": performance_change,
+                    "cost_change_percent": cost_change
+                },
+                "bottleneck_analysis": (bottlenecks, recommendations_list),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": cost_per_mbps,
+                    "efficiency_ranking": efficiency_ranking
+                },
+                "alternative_configurations": alternatives
+            }
+            
+        except Exception as e:
+            # Return safe fallback
+            return {
+                "current_analysis": {
+                    "current_efficiency": 75,
+                    "performance_rating": "Unable to analyze",
+                    "scaling_effectiveness": {"scaling_rating": "Unknown", "efficiency": 0.75}
+                },
+                "recommended_instance": {
+                    "recommended_instance": config.get('datasync_instance_type', 'm5.large'),
+                    "upgrade_needed": False,
+                    "reason": f"Analysis error: {str(e)}",
+                    "expected_performance_gain": 0,
+                    "cost_impact_percent": 0
+                },
+                "recommended_agents": {
+                    "recommended_agents": config.get('num_datasync_agents', 1),
+                    "change_needed": 0,
+                    "reasoning": "Unable to analyze due to error",
+                    "performance_change_percent": 0,
+                    "cost_change_percent": 0
+                },
+                "bottleneck_analysis": ([], [f"Analysis error: {str(e)}"]),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": 0.1,
+                    "efficiency_ranking": 10
+                },
+                "alternative_configurations": []
+            }
 
 class PDFReportGenerator:
     """Generate comprehensive PDF reports for migration analysis"""
