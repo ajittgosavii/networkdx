@@ -1888,7 +1888,9 @@ class MigrationPlatform:
     def render_sidebar_controls(self):
         """Render sidebar configuration controls"""
         st.sidebar.header("🏢 Enterprise Controls")                   
-    
+
+        # Get AWS configuration status
+        aws_config = self.render_aws_credentials_section()
         
         # Project management section
         st.sidebar.subheader("📁 Project Management")
@@ -2094,14 +2096,28 @@ class MigrationPlatform:
             'ai_model': ai_model,
             'real_world_mode': real_world_mode
         }
+        
+        # At the end of the method, add AWS config to the return dictionary:
+        return {
+            'project_name': project_name,
+            'business_unit': business_unit,
+            # ... all your existing config items ...
+            'real_world_mode': real_world_mode,
+            
+            # Add AWS configuration
+            'use_aws_pricing': aws_config['use_aws_pricing'],
+            'aws_region': aws_config['aws_region'],
+            'aws_configured': aws_config['aws_configured']
+        }
+        
     def render_aws_credentials_section(self):
         """Render AWS credentials status from Streamlit secrets"""
-    with st.sidebar:
-        st.subheader("🔑 AWS Configuration")
-        
-        # Check if AWS secrets are configured
-        aws_configured = False
-        aws_region = 'us-east-1'
+        with st.sidebar:
+            st.subheader("🔑 AWS Configuration")
+            
+            # Check if AWS secrets are configured
+            aws_configured = False
+            aws_region = 'us-east-1'
         
         try:
             if hasattr(st, 'secrets') and 'aws' in st.secrets:
@@ -2147,161 +2163,94 @@ class MigrationPlatform:
             # Show example configuration
             with st.expander("📋 Example secrets.toml"):
                 st.code("""
-                [aws]
-                access_key_id = "AKIAIOSFODNN7EXAMPLE"
-                secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                region = "us-east-1"
+[aws]
+access_key_id = "AKIAIOSFODNN7EXAMPLE"
+secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+region = "us-east-1"
 
-                # Optional: Specify different regions for different services
-                [aws.pricing]
-                region = "us-east-1"  # Pricing API only works in us-east-1
+# Optional: Specify different regions for different services
+[aws.pricing]
+region = "us-east-1"  # Pricing API only works in us-east-1
 
-                [aws.compute]
-                region = "us-west-2"  # Your preferred compute region
-                                """, language="toml")
-                        
-                return {
-                        'use_aws_pricing': use_aws_pricing,
-                        'aws_region': aws_region,
-                        'aws_configured': aws_configured
-                    }
-    
-    
-    
-    def detect_configuration_changes(self, config):
-        """Detect when configuration changes and log them"""
-        import hashlib
+[aws.compute]
+region = "us-west-2"  # Your preferred compute region
+                """, language="toml")
         
-        # Create a hash of the current configuration
-        config_str = json.dumps(config, sort_keys=True)
-        current_hash = hashlib.md5(config_str.encode()).hexdigest()
-        
-        # Check if configuration changed
-        if st.session_state.last_config_hash != current_hash:
-            if st.session_state.last_config_hash is not None:  # Not the first load
-                st.session_state.config_change_count += 1
-                # Log configuration change
-                self.log_audit_event("CONFIG_CHANGED", f"Configuration updated - Change #{st.session_state.config_change_count}")
-            
-            st.session_state.last_config_hash = current_hash
-            return True
-        return False
+        # Return should be at the function level, not inside conditionals
+        return {
+            'use_aws_pricing': use_aws_pricing,
+            'aws_region': aws_region,
+            'aws_configured': aws_configured
+        }
     
-    def calculate_migration_metrics(self, config):
-        """Calculate all migration metrics with error handling"""
-        try:
-            # Basic calculations
-            data_size_tb = max(0.1, config['data_size_gb'] / 1024)  # Ensure minimum size
-            effective_data_gb = config['data_size_gb'] * 0.85  # Account for compression/deduplication
-            
-            # Calculate throughput with optimizations
-            throughput_result = self.calculator.calculate_enterprise_throughput(
-                config['datasync_instance_type'], config['num_datasync_agents'], config['avg_file_size'], 
-                config['dx_bandwidth_mbps'], config['network_latency'], config['network_jitter'], 
-                config['packet_loss'], config['qos_enabled'], config['dedicated_bandwidth'], 
-                config.get('real_world_mode', True)
-            )
-            
-            if len(throughput_result) == 4:
-                datasync_throughput, network_efficiency, theoretical_throughput, real_world_efficiency = throughput_result
-            else:
-                # Fallback for backward compatibility
-                datasync_throughput, network_efficiency = throughput_result
-                theoretical_throughput = datasync_throughput * 1.5
-                real_world_efficiency = 0.7
-            
-            # Ensure valid throughput values
-            datasync_throughput = max(1, datasync_throughput)  # Minimum 1 Mbps
-            network_efficiency = max(0.1, min(1.0, network_efficiency))  # Between 10% and 100%
-            
-            # Apply network optimizations
-            tcp_efficiency = {"Default": 1.0, "64KB": 1.05, "128KB": 1.1, "256KB": 1.15, 
-                            "512KB": 1.2, "1MB": 1.25, "2MB": 1.3}
-            mtu_efficiency = {"1500 (Standard)": 1.0, "9000 (Jumbo Frames)": 1.15, "Custom": 1.1}
-            congestion_efficiency = {"Cubic (Default)": 1.0, "BBR": 1.2, "Reno": 0.95, "Vegas": 1.05}
-            
-            tcp_factor = tcp_efficiency.get(config['tcp_window_size'], 1.0)
-            mtu_factor = mtu_efficiency.get(config['mtu_size'], 1.0)
-            congestion_factor = congestion_efficiency.get(config['network_congestion_control'], 1.0)
-            wan_factor = 1.3 if config['wan_optimization'] else 1.0
-            
-            optimized_throughput = datasync_throughput * tcp_factor * mtu_factor * congestion_factor * wan_factor
-            optimized_throughput = min(optimized_throughput, config['dx_bandwidth_mbps'] * (config['dedicated_bandwidth'] / 100))
-            optimized_throughput = max(1, optimized_throughput)  # Ensure minimum throughput
-            
-            # Calculate timing
-            available_hours_per_day = 16 if config['business_hours_restriction'] else 24
-            transfer_days = (effective_data_gb * 8) / (optimized_throughput * available_hours_per_day * 3600) / 1000
-            transfer_days = max(0.1, transfer_days)  # Ensure minimum transfer time
-            
-            # Calculate costs
-            cost_breakdown = self.calculator.calculate_enterprise_costs(
-                config['data_size_gb'], transfer_days, config['datasync_instance_type'], 
-                config['num_datasync_agents'], config['compliance_frameworks'], config['s3_storage_class']
-            )
-            
-            # Ensure all cost values are valid
-            for key in cost_breakdown:
-                cost_breakdown[key] = max(0, cost_breakdown[key])
-            
-            # Compliance and business impact
-            compliance_reqs, compliance_risks = self.calculator.assess_compliance_requirements(
-                config['compliance_frameworks'], config['data_classification'], config['data_residency']
-            )
-            business_impact = self.calculator.calculate_business_impact(transfer_days, config['data_types'])
-            
-            # Get AI-powered networking recommendations
-            target_region_short = config['target_aws_region'].split()[0]  # Extract region code
-            networking_recommendations = self.calculator.get_optimal_networking_architecture(
-                config['source_location'], target_region_short, config['data_size_gb'],
-                config['dx_bandwidth_mbps'], config['database_types'], config['data_types'], config
-            )
-            
-            return {
-                'data_size_tb': data_size_tb,
-                'effective_data_gb': effective_data_gb,
-                'datasync_throughput': datasync_throughput,
-                'theoretical_throughput': theoretical_throughput,
-                'real_world_efficiency': real_world_efficiency,
-                'optimized_throughput': optimized_throughput,
-                'network_efficiency': network_efficiency,
-                'transfer_days': transfer_days,
-                'cost_breakdown': cost_breakdown,
-                'compliance_reqs': compliance_reqs,
-                'compliance_risks': compliance_risks,
-                'business_impact': business_impact,
-                'available_hours_per_day': available_hours_per_day,
-                'networking_recommendations': networking_recommendations
-            }
-            
-        except Exception as e:
-            # Return default metrics if calculation fails
-            st.error(f"Error in calculation: {str(e)}")
-            return {
-                'data_size_tb': 1.0,
-                'effective_data_gb': 1000,
-                'datasync_throughput': 100,
-                'theoretical_throughput': 150,
-                'real_world_efficiency': 0.7,
-                'optimized_throughput': 100,
-                'network_efficiency': 0.7,
-                'transfer_days': 10,
-                'cost_breakdown': {'compute': 1000, 'transfer': 500, 'storage': 200, 'compliance': 100, 'monitoring': 50, 'total': 1850},
-                'compliance_reqs': [],
-                'compliance_risks': [],
-                'business_impact': {'score': 0.5, 'level': 'Medium', 'recommendation': 'Standard approach'},
-                'available_hours_per_day': 24,
-                'networking_recommendations': {
-                    'primary_method': 'DataSync',
-                    'secondary_method': 'S3 Transfer Acceleration',
-                    'networking_option': 'Direct Connect',
-                    'db_migration_tool': 'DMS',
-                    'rationale': 'Default configuration recommendation',
-                    'estimated_performance': {'throughput_mbps': 100, 'estimated_days': 10, 'network_efficiency': 0.7},
-                    'cost_efficiency': 'Medium',
-                    'risk_level': 'Low'
-                }
-            }
+def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents,compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
+    """Calculate comprehensive migration costs using real-time AWS pricing"""
+    
+    # Initialize pricing manager if not already done
+    if not hasattr(self, 'pricing_manager') or self.pricing_manager is None:
+        self.pricing_manager = AWSPricingManager(region=region or 'us-east-1')
+    
+    # Get real-time pricing for all components
+    with st.spinner("🔄 Fetching real-time AWS pricing..."):
+        pricing = self.pricing_manager.get_comprehensive_pricing(
+            instance_type=instance_type,
+            storage_class=s3_storage_class,
+            region=region,
+            bandwidth_mbps=dx_bandwidth_mbps
+        )
+    
+    # Calculate costs using real-time pricing
+    
+    # 1. DataSync compute costs (EC2 instances)
+    instance_cost_hour = pricing['ec2']
+    datasync_compute_cost = instance_cost_hour * num_agents * 24 * transfer_days
+    
+    # 2. Data transfer costs
+    transfer_rate_per_gb = pricing['transfer']
+    data_transfer_cost = data_size_gb * transfer_rate_per_gb
+    
+    # 3. S3 storage costs
+    s3_rate_per_gb = pricing['s3']
+    s3_storage_cost = data_size_gb * s3_rate_per_gb
+    
+    # 4. Direct Connect costs (if applicable)
+    dx_hourly_cost = pricing['dx']
+    dx_cost = dx_hourly_cost * 24 * transfer_days
+    
+    # 5. Additional enterprise costs (compliance, monitoring, etc.)
+    compliance_cost = len(compliance_frameworks) * 500  # Compliance tooling per framework
+    monitoring_cost = 200 * transfer_days  # Enhanced monitoring per day
+    
+    # 6. AWS service costs (DataSync service fees)
+    datasync_service_cost = data_size_gb * 0.0125  # $0.0125 per GB processed
+    
+    # 7. CloudWatch and logging costs
+    cloudwatch_cost = num_agents * 50 * transfer_days  # Monitoring per agent per day
+    
+    # Calculate total cost
+    total_cost = (datasync_compute_cost + data_transfer_cost + s3_storage_cost + 
+                dx_cost + compliance_cost + monitoring_cost + datasync_service_cost + 
+                cloudwatch_cost)
+    
+    return {
+        "compute": datasync_compute_cost,
+        "transfer": data_transfer_cost,
+        "storage": s3_storage_cost,
+        "direct_connect": dx_cost,
+        "datasync_service": datasync_service_cost,
+        "compliance": compliance_cost,
+        "monitoring": monitoring_cost,
+        "cloudwatch": cloudwatch_cost,
+        "total": total_cost,
+        "pricing_source": "AWS API" if self.pricing_manager and self.pricing_manager.pricing_client else "Fallback",
+        "last_updated": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+        "cost_breakdown_detailed": {
+            "instance_hourly_rate": instance_cost_hour,
+            "transfer_rate_per_gb": transfer_rate_per_gb,
+            "s3_rate_per_gb": s3_rate_per_gb,
+            "dx_hourly_rate": dx_hourly_cost
+        }
+    }
     
     def render_dashboard_tab(self, config, metrics):
         """Render the dashboard tab with enhanced styling"""
