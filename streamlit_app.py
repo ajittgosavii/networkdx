@@ -2964,7 +2964,7 @@ class MigrationPlatform:
             banner_bg = "linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%)"
         
         # Executive Summary Banner
-        st.markdown(f"""
+        executive_summary_html = f"""
         <div class="executive-summary" style="background: {banner_bg}; color: {strategy_color};">
             <h1>🎯 STRATEGIC RECOMMENDATION: {strategy_status}</h1>
             <h2 style="margin: 15px 0; color: #2c3e50;">Action Required: {strategy_action}</h2>
@@ -2979,7 +2979,8 @@ class MigrationPlatform:
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(executive_summary_html, unsafe_allow_html=True)
 
         # NEW SECTION: DataSync Configuration Recommendations
         st.markdown('<div class="section-header">🚀 DataSync Configuration Optimization Recommendations</div>', unsafe_allow_html=True)
@@ -3024,29 +3025,46 @@ class MigrationPlatform:
                     optimized_days = metrics['transfer_days']  # Use current transfer days when already optimized
                     time_savings = 0
                 
-                st.markdown(f"""
+                # Build HTML content using separate variables to avoid complex f-string
+                current_instance = config['datasync_instance_type']
+                current_agents = config['num_datasync_agents']
+                current_throughput = metrics['optimized_throughput']
+                recommended_instance = instance_rec['recommended_instance']
+                recommended_agents = agent_rec['recommended_agents']
+                agent_change = agent_rec["change_needed"]
+                
+                # Create upgrade text
+                instance_upgrade_text = " (Upgrade)" if instance_rec['upgrade_needed'] else ""
+                agent_change_text = f" ({agent_change:+d})" if agent_change != 0 else ""
+                
+                # Create the HTML in smaller, manageable chunks
+                header_html = f"""
                 <div style="background: {opt_color}15; padding: 20px; border-radius: 12px; border-left: 5px solid {opt_color}; margin-bottom: 20px;">
                     <h3 style="color: {opt_color}; margin-top: 0;">{opt_status}</h3>
-                    
+                """
+                
+                configuration_grid_html = f"""
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
                         <div>
                             <h4>📊 Current Configuration</h4>
-                            <p><strong>Instance Type:</strong> {config['datasync_instance_type']}</p>
-                            <p><strong>Number of Agents:</strong> {config['num_datasync_agents']}</p>
-                            <p><strong>Current Throughput:</strong> {metrics['optimized_throughput']:.0f} Mbps</p>
+                            <p><strong>Instance Type:</strong> {current_instance}</p>
+                            <p><strong>Number of Agents:</strong> {current_agents}</p>
+                            <p><strong>Current Throughput:</strong> {current_throughput:.0f} Mbps</p>
                             <p><strong>Current Efficiency:</strong> {current_efficiency:.1f}%</p>
                             <p><strong>Transfer Time:</strong> {metrics['transfer_days']:.1f} days</p>
                         </div>
                         <div>
                             <h4>🎯 AI Recommended Configuration</h4>
-                            <p><strong>Instance Type:</strong> {instance_rec['recommended_instance']} {' (Upgrade)' if instance_rec['upgrade_needed'] else ''}</p>
-                            <p><strong>Number of Agents:</strong> {agent_rec['recommended_agents']} {f' ({agent_rec["change_needed"]:+d})' if agent_rec['change_needed'] != 0 else ''}</p>
+                            <p><strong>Instance Type:</strong> {recommended_instance}{instance_upgrade_text}</p>
+                            <p><strong>Number of Agents:</strong> {recommended_agents}{agent_change_text}</p>
                             <p><strong>Expected Throughput:</strong> {optimized_throughput:.0f} Mbps</p>
                             <p><strong>Performance Gain:</strong> +{potential_throughput_gain:.1f}%</p>
                             <p><strong>Optimized Time:</strong> {optimized_days:.1f} days ({time_savings:.1f} days saved)</p>
                         </div>
                     </div>
-                    
+                """
+                
+                reasoning_html = f"""
                     <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
                         <h4 style="margin-top: 0;">🧠 AI Reasoning</h4>
                         <p><strong>Instance Recommendation:</strong> {instance_rec['reason']}</p>
@@ -3054,7 +3072,11 @@ class MigrationPlatform:
                         <p><strong>Cost Impact:</strong> {instance_rec['cost_impact_percent']:+.1f}% infrastructure, {agent_rec['cost_change_percent']:+.1f}% scaling costs</p>
                     </div>
                 </div>
-                 """,unsafe_allow_html=True)
+                """
+                
+                # Combine all HTML parts
+                complete_html = header_html + configuration_grid_html + reasoning_html
+                st.markdown(complete_html, unsafe_allow_html=True)
             
             with col2:
                 # Performance optimization chart
@@ -3104,14 +3126,15 @@ class MigrationPlatform:
                     rank_status = "📈 Needs Improvement"
                     rank_color = "#dc3545"
                 
-                st.markdown(f"""
+                cost_analysis_html = f"""
                 <div style="background: {rank_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {rank_color};">
                     <h4 style="color: {rank_color}; margin-top: 0;">💰 Cost Efficiency Analysis</h4>
                     <p><strong>Cost per Mbps:</strong> ${cost_perf['current_cost_efficiency']:.3f}</p>
                     <p><strong>Industry Ranking:</strong> #{ranking} - {rank_status}</p>
                     <p><strong>Optimization Status:</strong> {'Excellent' if ranking <= 5 else 'Room for improvement'}</p>
                 </div>
-                """, unsafe_allow_html=True)
+                """
+                st.markdown(cost_analysis_html, unsafe_allow_html=True)
         
         except Exception as e:
             st.error(f"Error generating DataSync recommendations: {str(e)}")
