@@ -109,7 +109,7 @@ class AWSPricingManager:
             # Test the connection
             try:
                 # Quick test to verify credentials work
-                self.pricing_client.describe_services(MaxRecords=1)
+                self.pricing_client.describe_services(MaxResults=1)
                 st.success("✅ AWS Pricing API connection successful")
             except ClientError as e:
                 error_code = e.response['Error']['Code']
@@ -164,6 +164,7 @@ class AWSPricingManager:
             # Get pricing for On-Demand Linux instances
             response = self.pricing_client.get_products(
                 ServiceCode='AmazonEC2',
+                MaxResults=1,
                 Filters=[
                     {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
                     {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
@@ -171,6 +172,7 @@ class AWSPricingManager:
                     {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'},
                     {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}
                 ]
+                    
             )
             
             if response['PriceList']:
@@ -217,6 +219,7 @@ class AWSPricingManager:
             
             response = self.pricing_client.get_products(
                 ServiceCode='AmazonS3',
+                MaxResults=1,
                 Filters=[
                     {'Type': 'TERM_MATCH', 'Field': 'storageClass', 'Value': aws_storage_class},
                     {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name(region or self.region)},
@@ -255,6 +258,7 @@ class AWSPricingManager:
         try:
             response = self.pricing_client.get_products(
                 ServiceCode='AmazonEC2',
+                MaxResults=1,
                 Filters=[
                     {'Type': 'TERM_MATCH', 'Field': 'transferType', 'Value': 'AWS Outbound'},
                     {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name(region or self.region)}
@@ -300,6 +304,7 @@ class AWSPricingManager:
             
             response = self.pricing_client.get_products(
                 ServiceCode='AWSDirectConnect',
+                MaxResults=1,
                 Filters=[
                     {'Type': 'TERM_MATCH', 'Field': 'portSpeed', 'Value': port_speed},
                     {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name(region or self.region)}
