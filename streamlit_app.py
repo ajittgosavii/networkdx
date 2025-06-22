@@ -2183,74 +2183,74 @@ region = "us-west-2"  # Your preferred compute region
             'aws_configured': aws_configured
         }
     
-def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents,compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
-    """Calculate comprehensive migration costs using real-time AWS pricing"""
-    
-    # Initialize pricing manager if not already done
-    if not hasattr(self, 'pricing_manager') or self.pricing_manager is None:
-        self.pricing_manager = AWSPricingManager(region=region or 'us-east-1')
-    
-    # Get real-time pricing for all components
-    with st.spinner("🔄 Fetching real-time AWS pricing..."):
-        pricing = self.pricing_manager.get_comprehensive_pricing(
-            instance_type=instance_type,
-            storage_class=s3_storage_class,
-            region=region,
-            bandwidth_mbps=dx_bandwidth_mbps
-        )
-    
-    # Calculate costs using real-time pricing
-    
-    # 1. DataSync compute costs (EC2 instances)
-    instance_cost_hour = pricing['ec2']
-    datasync_compute_cost = instance_cost_hour * num_agents * 24 * transfer_days
-    
-    # 2. Data transfer costs
-    transfer_rate_per_gb = pricing['transfer']
-    data_transfer_cost = data_size_gb * transfer_rate_per_gb
-    
-    # 3. S3 storage costs
-    s3_rate_per_gb = pricing['s3']
-    s3_storage_cost = data_size_gb * s3_rate_per_gb
-    
-    # 4. Direct Connect costs (if applicable)
-    dx_hourly_cost = pricing['dx']
-    dx_cost = dx_hourly_cost * 24 * transfer_days
-    
-    # 5. Additional enterprise costs (compliance, monitoring, etc.)
-    compliance_cost = len(compliance_frameworks) * 500  # Compliance tooling per framework
-    monitoring_cost = 200 * transfer_days  # Enhanced monitoring per day
-    
-    # 6. AWS service costs (DataSync service fees)
-    datasync_service_cost = data_size_gb * 0.0125  # $0.0125 per GB processed
-    
-    # 7. CloudWatch and logging costs
-    cloudwatch_cost = num_agents * 50 * transfer_days  # Monitoring per agent per day
-    
-    # Calculate total cost
-    total_cost = (datasync_compute_cost + data_transfer_cost + s3_storage_cost + 
-                dx_cost + compliance_cost + monitoring_cost + datasync_service_cost + 
-                cloudwatch_cost)
-    
-    return {
-        "compute": datasync_compute_cost,
-        "transfer": data_transfer_cost,
-        "storage": s3_storage_cost,
-        "direct_connect": dx_cost,
-        "datasync_service": datasync_service_cost,
-        "compliance": compliance_cost,
-        "monitoring": monitoring_cost,
-        "cloudwatch": cloudwatch_cost,
-        "total": total_cost,
-        "pricing_source": "AWS API" if self.pricing_manager and self.pricing_manager.pricing_client else "Fallback",
-        "last_updated": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-        "cost_breakdown_detailed": {
-            "instance_hourly_rate": instance_cost_hour,
-            "transfer_rate_per_gb": transfer_rate_per_gb,
-            "s3_rate_per_gb": s3_rate_per_gb,
-            "dx_hourly_rate": dx_hourly_cost
+    def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents,compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
+        """Calculate comprehensive migration costs using real-time AWS pricing"""
+        
+        # Initialize pricing manager if not already done
+        if not hasattr(self, 'pricing_manager') or self.pricing_manager is None:
+            self.pricing_manager = AWSPricingManager(region=region or 'us-east-1')
+        
+        # Get real-time pricing for all components
+        with st.spinner("🔄 Fetching real-time AWS pricing..."):
+            pricing = self.pricing_manager.get_comprehensive_pricing(
+                instance_type=instance_type,
+                storage_class=s3_storage_class,
+                region=region,
+                bandwidth_mbps=dx_bandwidth_mbps
+            )
+        
+        # Calculate costs using real-time pricing
+        
+        # 1. DataSync compute costs (EC2 instances)
+        instance_cost_hour = pricing['ec2']
+        datasync_compute_cost = instance_cost_hour * num_agents * 24 * transfer_days
+        
+        # 2. Data transfer costs
+        transfer_rate_per_gb = pricing['transfer']
+        data_transfer_cost = data_size_gb * transfer_rate_per_gb
+        
+        # 3. S3 storage costs
+        s3_rate_per_gb = pricing['s3']
+        s3_storage_cost = data_size_gb * s3_rate_per_gb
+        
+        # 4. Direct Connect costs (if applicable)
+        dx_hourly_cost = pricing['dx']
+        dx_cost = dx_hourly_cost * 24 * transfer_days
+        
+        # 5. Additional enterprise costs (compliance, monitoring, etc.)
+        compliance_cost = len(compliance_frameworks) * 500  # Compliance tooling per framework
+        monitoring_cost = 200 * transfer_days  # Enhanced monitoring per day
+        
+        # 6. AWS service costs (DataSync service fees)
+        datasync_service_cost = data_size_gb * 0.0125  # $0.0125 per GB processed
+        
+        # 7. CloudWatch and logging costs
+        cloudwatch_cost = num_agents * 50 * transfer_days  # Monitoring per agent per day
+        
+        # Calculate total cost
+        total_cost = (datasync_compute_cost + data_transfer_cost + s3_storage_cost + 
+                    dx_cost + compliance_cost + monitoring_cost + datasync_service_cost + 
+                    cloudwatch_cost)
+        
+        return {
+            "compute": datasync_compute_cost,
+            "transfer": data_transfer_cost,
+            "storage": s3_storage_cost,
+            "direct_connect": dx_cost,
+            "datasync_service": datasync_service_cost,
+            "compliance": compliance_cost,
+            "monitoring": monitoring_cost,
+            "cloudwatch": cloudwatch_cost,
+            "total": total_cost,
+            "pricing_source": "AWS API" if self.pricing_manager and self.pricing_manager.pricing_client else "Fallback",
+            "last_updated": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+            "cost_breakdown_detailed": {
+                "instance_hourly_rate": instance_cost_hour,
+                "transfer_rate_per_gb": transfer_rate_per_gb,
+                "s3_rate_per_gb": s3_rate_per_gb,
+                "dx_hourly_rate": dx_hourly_cost
+            }
         }
-    }
     
     def render_dashboard_tab(self, config, metrics):
         """Render the dashboard tab with enhanced styling"""
