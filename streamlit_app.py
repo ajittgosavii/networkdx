@@ -1780,6 +1780,39 @@ class MigrationPlatform:
         self.last_update_time = datetime.now()
         self.auto_refresh_interval = 30  # seconds
       
+    def safe_float_conversion(self, value, default=0.0):
+        """Safely convert any value to float"""
+        try:
+            if isinstance(value, str):
+                cleaned = ''.join(c for c in value if c.isdigit() or c in '.-')
+                return float(cleaned) if cleaned else default
+            elif isinstance(value, (int, float)):
+                return float(value)
+            else:
+                return default
+        except (ValueError, TypeError):
+            return default
+
+    def safe_format_currency(self, value, decimal_places=0):
+        """Safely format a value as currency"""
+        try:
+            numeric_value = self.safe_float_conversion(value)
+            if decimal_places == 0:
+                return f"${numeric_value:,.0f}"
+            else:
+                return f"${numeric_value:,.{decimal_places}f}"
+        except:
+            return "$0"
+
+    def safe_format_percentage(self, value, decimal_places=1):
+        """Safely format a value as percentage"""
+        try:
+            numeric_value = self.safe_float_conversion(value)
+            return f"{numeric_value:.{decimal_places}f}%"
+        except:
+            return "0.0%"  
+    
+    
     
     def initialize_session_state(self):
         """Initialize session state variables with real-time tracking"""
@@ -3777,11 +3810,11 @@ region = "us-west-2"  # Your preferred compute region
             for key, value in metrics['cost_breakdown'].items():
                 if key != 'total':  # Exclude total from the detailed breakdown
                     cost_data.append({
-                        "Cost Category": key.replace('_', ' ').title(),
-                        "Amount ($)": f"${value:,.2f}",
-                        "Percentage": f"{(value/metrics['cost_breakdown']['total'])*100:.1f}%",
-                        "Per TB": f"${value/metrics['data_size_tb']:.2f}"
-                    })
+                                        "Cost Category": key.replace('_', ' ').title(),
+                                        "Amount ($)": self.safe_format_currency(value, 2),
+                                        "Percentage": self.safe_format_percentage((self.safe_float_conversion(value)/self.safe_float_conversion(metrics['cost_breakdown']['total']))*100),
+                                        "Per TB": self.safe_format_currency(self.safe_float_conversion(value)/metrics['data_size_tb'], 2)
+                                    })
             
             # Add total row
             cost_data.append({
