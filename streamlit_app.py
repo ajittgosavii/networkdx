@@ -4234,8 +4234,7 @@ region = "us-west-2"  # Your preferred compute region
     
     def render_analytics_tab(self, config, metrics):
         """Render the analytics and reporting tab with enhanced styling"""
-        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)
-        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)        
         
         # WITH THIS NEW CODE ↓
         # Performance trends (realistic modeling)
