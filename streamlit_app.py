@@ -707,8 +707,17 @@ class EnterpriseCalculator:
         return {"score": avg_impact, "level": level, "recommendation": recommendation}
     
     def get_optimal_networking_architecture(self, source_location, target_region, data_size_gb, 
-                                        dx_bandwidth_mbps, database_types, data_types, config=None):
+                                      dx_bandwidth_mbps, database_types, data_types, config=None):
         """AI-powered networking architecture recommendations with real-time metrics"""
+        
+        # Ensure numeric types
+        data_size_gb = float(data_size_gb) if data_size_gb else 1000
+        dx_bandwidth_mbps = float(dx_bandwidth_mbps) if dx_bandwidth_mbps else 1000
+        data_size_tb = data_size_gb / 1024
+        
+        # Get latency for the route
+        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
+        estimated_latency = float(estimated_latency)
         
         # Get latency for the route
         estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
@@ -1770,6 +1779,7 @@ class MigrationPlatform:
         # Add real-time tracking
         self.last_update_time = datetime.now()
         self.auto_refresh_interval = 30  # seconds
+      
     
     def initialize_session_state(self):
         """Initialize session state variables with real-time tracking"""
@@ -1807,12 +1817,43 @@ class MigrationPlatform:
             return True
         return False
     
+    def safe_format_number(self, value, decimal_places=1):
+        """Safely format a number for display"""
+        try:
+            if isinstance(value, str):
+                value = float(value)
+            return f"{float(value):.{decimal_places}f}"
+        except (ValueError, TypeError):
+            return "0.0"
+
+    def safe_format_int(self, value):
+        """Safely format an integer for display"""
+        try:
+            if isinstance(value, str):
+                value = float(value)
+            return f"{int(float(value)):,}"
+        except (ValueError, TypeError):
+            return "0"
+    
+    
     def calculate_migration_metrics(self, config):
         """Calculate all migration metrics with error handling"""
         try:
-            # Basic calculations
-            data_size_tb = max(0.1, config['data_size_gb'] / 1024)  # Ensure minimum size
-            effective_data_gb = config['data_size_gb'] * 0.85  # Account for compression/deduplication
+        # Basic calculations with type safety
+            data_size_gb = float(config.get('data_size_gb', 1000))  # Convert to float
+            data_size_tb = max(0.1, data_size_gb / 1024)
+            effective_data_gb = data_size_gb * 0.85
+            
+        # Ensure numeric values from config
+            dx_bandwidth_mbps = float(config.get('dx_bandwidth_mbps', 1000))
+            network_latency = float(config.get('network_latency', 25))
+            network_jitter = float(config.get('network_jitter', 5))
+            packet_loss = float(config.get('packet_loss', 0.1))
+            dedicated_bandwidth = float(config.get('dedicated_bandwidth', 60))
+            num_datasync_agents = int(config.get('num_datasync_agents', 1))
+        
+        
+            
             
             # Initialize pricing manager with config if needed
             if not hasattr(self.calculator, 'pricing_manager') or self.calculator.pricing_manager is None:
@@ -3947,7 +3988,7 @@ region = "us-west-2"  # Your preferred compute region
         
         with col1:
             st.metric("Project", config['project_name'])
-            st.metric("Data Volume", f"{metrics['data_size_tb']:.1f} TB")
+            st.metric("Data Volume", f"{self.safe_format_number(metrics['data_size_tb'])} TB")
         
         with col2:
             st.metric("Expected Throughput", f"{recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps")
