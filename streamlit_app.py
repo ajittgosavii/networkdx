@@ -3054,7 +3054,7 @@ class MigrationPlatform:
                         <p><strong>Cost Impact:</strong> {instance_rec['cost_impact_percent']:+.1f}% infrastructure, {agent_rec['cost_change_percent']:+.1f}% scaling costs</p>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                 """, unsafe_allow_html=True)
             
             with col2:
                 # Performance optimization chart
