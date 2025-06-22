@@ -18,6 +18,7 @@ from functools import lru_cache
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
 # For PDF generation
 try:
     from reportlab.lib import colors
@@ -3981,6 +3982,151 @@ region = "us-west-2"  # Your preferred compute region
             height=400
         )
         st.plotly_chart(fig_opt, use_container_width=True)
+        pass
+    
+        # ADD THE NEW METHOD HERE ↓
+    def render_improved_performance_trends(self, config, metrics, recommendations):
+        """Render realistic performance trends based on actual factors"""
+        
+        # Instead of random data, calculate realistic historical scenarios
+        def calculate_realistic_trends():
+            dates = pd.date_range(start="2024-01-01", end="2024-12-31", freq="M")
+            
+            # Base performance factors that would affect real historical performance
+            base_throughput = metrics['optimized_throughput']
+            
+            # Realistic factors that would affect performance over time
+            seasonal_factors = []
+            network_evolution = []
+            optimization_learning = []
+            
+            for i, date in enumerate(dates):
+                month = date.month
+                
+                # Seasonal variations (business patterns)
+                if month in [11, 12, 1]:  # End of year busy period
+                    seasonal_factor = 0.85  # 15% slower due to high network usage
+                elif month in [6, 7, 8]:  # Summer months
+                    seasonal_factor = 1.05  # 5% faster due to lower business activity
+                else:
+                    seasonal_factor = 1.0
+                
+                # Network infrastructure improvements over time
+                network_improvement = 1.0 + (i * 0.02)  # 2% improvement per month
+                
+                # Learning curve optimization (diminishing returns)
+                optimization_factor = 1.0 + (0.1 * (1 - np.exp(-i/6)))  # Asymptotic improvement
+                
+                seasonal_factors.append(seasonal_factor)
+                network_evolution.append(network_improvement)
+                optimization_learning.append(optimization_factor)
+            
+            return dates, seasonal_factors, network_evolution, optimization_learning
+        
+        # Calculate AI predictions based on configuration improvements
+        def calculate_ai_predictions():
+            future_dates = pd.date_range(start="2025-01-01", end="2025-06-30", freq="M")
+            
+            # AI recommendation baseline
+            ai_baseline = recommendations['estimated_performance']['throughput_mbps']
+            
+            predictions = []
+            for i, date in enumerate(future_dates):
+                # Factor in gradual improvement as optimizations are implemented
+                month_factor = 1.0 + (i * 0.03)  # 3% improvement per month as AI recommendations are applied
+                
+                # Consider network utilization growth
+                utilization_factor = 1.0 - (i * 0.01)  # Slight degradation as more workloads are added
+                
+                predicted_value = ai_baseline * month_factor * utilization_factor
+                predictions.append(predicted_value)
+            
+            return future_dates, predictions
+        
+        # Generate the data
+        hist_dates, seasonal, network_evol, optimization = calculate_realistic_trends()
+        future_dates, ai_predictions = calculate_ai_predictions()
+        
+        # Recalculate historical with realistic factors
+        historical_throughput = []
+        base_throughput = metrics['optimized_throughput']
+        
+        for i in range(len(hist_dates)):
+            combined_factor = seasonal[i] * network_evol[i] * optimization[i]
+            throughput = base_throughput * combined_factor
+            throughput += np.random.normal(0, throughput * 0.05)  # ±5% variance
+            historical_throughput.append(max(0, throughput))  # Ensure non-negative
+        
+        # Create the plot
+        fig = go.Figure()
+        
+        # Historical performance (realistic simulation)
+        fig.add_trace(go.Scatter(
+            x=hist_dates,
+            y=historical_throughput,
+            mode='lines+markers',
+            name='Historical Performance (Modeled)',
+            line=dict(color='#3498db', width=2),
+            hovertemplate='<b>Historical</b><br>Date: %{x}<br>Throughput: %{y:.0f} Mbps<extra></extra>'
+        ))
+        
+        # AI predictions (dynamic)
+        fig.add_trace(go.Scatter(
+            x=future_dates,
+            y=ai_predictions,
+            mode='lines+markers',
+            name='AI Predicted Performance',
+            line=dict(color='#e74c3c', dash='dash', width=2),
+            hovertemplate='<b>AI Prediction</b><br>Date: %{x}<br>Throughput: %{y:.0f} Mbps<extra></extra>'
+        ))
+        
+        # Add current configuration marker
+        current_date = pd.Timestamp.now()
+        fig.add_trace(go.Scatter(
+            x=[current_date],
+            y=[metrics['optimized_throughput']],
+            mode='markers',
+            name='Current Configuration',
+            marker=dict(color='#f39c12', size=12, symbol='star'),
+            hovertemplate='<b>Current</b><br>Throughput: %{y:.0f} Mbps<extra></extra>'
+        ))
+        
+        # Add confidence bands for predictions
+        upper_bound = [p * 1.1 for p in ai_predictions]  # +10% confidence
+        lower_bound = [p * 0.9 for p in ai_predictions]  # -10% confidence
+        
+        fig.add_trace(go.Scatter(
+            x=list(future_dates) + list(future_dates[::-1]),
+            y=upper_bound + lower_bound[::-1],
+            fill='toself',
+            fillcolor='rgba(231, 76, 60, 0.2)',
+            line=dict(color='rgba(255,255,255,0)'),
+            name='Prediction Confidence Band',
+            showlegend=True,
+            hoverinfo='skip'
+        ))
+        
+        fig.update_layout(
+            title={
+                'text': "Performance Trends: Historical Analysis & AI Predictions",
+                'x': 0.5,
+                'xanchor': 'center'
+            },
+            xaxis_title="Date",
+            yaxis_title="Throughput (Mbps)",
+            height=500,
+            hovermode='x unified',
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01
+            )
+        )
+        
+        return fig
+    
+    
     
     def render_security_tab(self, config, metrics):
         """Render the security and compliance tab with enhanced styling"""
@@ -4082,135 +4228,48 @@ region = "us-west-2"  # Your preferred compute region
             for risk in metrics['compliance_risks']:
                 st.warning(risk)
     
+    
+    
+    
+    
     def render_analytics_tab(self, config, metrics):
         """Render the analytics and reporting tab with enhanced styling"""
         st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)
         
-        # AI-Generated Executive Summary
+        # WITH THIS NEW CODE ↓
+        # Performance trends (realistic modeling)
+        st.markdown('<div class="section-header">📊 Performance Trends & Forecasting</div>', unsafe_allow_html=True)
+        
+        # Add explanation
+        st.info("""
+        **📈 Performance Modeling Explanation:**
+        - **Historical**: Modeled based on seasonal patterns, network improvements, and optimization learning curves
+        - **AI Predictions**: Dynamic forecasting based on recommended configuration improvements  
+        - **Confidence Band**: ±10% uncertainty range for predictions
+        - **Current Marker**: Shows your current configuration performance
+        """)
+        
         recommendations = metrics['networking_recommendations']
-        st.markdown('<div class="section-header">🤖 AI-Generated Executive Summary</div>', unsafe_allow_html=True)
+        fig_trends = self.render_improved_performance_trends(config, metrics, recommendations)
+        st.plotly_chart(fig_trends, use_container_width=True)
         
-        executive_summary = f"""
-        **Migration Project:** {config['project_name']} | **Data Volume:** {metrics['data_size_tb']:.1f}TB | 
-        **Estimated Duration:** {metrics['transfer_days']:.1f} days | **Total Cost:** ${metrics['cost_breakdown']['total']:,.0f}
-        
-        **AI Recommendation:** Implement {recommendations['primary_method']} with {recommendations['networking_option']} 
-        for optimal performance and cost efficiency. Expected throughput: {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps.
-        
-        **Risk Assessment:** {recommendations['risk_level']} risk level with {recommendations['cost_efficiency']} cost efficiency.
-        """
-        
-        st.markdown(f"""
-        <div class="ai-insight">
-            {executive_summary}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Cost breakdown section with both table and chart
-        st.markdown('<div class="section-header">💰 Cost Analysis</div>', unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([1, 1])
+        # Show the factors affecting trends
+        col1, col2 = st.columns(2)
         
         with col1:
-            # Cost breakdown table
-            cost_data = []
-            for key, value in metrics['cost_breakdown'].items():
-                if key != 'total':  # Exclude total from the detailed breakdown
-                    cost_data.append({
-                                        "Cost Category": key.replace('_', ' ').title(),
-                                        "Amount ($)": self.safe_format_currency(value, 2),
-                                        "Percentage": self.safe_format_percentage((self.safe_float_conversion(value)/self.safe_float_conversion(metrics['cost_breakdown']['total']))*100),
-                                        "Per TB": self.safe_format_currency(self.safe_float_conversion(value)/metrics['data_size_tb'], 2)
-                                    })
-            
-            # Add total row
-            cost_data.append({
-                "Cost Category": "**TOTAL**",
-                "Amount ($)": f"**${metrics['cost_breakdown']['total']:,.2f}**",
-                "Percentage": "**100.0%**",
-                "Per TB": f"**${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.2f}**"
-            })
-            
-            cost_df = pd.DataFrame(cost_data)
-            self.safe_dataframe_display(cost_df)
-            
-            # Cost optimization recommendations
-            st.markdown("**💡 Cost Optimization Opportunities:**")
-            cost_optimizations = []
-            
-            if config['s3_storage_class'] == 'Standard':
-                potential_savings = metrics['cost_breakdown']['storage'] * 0.4
-                cost_optimizations.append(f"• Switch to Standard-IA: Save ~${potential_savings:.0f}")
-            
-            if not config['enable_lifecycle']:
-                lifecycle_savings = metrics['cost_breakdown']['storage'] * 0.2
-                cost_optimizations.append(f"• Enable lifecycle policies: Save ~${lifecycle_savings:.0f}")
-            
-            if config['num_datasync_agents'] > 3:
-                agent_savings = (config['num_datasync_agents'] - 3) * 50 * metrics['transfer_days']
-                cost_optimizations.append(f"• Optimize agent count: Save ~${agent_savings:.0f}")
-            
-            if not cost_optimizations:
-                cost_optimizations.append("• Configuration is already cost-optimized!")
-            
-            for optimization in cost_optimizations:
-                st.write(optimization)
+            st.markdown("**🔍 Historical Factors Modeled:**")
+            st.write("• Seasonal business patterns (holidays, summer)")
+            st.write("• Network infrastructure evolution (+2%/month)")
+            st.write("• Optimization learning curves (asymptotic)")
+            st.write("• Performance variance (±5% realistic noise)")
         
         with col2:
-            # Cost breakdown pie chart
-            cost_labels = list(metrics['cost_breakdown'].keys())[:-1]  # Exclude 'total'
-            cost_values = [metrics['cost_breakdown'][key] for key in cost_labels]
-            
-            fig_costs = go.Figure(data=[go.Pie(
-                labels=[label.replace('_', ' ').title() for label in cost_labels],
-                values=cost_values,
-                hole=0.3,
-                textinfo='label+percent',
-                textfont_size=12
-            )])
-            
-            fig_costs.update_layout(
-                title="Migration Cost Distribution",
-                height=400,
-                showlegend=True,
-                legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.05)
-            )
-            st.plotly_chart(fig_costs, use_container_width=True)
-        
-        # Performance trends (simulated)
-        st.markdown('<div class="section-header">📊 Performance Trends</div>', unsafe_allow_html=True)
-        
-        dates = pd.date_range(start="2024-01-01", end="2024-12-31", freq="M")
-        throughput_trend = np.random.normal(metrics['optimized_throughput'], metrics['optimized_throughput']*0.1, len(dates))
-        
-        fig_trend = go.Figure()
-        fig_trend.add_trace(go.Scatter(
-            x=dates,
-            y=throughput_trend,
-            mode='lines+markers',
-            name='Throughput (Mbps)',
-            line=dict(color='#3498db')
-        ))
-        
-        # Add AI prediction line
-        future_dates = pd.date_range(start="2025-01-01", end="2025-06-30", freq="M")
-        ai_prediction = [recommendations['estimated_performance']['throughput_mbps']] * len(future_dates)
-        
-        fig_trend.add_trace(go.Scatter(
-            x=future_dates,
-            y=ai_prediction,
-            mode='lines+markers',
-            name='AI Predicted Performance',
-            line=dict(color='#e74c3c', dash='dash')
-        ))
-        
-        fig_trend.update_layout(
-            title="Historical Throughput Performance & AI Predictions",
-            xaxis_title="Date",
-            yaxis_title="Throughput (Mbps)",
-            height=400
-        )
-        st.plotly_chart(fig_trend, use_container_width=True)
+            st.markdown("**🤖 AI Prediction Factors:**")
+            st.write("• Configuration optimization gains (+3%/month)")
+            st.write("• Network utilization growth (-1%/month)")
+            st.write("• Implementation timeline effects")
+            st.write("• Confidence intervals (±10% uncertainty)")
         
         # ROI Analysis
         st.markdown('<div class="section-header">💡 ROI Analysis with AI Insights</div>', unsafe_allow_html=True)
