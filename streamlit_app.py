@@ -779,7 +779,7 @@ class EnterpriseCalculator:
             }
 
     # ... [rest of your calculator methods would go here]
-            }
+            
     def __init__(self):
         """Initialize the calculator with all required data structures"""
         # Instance performance data
