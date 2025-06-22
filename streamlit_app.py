@@ -653,6 +653,60 @@ class EnterpriseCalculator:
         
         return effective_throughput, network_efficiency, theoretical_throughput, real_world_efficiency
     
+    def assess_compliance_requirements(self, frameworks, data_classification, data_residency):
+        """Assess compliance requirements and identify risks"""
+        requirements = set()
+        risks = []
+        
+        for framework in frameworks:
+            if framework in self.compliance_requirements:
+                reqs = self.compliance_requirements[framework]
+                requirements.update(reqs.keys())
+                
+                # Check for compliance conflicts
+                if framework == "GDPR" and data_residency == "No restrictions":
+                    risks.append("GDPR requires data residency controls")
+                
+                if framework in ["HIPAA", "PCI-DSS"] and data_classification == "Public":
+                    risks.append(f"{framework} incompatible with Public data classification")
+        
+        return list(requirements), risks
+    
+    def calculate_business_impact(self, transfer_days, data_types):
+        """Calculate business impact score based on data types"""
+        impact_weights = {
+            "Customer Data": 0.9,
+            "Financial Records": 0.95,
+            "Employee Data": 0.7,
+            "Intellectual Property": 0.85,
+            "System Logs": 0.3,
+            "Application Data": 0.8,
+            "Database Backups": 0.6,
+            "Media Files": 0.4,
+            "Documents": 0.5
+        }
+        
+        if not data_types:
+            return {"score": 0.5, "level": "Medium", "recommendation": "Standard migration approach"}
+        
+        avg_impact = sum(impact_weights.get(dt, 0.5) for dt in data_types) / len(data_types)
+        
+        if avg_impact >= 0.8:
+            level = "Critical"
+            recommendation = "Phased migration with extensive testing"
+        elif avg_impact >= 0.6:
+            level = "High"
+            recommendation = "Careful planning with pilot phase"
+        elif avg_impact >= 0.4:
+            level = "Medium"
+            recommendation = "Standard migration approach"
+        else:
+            level = "Low"
+            recommendation = "Direct migration acceptable"
+        
+        return {"score": avg_impact, "level": level, "recommendation": recommendation}
+    
+    
     def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents, 
                                 compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
         """Calculate comprehensive migration costs using real-time AWS pricing"""
