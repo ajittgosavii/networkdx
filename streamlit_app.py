@@ -2316,152 +2316,102 @@ class MigrationPlatform:
         
     
     def setup_custom_css(self):
-        """Setup enhanced custom CSS styling with professional enterprise design"""
+        """Setup enhanced custom CSS styling with professional design"""
         st.markdown("""
         <style>
-            /* Enhanced main header - more compact and professional */
+            /* Main container styling */
             .main-header {
-                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-                padding: 1rem 2rem;
-                border-radius: 8px;
+                background: linear-gradient(135deg, #FF9900 0%, #232F3E 100%);
+                padding: 2rem;
+                border-radius: 15px;
                 color: white;
                 text-align: center;
-                margin-bottom: 1.5rem;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                border: 1px solid rgba(255,255,255,0.1);
-            }
-            
-            .main-header h1 {
-                font-size: 1.8rem;
-                margin: 0;
-                font-weight: 600;
-                letter-spacing: -0.5px;
-            }
-            
-            .main-header p {
-                margin: 0.5rem 0 0 0;
-                font-size: 0.95rem;
-                font-weight: 400;
-            }
-            
-            /* Enhanced professional tab container */
-            .tab-container {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                padding: 1rem;
-                border-radius: 8px;
                 margin-bottom: 2rem;
-                box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-                border: 1px solid #e9ecef;
-                border-top: 3px solid #232F3E;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             }
             
-            /* Professional tab buttons */
-            .stButton > button {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                border: 2px solid #dee2e6;
-                border-radius: 6px;
-                padding: 0.75rem 1.25rem;
-                font-weight: 600;
-                font-size: 0.9rem;
-                color: #495057;
-                transition: all 0.3s ease;
-                width: 100%;
-                height: 3rem;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            /* Enhanced tab container */
+            .tab-container {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                padding: 1.5rem;
+                border-radius: 12px;
+                margin-bottom: 2rem;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+                border: 1px solid #dee2e6;
             }
             
-            .stButton > button:hover {
-                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-                border-color: #232F3E;
-                color: white;
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(35,47,62,0.2);
-            }
-            
-            .stButton > button:active, .stButton > button:focus {
-                background: linear-gradient(135deg, #FF9900 0%, #232F3E 100%);
-                border-color: #FF9900;
-                color: white;
-                box-shadow: 0 2px 8px rgba(255,153,0,0.3);
-            }
-            
-            /* Standardized section headers - more compact */
+            /* Standardized section headers */
             .section-header {
-                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
                 color: white;
-                padding: 0.75rem 1.25rem;
-                border-radius: 6px;
-                margin: 1.25rem 0 1rem 0;
-                font-size: 1.1rem;
-                font-weight: 600;
-                box-shadow: 0 2px 10px rgba(35,47,62,0.2);
-                border-left: 4px solid #FF9900;
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                margin: 1.5rem 0 1rem 0;
+                font-size: 1.2rem;
+                font-weight: bold;
+                box-shadow: 0 2px 8px rgba(0,123,255,0.3);
             }
             
-            /* Enhanced metric cards - more professional */
+            /* Enhanced metric cards */
             .metric-card {
                 background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                padding: 1.25rem;
-                border-radius: 8px;
-                border-left: 4px solid #FF9900;
+                padding: 1.5rem;
+                border-radius: 12px;
+                border-left: 5px solid #FF9900;
                 margin: 0.75rem 0;
                 transition: all 0.3s ease;
-                box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+                box-shadow: 0 2px 12px rgba(0,0,0,0.08);
                 border: 1px solid #e9ecef;
             }
             
             .metric-card:hover {
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-                border-left-color: #232F3E;
+                transform: translateY(-3px);
+                box-shadow: 0 6px 20px rgba(0,0,0,0.15);
             }
             
             /* Professional recommendation boxes */
             .recommendation-box {
-                background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-                padding: 1.25rem;
-                border-radius: 8px;
-                border: 1px solid #dee2e6;
-                border-left: 4px solid #232F3E;
+                background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
+                padding: 1.5rem;
+                border-radius: 12px;
+                border-left: 5px solid #007bff;
                 margin: 1rem 0;
-                box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+                box-shadow: 0 3px 15px rgba(0,123,255,0.1);
+                border: 1px solid #b8daff;
             }
             
             /* Enhanced AI insight boxes */
             .ai-insight {
-                background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
-                padding: 1rem;
-                border-radius: 6px;
+                background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+                padding: 1.25rem;
+                border-radius: 10px;
                 border-left: 4px solid #007bff;
                 margin: 1rem 0;
                 font-style: italic;
                 box-shadow: 0 2px 10px rgba(0,123,255,0.1);
-                border: 1px solid #b8daff;
+                border: 1px solid #cce7ff;
             }
             
-            /* Executive summary styling - more compact */
+            /* Executive summary styling */
             .executive-summary {
-                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
                 color: white;
-                padding: 1.5rem;
-                border-radius: 8px;
-                margin: 1.25rem 0;
-                box-shadow: 0 4px 20px rgba(35,47,62,0.2);
+                padding: 2rem;
+                border-radius: 15px;
+                margin: 1.5rem 0;
+                box-shadow: 0 6px 24px rgba(40,167,69,0.2);
                 text-align: center;
-                border: 1px solid rgba(255,255,255,0.1);
             }
             
-            /* Status indicators - more professional */
+            /* Status indicators */
             .status-indicator {
                 display: inline-block;
-                padding: 0.4rem 0.8rem;
-                border-radius: 6px;
-                font-weight: 600;
-                font-size: 0.85rem;
+                padding: 0.5rem 1rem;
+                border-radius: 20px;
+                font-weight: bold;
                 margin: 0.25rem;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                border: 1px solid rgba(0,0,0,0.1);
             }
             
             .status-excellent {
@@ -2484,50 +2434,48 @@ class MigrationPlatform:
                 color: white;
             }
             
-            /* Security badges - more professional */
+            /* Security badges */
             .security-badge {
-                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
                 color: white;
-                padding: 0.3rem 0.7rem;
-                border-radius: 6px;
-                font-size: 0.8rem;
+                padding: 0.4rem 0.8rem;
+                border-radius: 15px;
+                font-size: 0.85rem;
                 margin: 0.25rem;
                 display: inline-block;
-                box-shadow: 0 2px 6px rgba(35,47,62,0.3);
-                font-weight: 600;
+                box-shadow: 0 2px 6px rgba(40,167,69,0.3);
             }
             
             /* Compliance items */
             .compliance-item {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                 padding: 0.75rem;
                 margin: 0.5rem 0;
-                border-radius: 6px;
-                border-left: 4px solid #232F3E;
+                border-radius: 8px;
+                border-left: 4px solid #007bff;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                border: 1px solid #e9ecef;
             }
             
-            /* Network frame - more professional */
+            /* Network frame */
             .networking-frame {
-                border: 2px solid #232F3E;
-                border-radius: 8px;
+                border: 2px solid #FF9900;
+                border-radius: 15px;
                 background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                box-shadow: 0 4px 16px rgba(35,47,62,0.1);
-                padding: 1.25rem;
+                box-shadow: 0 6px 20px rgba(255,153,0,0.1);
+                padding: 1.5rem;
                 margin: 1rem 0;
             }
             
             /* Real-time indicators */
             .real-time-indicator {
                 display: inline-block;
-                width: 8px;
-                height: 8px;
+                width: 10px;
+                height: 10px;
                 background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
                 border-radius: 50%;
                 animation: pulse 2s infinite;
-                margin-right: 6px;
-                box-shadow: 0 0 6px rgba(40,167,69,0.5);
+                margin-right: 8px;
+                box-shadow: 0 0 8px rgba(40,167,69,0.5);
             }
             
             @keyframes pulse {
@@ -2540,7 +2488,7 @@ class MigrationPlatform:
             @keyframes slideIn {
                 from { 
                     opacity: 0; 
-                    transform: translateY(15px); 
+                    transform: translateY(20px); 
                 }
                 to { 
                     opacity: 1; 
@@ -2553,40 +2501,35 @@ class MigrationPlatform:
                 to { opacity: 1; }
             }
             
-            /* Professional navigation buttons */
+            /* Navigation buttons */
             .nav-button {
-                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
                 border: none;
                 color: white;
                 padding: 0.75rem 1.5rem;
-                border-radius: 6px;
+                border-radius: 8px;
                 margin: 0.25rem;
                 transition: all 0.3s ease;
-                box-shadow: 0 2px 8px rgba(35,47,62,0.3);
-                font-weight: 600;
+                box-shadow: 0 2px 8px rgba(0,123,255,0.3);
             }
             
             .nav-button:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(35,47,62,0.4);
+                box-shadow: 0 4px 12px rgba(0,123,255,0.4);
             }
             
-            /* Professional tables */
+            /* Tables */
             .dataframe {
-                border-radius: 6px;
+                border-radius: 8px;
                 overflow: hidden;
-                box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                 border: 1px solid #dee2e6;
             }
             
-            /* Responsive design - enterprise optimized */
+            /* Responsive design */
             @media (max-width: 768px) {
                 .main-header {
-                    padding: 0.75rem 1rem;
-                }
-                
-                .main-header h1 {
-                    font-size: 1.5rem;
+                    padding: 1rem;
                 }
                 
                 .metric-card {
@@ -2596,102 +2539,57 @@ class MigrationPlatform:
                 .recommendation-box {
                     padding: 1rem;
                 }
-                
-                .stButton > button {
-                    height: 2.5rem;
-                    font-size: 0.8rem;
-                    padding: 0.5rem 1rem;
-                }
             }
             
             /* Enhanced conclusion page styling */
             .conclusion-container {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                border-radius: 8px;
-                padding: 1.5rem;
+                background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+                border-radius: 15px;
+                padding: 2rem;
                 margin: 1rem 0;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
                 border: 1px solid #e9ecef;
-                border-top: 3px solid #232F3E;
             }
             
             .decision-banner {
                 text-align: center;
-                padding: 1.5rem;
-                border-radius: 8px;
-                margin: 1.5rem 0;
-                font-size: 1rem;
-                font-weight: 600;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-                border: 1px solid rgba(0,0,0,0.1);
+                padding: 2rem;
+                border-radius: 15px;
+                margin: 2rem 0;
+                font-size: 1.1rem;
+                font-weight: bold;
+                box-shadow: 0 6px 24px rgba(0,0,0,0.1);
             }
             
             .phase-container {
                 background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                border-radius: 8px;
-                padding: 1.25rem;
+                border-radius: 12px;
+                padding: 1.5rem;
                 margin: 1rem 0;
-                border-left: 4px solid #17a2b8;
-                box-shadow: 0 3px 15px rgba(0,0,0,0.06);
-                border: 1px solid #e9ecef;
+                border-left: 5px solid #17a2b8;
+                box-shadow: 0 3px 15px rgba(0,0,0,0.08);
             }
             
             /* Success criteria styling */
             .success-criteria {
                 background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
                 border: 1px solid #c3e6cb;
-                border-radius: 6px;
-                padding: 1rem;
+                border-radius: 10px;
+                padding: 1.25rem;
                 margin: 1rem 0;
-                border-left: 4px solid #28a745;
+                border-left: 5px solid #28a745;
             }
             
             .risk-mitigation {
                 background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
                 border: 1px solid #ffeaa7;
-                border-radius: 6px;
-                padding: 1rem;
+                border-radius: 10px;
+                padding: 1.25rem;
                 margin: 1rem 0;
-                border-left: 4px solid #ffc107;
+                border-left: 5px solid #ffc107;
             }
-            
-            /* Professional sidebar styling */
-            .sidebar .sidebar-content {
-                background: #f8f9fa;
-            }
-            
-            /* Enterprise-grade form elements */
-            .stSelectbox > div > div {
-                border-radius: 6px;
-                border: 1px solid #ced4da;
-            }
-            
-            .stNumberInput > div > div > input {
-                border-radius: 6px;
-                border: 1px solid #ced4da;
-            }
-            
-            .stTextInput > div > div > input {
-                border-radius: 6px;
-                border: 1px solid #ced4da;
-            }
-            
-            /* Professional metrics styling */
-            [data-testid="metric-container"] {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                border: 1px solid #e9ecef;
-                padding: 1rem;
-                border-radius: 6px;
-                border-left: 3px solid #FF9900;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            }
-            
-            [data-testid="metric-container"]:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-    </style>
-    """, unsafe_allow_html=True)
+        </style>
+        """, unsafe_allow_html=True)
     
     def safe_dataframe_display(self, df, use_container_width=True, hide_index=True, **kwargs):
         """Safely display a DataFrame by ensuring all values are strings to prevent type mixing"""
@@ -2711,43 +2609,42 @@ class MigrationPlatform:
         return href
     
     def render_header(self):
-        """Render the compact professional main header"""
+        """Render the enhanced main header"""
         st.markdown("""
         <div class="main-header">
             <h1>🏢 Enterprise AWS Migration Strategy Platform</h1>
-            <p>AI-Powered Migration Planning • Security-First • Compliance-Ready • Enterprise-Scale</p>
+            <p style="font-size: 1.1rem; margin-top: 0.5rem;">AI-Powered Migration Planning • Security-First • Compliance-Ready • Enterprise-Scale</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.9;">Comprehensive Analysis • Real-time Optimization • Professional Reporting</p>
         </div>
         """, unsafe_allow_html=True)
     
     def render_navigation(self):
-        """Render enhanced navigation bar with professional tab styling"""
+        """Render enhanced navigation bar with consistent styling"""
         st.markdown('<div class="tab-container">', unsafe_allow_html=True)
         
-        # Create navigation columns with better spacing
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2])
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 2, 2, 2, 2, 2, 2])
         
         with col1:
-            if st.button("🏠 Dashboard", key="nav_dashboard", use_container_width=True):
+            if st.button("🏠 Dashboard", key="nav_dashboard"):
                 st.session_state.active_tab = "dashboard"
         with col2:
-            if st.button("🌐 Network Analysis", key="nav_network", use_container_width=True):
+            if st.button("🌐 Network Analysis", key="nav_network"):
                 st.session_state.active_tab = "network"
         with col3:
-            if st.button("📊 Migration Planner", key="nav_planner", use_container_width=True):
+            if st.button("📊 Migration Planner", key="nav_planner"):
                 st.session_state.active_tab = "planner"
         with col4:
-            if st.button("⚡ Performance", key="nav_performance", use_container_width=True):
+            if st.button("⚡ Performance", key="nav_performance"):
                 st.session_state.active_tab = "performance"
         with col5:
-            if st.button("🔒 Security", key="nav_security", use_container_width=True):
+            if st.button("🔒 Security", key="nav_security"):
                 st.session_state.active_tab = "security"
         with col6:
-            if st.button("📈 Analytics", key="nav_analytics", use_container_width=True):
+            if st.button("📈 Analytics", key="nav_analytics"):
                 st.session_state.active_tab = "analytics"
         with col7:
-            if st.button("🎯 Conclusion", key="nav_conclusion", use_container_width=True):
+            if st.button("🎯 Conclusion", key="nav_conclusion"):
                 st.session_state.active_tab = "conclusion"
-    
         
         st.markdown('</div>', unsafe_allow_html=True)
 
