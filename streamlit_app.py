@@ -3021,6 +3021,7 @@ class MigrationPlatform:
                     opt_status = "✅ ALREADY OPTIMIZED"
                     potential_throughput_gain = 0
                     optimized_throughput = metrics['optimized_throughput']
+                    optimized_days = metrics['transfer_days']  # Use current transfer days when already optimized
                     time_savings = 0
                 
                 st.markdown(f"""
