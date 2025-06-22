@@ -1573,6 +1573,131 @@ class MigrationPlatform:
             return True
         return False
     
+    def calculate_migration_metrics(self, config):
+        """Calculate all migration metrics with error handling"""
+        try:
+            # Basic calculations
+            data_size_tb = max(0.1, config['data_size_gb'] / 1024)  # Ensure minimum size
+            effective_data_gb = config['data_size_gb'] * 0.85  # Account for compression/deduplication
+            
+            # Initialize pricing manager with config if needed
+            if not hasattr(self.calculator, 'pricing_manager') or self.calculator.pricing_manager is None:
+                if config.get('aws_configured', False) and config.get('use_aws_pricing', False):
+                    self.calculator.pricing_manager = AWSPricingManager(region=config.get('aws_region', 'us-east-1'))
+                    st.success("🔄 Using real-time AWS pricing")
+                else:
+                    st.info("💡 Using fallback pricing. Configure AWS credentials for real-time rates.")
+            
+            # Calculate throughput with optimizations
+            throughput_result = self.calculator.calculate_enterprise_throughput(
+                config['datasync_instance_type'], config['num_datasync_agents'], config['avg_file_size'], 
+                config['dx_bandwidth_mbps'], config['network_latency'], config['network_jitter'], 
+                config['packet_loss'], config['qos_enabled'], config['dedicated_bandwidth'], 
+                config.get('real_world_mode', True)
+            )
+            
+            if len(throughput_result) == 4:
+                datasync_throughput, network_efficiency, theoretical_throughput, real_world_efficiency = throughput_result
+            else:
+                # Fallback for backward compatibility
+                datasync_throughput, network_efficiency = throughput_result
+                theoretical_throughput = datasync_throughput * 1.5
+                real_world_efficiency = 0.7
+            
+            # Ensure valid throughput values
+            datasync_throughput = max(1, datasync_throughput)  # Minimum 1 Mbps
+            network_efficiency = max(0.1, min(1.0, network_efficiency))  # Between 10% and 100%
+            
+            # Apply network optimizations
+            tcp_efficiency = {"Default": 1.0, "64KB": 1.05, "128KB": 1.1, "256KB": 1.15, 
+                            "512KB": 1.2, "1MB": 1.25, "2MB": 1.3}
+            mtu_efficiency = {"1500 (Standard)": 1.0, "9000 (Jumbo Frames)": 1.15, "Custom": 1.1}
+            congestion_efficiency = {"Cubic (Default)": 1.0, "BBR": 1.2, "Reno": 0.95, "Vegas": 1.05}
+            
+            tcp_factor = tcp_efficiency.get(config['tcp_window_size'], 1.0)
+            mtu_factor = mtu_efficiency.get(config['mtu_size'], 1.0)
+            congestion_factor = congestion_efficiency.get(config['network_congestion_control'], 1.0)
+            wan_factor = 1.3 if config['wan_optimization'] else 1.0
+            
+            optimized_throughput = datasync_throughput * tcp_factor * mtu_factor * congestion_factor * wan_factor
+            optimized_throughput = min(optimized_throughput, config['dx_bandwidth_mbps'] * (config['dedicated_bandwidth'] / 100))
+            optimized_throughput = max(1, optimized_throughput)  # Ensure minimum throughput
+            
+            # Calculate timing
+            available_hours_per_day = 16 if config['business_hours_restriction'] else 24
+            transfer_days = (effective_data_gb * 8) / (optimized_throughput * available_hours_per_day * 3600) / 1000
+            transfer_days = max(0.1, transfer_days)  # Ensure minimum transfer time
+            
+            # Calculate costs
+            cost_breakdown = self.calculator.calculate_enterprise_costs(
+                config['data_size_gb'], transfer_days, config['datasync_instance_type'], 
+                config['num_datasync_agents'], config['compliance_frameworks'], config['s3_storage_class']
+            )
+            
+            # Ensure all cost values are valid
+            for key in cost_breakdown:
+                if isinstance(cost_breakdown[key], (int, float)):
+                    cost_breakdown[key] = max(0, cost_breakdown[key])
+            
+            # Compliance and business impact
+            compliance_reqs, compliance_risks = self.calculator.assess_compliance_requirements(
+                config['compliance_frameworks'], config['data_classification'], config['data_residency']
+            )
+            business_impact = self.calculator.calculate_business_impact(transfer_days, config['data_types'])
+            
+            # Get AI-powered networking recommendations
+            target_region_short = config['target_aws_region'].split()[0]  # Extract region code
+            networking_recommendations = self.calculator.get_optimal_networking_architecture(
+                config['source_location'], target_region_short, config['data_size_gb'],
+                config['dx_bandwidth_mbps'], config['database_types'], config['data_types'], config
+            )
+            
+            return {
+                'data_size_tb': data_size_tb,
+                'effective_data_gb': effective_data_gb,
+                'datasync_throughput': datasync_throughput,
+                'theoretical_throughput': theoretical_throughput,
+                'real_world_efficiency': real_world_efficiency,
+                'optimized_throughput': optimized_throughput,
+                'network_efficiency': network_efficiency,
+                'transfer_days': transfer_days,
+                'cost_breakdown': cost_breakdown,
+                'compliance_reqs': compliance_reqs,
+                'compliance_risks': compliance_risks,
+                'business_impact': business_impact,
+                'available_hours_per_day': available_hours_per_day,
+                'networking_recommendations': networking_recommendations
+            }
+            
+        except Exception as e:
+            # Return default metrics if calculation fails
+            st.error(f"Error in calculation: {str(e)}")
+            return {
+                'data_size_tb': 1.0,
+                'effective_data_gb': 1000,
+                'datasync_throughput': 100,
+                'theoretical_throughput': 150,
+                'real_world_efficiency': 0.7,
+                'optimized_throughput': 100,
+                'network_efficiency': 0.7,
+                'transfer_days': 10,
+                'cost_breakdown': {'compute': 1000, 'transfer': 500, 'storage': 200, 'compliance': 100, 'monitoring': 50, 'total': 1850},
+                'compliance_reqs': [],
+                'compliance_risks': [],
+                'business_impact': {'score': 0.5, 'level': 'Medium', 'recommendation': 'Standard approach'},
+                'available_hours_per_day': 24,
+                'networking_recommendations': {
+                    'primary_method': 'DataSync',
+                    'secondary_method': 'S3 Transfer Acceleration',
+                    'networking_option': 'Direct Connect',
+                    'db_migration_tool': 'DMS',
+                    'rationale': 'Default configuration recommendation',
+                    'estimated_performance': {'throughput_mbps': 100, 'estimated_days': 10, 'network_efficiency': 0.7},
+                    'cost_efficiency': 'Medium',
+                    'risk_level': 'Low'
+                }
+            }
+        
     
     def setup_custom_css(self):
         """Setup enhanced custom CSS styling with professional design"""
