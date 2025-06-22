@@ -11,6 +11,12 @@ import uuid
 import time
 import base64
 from io import BytesIO
+import boto3
+from botocore.exceptions import ClientError, NoCredentialsError
+import time
+from functools import lru_cache
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # For PDF generation
 try:
@@ -40,6 +46,377 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Update the AWSPricingManager class __init__ method to use Streamlit secrets
+# Add this new class after the existing imports and before EnterpriseCalculator
+class AWSPricingManager:
+    """Fetch real-time AWS pricing using AWS Pricing API"""
+    
+    def __init__(self, region='us-east-1'):
+        self.region = region
+        self.pricing_client = None
+        self.ec2_client = None
+        self.cache = {}
+        self.cache_ttl = 3600  # 1 hour cache
+        self.last_cache_update = {}
+        self._init_clients()
+    
+    def _init_clients(self):
+        """Initialize AWS clients using Streamlit secrets"""
+        try:
+            # Try to get AWS credentials from Streamlit secrets
+            aws_access_key = None
+            aws_secret_key = None
+            aws_region = self.region
+            
+            try:
+                # Check if AWS secrets are configured in .streamlit/secrets.toml
+                if hasattr(st, 'secrets') and 'aws' in st.secrets:
+                    aws_access_key = st.secrets["aws"]["access_key_id"]
+                    aws_secret_key = st.secrets["aws"]["secret_access_key"]
+                    aws_region = st.secrets["aws"].get("region", self.region)
+                    
+                    st.success("🔑 AWS credentials loaded from secrets.toml")
+                    
+                    # Create clients with explicit credentials
+                    self.pricing_client = boto3.client(
+                        'pricing',
+                        region_name='us-east-1',  # Pricing API only available in us-east-1
+                        aws_access_key_id=aws_access_key,
+                        aws_secret_access_key=aws_secret_key
+                    )
+                    self.ec2_client = boto3.client(
+                        'ec2',
+                        region_name=aws_region,
+                        aws_access_key_id=aws_access_key,
+                        aws_secret_access_key=aws_secret_key
+                    )
+                else:
+                    # Fall back to default credential chain (environment variables, IAM role, etc.)
+                    st.info("💡 Using default AWS credential chain (IAM role, environment variables, etc.)")
+                    
+                    # Pricing API is only available in us-east-1 and ap-south-1
+                    self.pricing_client = boto3.client('pricing', region_name='us-east-1')
+                    self.ec2_client = boto3.client('ec2', region_name=aws_region)
+                    
+            except KeyError as e:
+                st.warning(f"⚠️ AWS secrets configuration incomplete: {str(e)}")
+                st.info("💡 Add AWS credentials to .streamlit/secrets.toml")
+                self.pricing_client = None
+                self.ec2_client = None
+                return
+            
+            # Test the connection
+            try:
+                # Quick test to verify credentials work
+                self.pricing_client.describe_services(MaxRecords=1)
+                st.success("✅ AWS Pricing API connection successful")
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                if error_code == 'UnauthorizedOperation':
+                    st.error("❌ AWS credentials valid but missing pricing permissions")
+                elif error_code == 'InvalidUserID.NotFound':
+                    st.error("❌ Invalid AWS Access Key ID")
+                elif error_code == 'SignatureDoesNotMatch':
+                    st.error("❌ Invalid AWS Secret Access Key")
+                else:
+                    st.warning(f"⚠️ AWS API error: {str(e)}")
+                self.pricing_client = None
+                self.ec2_client = None
+                
+        except NoCredentialsError:
+            st.warning("⚠️ No AWS credentials found. Using fallback pricing.")
+            self.pricing_client = None
+            self.ec2_client = None
+        except Exception as e:
+            st.error(f"❌ Error initializing AWS clients: {str(e)}")
+            self.pricing_client = None
+            self.ec2_client = None
+    
+    
+    
+    
+    
+    
+    def _is_cache_valid(self, key):
+        """Check if cached data is still valid"""
+        if key not in self.cache or key not in self.last_cache_update:
+            return False
+        return (time.time() - self.last_cache_update[key]) < self.cache_ttl
+    
+    def _update_cache(self, key, value):
+        """Update cache with new value"""
+        self.cache[key] = value
+        self.last_cache_update[key] = time.time()
+    
+    @lru_cache(maxsize=100)
+    def get_ec2_pricing(self, instance_type, region=None):
+        """Get real-time EC2 instance pricing"""
+        if not self.pricing_client:
+            return self._get_fallback_ec2_pricing(instance_type)
+        
+        cache_key = f"ec2_{instance_type}_{region or self.region}"
+        
+        if self._is_cache_valid(cache_key):
+            return self.cache[cache_key]
+        
+        try:
+            # Get pricing for On-Demand Linux instances
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonEC2',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+                    {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name(region or self.region)},
+                    {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'},
+                    {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}
+                ]
+            )
+            
+            if response['PriceList']:
+                price_data = json.loads(response['PriceList'][0])
+                terms = price_data['terms']['OnDemand']
+                
+                # Extract the hourly price
+                for term_key, term_value in terms.items():
+                    for price_dimension_key, price_dimension in term_value['priceDimensions'].items():
+                        if 'USD' in price_dimension['pricePerUnit']:
+                            hourly_price = float(price_dimension['pricePerUnit']['USD'])
+                            self._update_cache(cache_key, hourly_price)
+                            return hourly_price
+            
+            # Fallback if no pricing found
+            return self._get_fallback_ec2_pricing(instance_type)
+            
+        except Exception as e:
+            st.warning(f"Error fetching EC2 pricing for {instance_type}: {str(e)}")
+            return self._get_fallback_ec2_pricing(instance_type)
+    
+    def get_s3_pricing(self, storage_class, region=None):
+        """Get real-time S3 storage pricing"""
+        if not self.pricing_client:
+            return self._get_fallback_s3_pricing(storage_class)
+        
+        cache_key = f"s3_{storage_class}_{region or self.region}"
+        
+        if self._is_cache_valid(cache_key):
+            return self.cache[cache_key]
+        
+        try:
+            # Map storage class names to AWS API values
+            storage_class_mapping = {
+                "Standard": "General Purpose",
+                "Standard-IA": "Infrequent Access",
+                "One Zone-IA": "One Zone - Infrequent Access",
+                "Glacier Instant Retrieval": "Amazon Glacier Instant Retrieval",
+                "Glacier Flexible Retrieval": "Amazon Glacier Flexible Retrieval",
+                "Glacier Deep Archive": "Amazon Glacier Deep Archive"
+            }
+            
+            aws_storage_class = storage_class_mapping.get(storage_class, "General Purpose")
+            
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonS3',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'storageClass', 'Value': aws_storage_class},
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name(region or self.region)},
+                    {'Type': 'TERM_MATCH', 'Field': 'volumeType', 'Value': 'Standard'}
+                ]
+            )
+            
+            if response['PriceList']:
+                price_data = json.loads(response['PriceList'][0])
+                terms = price_data['terms']['OnDemand']
+                
+                # Extract the price per GB
+                for term_key, term_value in terms.items():
+                    for price_dimension_key, price_dimension in term_value['priceDimensions'].items():
+                        if 'USD' in price_dimension['pricePerUnit']:
+                            gb_price = float(price_dimension['pricePerUnit']['USD'])
+                            self._update_cache(cache_key, gb_price)
+                            return gb_price
+            
+            return self._get_fallback_s3_pricing(storage_class)
+            
+        except Exception as e:
+            st.warning(f"Error fetching S3 pricing for {storage_class}: {str(e)}")
+            return self._get_fallback_s3_pricing(storage_class)
+    
+    def get_data_transfer_pricing(self, region=None):
+        """Get real-time data transfer pricing"""
+        if not self.pricing_client:
+            return 0.09  # Fallback rate
+        
+        cache_key = f"transfer_{region or self.region}"
+        
+        if self._is_cache_valid(cache_key):
+            return self.cache[cache_key]
+        
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonEC2',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'transferType', 'Value': 'AWS Outbound'},
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name(region or self.region)}
+                ]
+            )
+            
+            if response['PriceList']:
+                # Parse the first pricing tier (usually 0-1GB or 1-10TB)
+                price_data = json.loads(response['PriceList'][0])
+                terms = price_data['terms']['OnDemand']
+                
+                for term_key, term_value in terms.items():
+                    for price_dimension_key, price_dimension in term_value['priceDimensions'].items():
+                        if 'USD' in price_dimension['pricePerUnit']:
+                            transfer_price = float(price_dimension['pricePerUnit']['USD'])
+                            self._update_cache(cache_key, transfer_price)
+                            return transfer_price
+            
+            return 0.09  # Fallback
+            
+        except Exception as e:
+            st.warning(f"Error fetching data transfer pricing: {str(e)}")
+            return 0.09
+    
+    def get_direct_connect_pricing(self, bandwidth_mbps, region=None):
+        """Get Direct Connect pricing based on bandwidth"""
+        if not self.pricing_client:
+            return self._get_fallback_dx_pricing(bandwidth_mbps)
+        
+        cache_key = f"dx_{bandwidth_mbps}_{region or self.region}"
+        
+        if self._is_cache_valid(cache_key):
+            return self.cache[cache_key]
+        
+        try:
+            # Map bandwidth to AWS DX port speeds
+            if bandwidth_mbps >= 10000:
+                port_speed = "10Gbps"
+            elif bandwidth_mbps >= 1000:
+                port_speed = "1Gbps"
+            else:
+                port_speed = "100Mbps"
+            
+            response = self.pricing_client.get_products(
+                ServiceCode='AWSDirectConnect',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'portSpeed', 'Value': port_speed},
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name(region or self.region)}
+                ]
+            )
+            
+            if response['PriceList']:
+                price_data = json.loads(response['PriceList'][0])
+                terms = price_data['terms']['OnDemand']
+                
+                for term_key, term_value in terms.items():
+                    for price_dimension_key, price_dimension in term_value['priceDimensions'].items():
+                        if 'USD' in price_dimension['pricePerUnit']:
+                            monthly_price = float(price_dimension['pricePerUnit']['USD'])
+                            hourly_price = monthly_price / (24 * 30)  # Convert to hourly
+                            self._update_cache(cache_key, hourly_price)
+                            return hourly_price
+            
+            return self._get_fallback_dx_pricing(bandwidth_mbps)
+            
+        except Exception as e:
+            st.warning(f"Error fetching Direct Connect pricing: {str(e)}")
+            return self._get_fallback_dx_pricing(bandwidth_mbps)
+    
+    def _get_location_name(self, region):
+        """Map AWS region codes to location names used in Pricing API"""
+        location_mapping = {
+            'us-east-1': 'US East (N. Virginia)',
+            'us-east-2': 'US East (Ohio)',
+            'us-west-1': 'US West (N. California)',
+            'us-west-2': 'US West (Oregon)',
+            'eu-west-1': 'Europe (Ireland)',
+            'eu-central-1': 'Europe (Frankfurt)',
+            'ap-southeast-1': 'Asia Pacific (Singapore)',
+            'ap-northeast-1': 'Asia Pacific (Tokyo)',
+            'ap-south-1': 'Asia Pacific (Mumbai)',
+            'sa-east-1': 'South America (Sao Paulo)'
+        }
+        return location_mapping.get(region, 'US East (N. Virginia)')
+    
+    def _get_fallback_ec2_pricing(self, instance_type):
+        """Fallback EC2 pricing when API is unavailable"""
+        fallback_prices = {
+            "m5.large": 0.096,
+            "m5.xlarge": 0.192,
+            "m5.2xlarge": 0.384,
+            "m5.4xlarge": 0.768,
+            "m5.8xlarge": 1.536,
+            "c5.2xlarge": 0.34,
+            "c5.4xlarge": 0.68,
+            "c5.9xlarge": 1.53,
+            "r5.2xlarge": 0.504,
+            "r5.4xlarge": 1.008
+        }
+        return fallback_prices.get(instance_type, 0.10)
+    
+    def _get_fallback_s3_pricing(self, storage_class):
+        """Fallback S3 pricing when API is unavailable"""
+        fallback_prices = {
+            "Standard": 0.023,
+            "Standard-IA": 0.0125,
+            "One Zone-IA": 0.01,
+            "Glacier Instant Retrieval": 0.004,
+            "Glacier Flexible Retrieval": 0.0036,
+            "Glacier Deep Archive": 0.00099
+        }
+        return fallback_prices.get(storage_class, 0.023)
+    
+    def _get_fallback_dx_pricing(self, bandwidth_mbps):
+        """Fallback Direct Connect pricing when API is unavailable"""
+        if bandwidth_mbps >= 10000:
+            return 1.55  # 10Gbps port
+        elif bandwidth_mbps >= 1000:
+            return 0.30  # 1Gbps port
+        else:
+            return 0.03  # 100Mbps port
+    
+    def get_comprehensive_pricing(self, instance_type, storage_class, region=None, bandwidth_mbps=1000):
+        """Get all pricing information in parallel for better performance"""
+        try:
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                # Submit all pricing requests concurrently
+                futures = {
+                    'ec2': executor.submit(self.get_ec2_pricing, instance_type, region),
+                    's3': executor.submit(self.get_s3_pricing, storage_class, region),
+                    'transfer': executor.submit(self.get_data_transfer_pricing, region),
+                    'dx': executor.submit(self.get_direct_connect_pricing, bandwidth_mbps, region)
+                }
+                
+                # Collect results
+                pricing = {}
+                for key, future in futures.items():
+                    try:
+                        pricing[key] = future.result(timeout=10)  # 10-second timeout
+                    except Exception as e:
+                        st.warning(f"Timeout fetching {key} pricing: {str(e)}")
+                        # Use fallback values
+                        if key == 'ec2':
+                            pricing[key] = self._get_fallback_ec2_pricing(instance_type)
+                        elif key == 's3':
+                            pricing[key] = self._get_fallback_s3_pricing(storage_class)
+                        elif key == 'transfer':
+                            pricing[key] = 0.09
+                        elif key == 'dx':
+                            pricing[key] = self._get_fallback_dx_pricing(bandwidth_mbps)
+                
+                return pricing
+                
+        except Exception as e:
+            st.error(f"Error in comprehensive pricing fetch: {str(e)}")
+            return {
+                'ec2': self._get_fallback_ec2_pricing(instance_type),
+                's3': self._get_fallback_s3_pricing(storage_class),
+                'transfer': 0.09,
+                'dx': self._get_fallback_dx_pricing(bandwidth_mbps)
+            }
+
 
 class EnterpriseCalculator:
     """Enterprise-grade calculator for AWS migration planning"""
@@ -145,7 +522,25 @@ class EnterpriseCalculator:
                 "complexity": "Medium"
             }
         }
-
+         # Initialize pricing manager with secrets
+        self.pricing_manager = None
+        self._init_pricing_manager()
+    def _init_pricing_manager(self):
+        """Initialize pricing manager with Streamlit secrets"""
+        try:
+            # Get region from secrets if available
+            region = 'us-east-1'
+            if hasattr(st, 'secrets') and 'aws' in st.secrets:
+                region = st.secrets["aws"].get("region", "us-east-1")
+            
+            self.pricing_manager = AWSPricingManager(region=region)
+            
+        except Exception as e:
+            st.warning(f"Could not initialize pricing manager: {str(e)}")
+            self.pricing_manager = None    
+    
+    
+    
     def verify_initialization(self):
         """Verify that all required attributes are properly initialized"""
         required_attributes = [
@@ -254,47 +649,183 @@ class EnterpriseCalculator:
         return effective_throughput, network_efficiency, theoretical_throughput, real_world_efficiency
     
     def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents, 
-                                   compliance_frameworks, s3_storage_class):
-        """Calculate comprehensive migration costs"""
+                                compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
+        """Calculate comprehensive migration costs using real-time AWS pricing"""
         
-        # Verify initialization first
-        self.verify_initialization()
+        # Initialize pricing manager if not already done
+        if not hasattr(self, 'pricing_manager'):
+            self.pricing_manager = AWSPricingManager(region=region or 'us-east-1')
         
-        # Ensure instance_type exists
-        if instance_type not in self.instance_performance:
-            raise ValueError(f"Unknown instance type: {instance_type}")
+        # Get real-time pricing for all components
+        with st.spinner("🔄 Fetching real-time AWS pricing..."):
+            pricing = self.pricing_manager.get_comprehensive_pricing(
+                instance_type=instance_type,
+                storage_class=s3_storage_class,
+                region=region,
+                bandwidth_mbps=dx_bandwidth_mbps
+            )
+          
         
-        instance_cost_hour = self.instance_performance[instance_type]["cost_hour"]
+        # Calculate costs using real-time pricing
+        
+        # 1. DataSync compute costs (EC2 instances)
+        instance_cost_hour = pricing['ec2']
         datasync_compute_cost = instance_cost_hour * num_agents * 24 * transfer_days
         
-        # Data transfer costs (AWS pricing)
-        data_transfer_cost = data_size_gb * 0.09
+        # 2. Data transfer costs
+        transfer_rate_per_gb = pricing['transfer']
+        data_transfer_cost = data_size_gb * transfer_rate_per_gb
         
-        # S3 storage costs per GB
-        s3_costs = {
-            "Standard": 0.023,
-            "Standard-IA": 0.0125,
-            "One Zone-IA": 0.01,
-            "Glacier Instant Retrieval": 0.004,
-            "Glacier Flexible Retrieval": 0.0036,
-            "Glacier Deep Archive": 0.00099
-        }
-        s3_storage_cost = data_size_gb * s3_costs.get(s3_storage_class, 0.023)
+        # 3. S3 storage costs
+        s3_rate_per_gb = pricing['s3']
+        s3_storage_cost = data_size_gb * s3_rate_per_gb
         
-        # Additional enterprise costs
+        # 4. Direct Connect costs (if applicable)
+        dx_hourly_cost = pricing['dx']
+        dx_cost = dx_hourly_cost * 24 * transfer_days
+        
+        # 5. Additional enterprise costs (compliance, monitoring, etc.)
         compliance_cost = len(compliance_frameworks) * 500  # Compliance tooling per framework
         monitoring_cost = 200 * transfer_days  # Enhanced monitoring per day
         
-        total_cost = datasync_compute_cost + data_transfer_cost + s3_storage_cost + compliance_cost + monitoring_cost
+        # 6. AWS service costs (DataSync service fees)
+        datasync_service_cost = data_size_gb * 0.0125  # $0.0125 per GB processed
+        
+        # 7. CloudWatch and logging costs
+        cloudwatch_cost = num_agents * 50 * transfer_days  # Monitoring per agent per day
+        
+        # Calculate total cost
+        total_cost = (datasync_compute_cost + data_transfer_cost + s3_storage_cost + 
+                    dx_cost + compliance_cost + monitoring_cost + datasync_service_cost + 
+                    cloudwatch_cost)
         
         return {
             "compute": datasync_compute_cost,
             "transfer": data_transfer_cost,
             "storage": s3_storage_cost,
+            "direct_connect": dx_cost,
+            "datasync_service": datasync_service_cost,
             "compliance": compliance_cost,
             "monitoring": monitoring_cost,
-            "total": total_cost
+            "cloudwatch": cloudwatch_cost,
+            "total": total_cost,
+            "pricing_source": "AWS API" if pricing else "Fallback",
+            "last_updated": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+            "cost_breakdown_detailed": {
+                "instance_hourly_rate": instance_cost_hour,
+                "transfer_rate_per_gb": transfer_rate_per_gb,
+                "s3_rate_per_gb": s3_rate_per_gb,
+                "dx_hourly_rate": dx_hourly_cost
+            }
         }
+    
+    # Add this method to render real-time pricing information in the UI
+def render_pricing_info_section(self, config, metrics):
+    """Render real-time pricing information section with secrets status"""
+    st.markdown('<div class="section-header">💰 Real-time AWS Pricing</div>', unsafe_allow_html=True)
+    
+    cost_breakdown = metrics['cost_breakdown']
+    
+    # Show pricing source and configuration status
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        pricing_source = cost_breakdown.get('pricing_source', 'Unknown')
+        if pricing_source == "AWS API":
+            st.success(f"✅ Live AWS API")
+        else:
+            st.warning(f"⚠️ Fallback Mode")
+    
+    with col2:
+        last_updated = cost_breakdown.get('last_updated', 'Unknown')
+        st.info(f"🕐 {last_updated}")
+    
+    with col3:
+        # Check secrets configuration status
+        if hasattr(st, 'secrets') and 'aws' in st.secrets:
+            st.success("🔑 Secrets OK")
+        else:
+            st.error("🔑 No Secrets")
+    
+    with col4:
+        if st.button("🔄 Refresh", type="secondary"):
+            # Clear cache and recalculate
+            if hasattr(self.calculator, 'pricing_manager') and self.calculator.pricing_manager:
+                self.calculator.pricing_manager.cache.clear()
+                self.calculator.pricing_manager.last_cache_update.clear()
+                # Reinitialize pricing manager to refresh connection
+                self.calculator._init_pricing_manager()
+            st.rerun()
+    
+    # Show AWS configuration details
+    if hasattr(st, 'secrets') and 'aws' in st.secrets:
+        aws_info = st.secrets["aws"]
+        
+        st.subheader("🔧 AWS Configuration")
+        
+        config_data = pd.DataFrame({
+            "Setting": [
+                "Access Key ID",
+                "Region",
+                "Pricing Region",
+                "Connection Status"
+            ],
+            "Value": [
+                f"{aws_info.get('access_key_id', 'Not set')[:8]}..." if aws_info.get('access_key_id') else "Not set",
+                aws_info.get('region', 'us-east-1'),
+                "us-east-1 (Fixed)",
+                "✅ Connected" if pricing_source == "AWS API" else "❌ Disconnected"
+            ],
+            "Notes": [
+                "From secrets.toml",
+                "For EC2/S3 pricing",
+                "Pricing API limitation",
+                "Real-time status"
+            ]
+        })
+        
+        self.safe_dataframe_display(config_data)
+    
+    # Display detailed pricing rates (existing code)
+    if 'cost_breakdown_detailed' in cost_breakdown:
+        detailed = cost_breakdown['cost_breakdown_detailed']
+        
+        st.subheader("📊 Current AWS Rates")
+        
+        pricing_data = pd.DataFrame({
+            "Service": [
+                "EC2 Instance (per hour)",
+                "Data Transfer (per GB)",
+                "S3 Storage (per GB/month)",
+                "Direct Connect (per hour)"
+            ],
+            "Rate (USD)": [
+                f"${detailed['instance_hourly_rate']:.4f}",
+                f"${detailed['transfer_rate_per_gb']:.4f}",
+                f"${detailed['s3_rate_per_gb']:.6f}",
+                f"${detailed['dx_hourly_rate']:.4f}"
+            ],
+            "Service Type": [
+                f"{config['datasync_instance_type']}",
+                "AWS Data Transfer",
+                f"S3 {config['s3_storage_class']}",
+                f"{config['dx_bandwidth_mbps']} Mbps DX"
+            ],
+            "Source": [
+                pricing_source,
+                pricing_source,
+                pricing_source,
+                pricing_source
+            ]
+        })
+        
+        self.safe_dataframe_display(pricing_data)
+        
+        # Show pricing comparison if both API and fallback are available
+        if pricing_source == "AWS API":
+            st.info("💡 Pricing fetched in real-time from AWS. Rates update automatically every hour.")
+        else:
+            st.warning("⚠️ Using fallback pricing. Configure AWS secrets for real-time rates.")
     
     def assess_compliance_requirements(self, frameworks, data_classification, data_residency):
         """Assess compliance requirements and identify risks"""
@@ -1019,6 +1550,8 @@ class MigrationPlatform:
         if 'config_change_count' not in st.session_state:
             st.session_state.config_change_count = 0
     
+    
+    
     def setup_custom_css(self):
         """Setup enhanced custom CSS styling with professional design"""
         st.markdown("""
@@ -1354,7 +1887,8 @@ class MigrationPlatform:
 
     def render_sidebar_controls(self):
         """Render sidebar configuration controls"""
-        st.sidebar.header("🏢 Enterprise Controls")
+        st.sidebar.header("🏢 Enterprise Controls")                   
+    
         
         # Project management section
         st.sidebar.subheader("📁 Project Management")
@@ -1560,6 +2094,79 @@ class MigrationPlatform:
             'ai_model': ai_model,
             'real_world_mode': real_world_mode
         }
+    def render_aws_credentials_section(self):
+        """Render AWS credentials status from Streamlit secrets"""
+    with st.sidebar:
+        st.subheader("🔑 AWS Configuration")
+        
+        # Check if AWS secrets are configured
+        aws_configured = False
+        aws_region = 'us-east-1'
+        
+        try:
+            if hasattr(st, 'secrets') and 'aws' in st.secrets:
+                aws_configured = True
+                aws_region = st.secrets["aws"].get("region", "us-east-1")
+                
+                # Display configuration status
+                st.success("✅ AWS credentials configured")
+                st.write(f"**Region:** {aws_region}")
+                
+                # Show which credentials are available
+                available_keys = list(st.secrets["aws"].keys())
+                st.write(f"**Available keys:** {', '.join(available_keys)}")
+                
+                # Option to refresh credentials
+                if st.button("🔄 Refresh AWS Connection"):
+                    st.rerun()
+                    
+            else:
+                st.warning("⚠️ AWS credentials not configured")
+                st.info("Add credentials to `.streamlit/secrets.toml`")
+                
+        except Exception as e:
+            st.error(f"Error reading AWS secrets: {str(e)}")
+        
+        # Toggle for using real-time pricing
+        use_aws_pricing = st.checkbox(
+            "Enable Real-time AWS Pricing", 
+            value=aws_configured,
+            help="Use AWS Pricing API for real-time cost calculations",
+            disabled=not aws_configured
+        )
+        
+        if not aws_configured:
+            st.markdown("""
+            **To configure AWS credentials:**
+            
+            1. Create `.streamlit/secrets.toml` in your project root
+            2. Add your AWS credentials (see example below)
+            3. Restart the Streamlit app
+            """)
+            
+            # Show example configuration
+            with st.expander("📋 Example secrets.toml"):
+                st.code("""
+                [aws]
+                access_key_id = "AKIAIOSFODNN7EXAMPLE"
+                secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                region = "us-east-1"
+
+                # Optional: Specify different regions for different services
+                [aws.pricing]
+                region = "us-east-1"  # Pricing API only works in us-east-1
+
+                [aws.compute]
+                region = "us-west-2"  # Your preferred compute region
+                                """, language="toml")
+                        
+                return {
+                        'use_aws_pricing': use_aws_pricing,
+                        'aws_region': aws_region,
+                        'aws_configured': aws_configured
+                    }
+    
+    
     
     def detect_configuration_changes(self, config):
         """Detect when configuration changes and log them"""
