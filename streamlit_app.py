@@ -2315,380 +2315,380 @@ class MigrationPlatform:
             }
         
     
-def setup_custom_css(self):
-    """Setup enhanced custom CSS styling with professional enterprise design"""
-    st.markdown("""
-    <style>
-        /* Enhanced main header - more compact and professional */
-        .main-header {
-            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            color: white;
-            text-align: center;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .main-header h1 {
-            font-size: 1.8rem;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-        }
-        
-        .main-header p {
-            margin: 0.5rem 0 0 0;
-            font-size: 0.95rem;
-            font-weight: 400;
-        }
-        
-        /* Enhanced professional tab container */
-        .tab-container {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-            border: 1px solid #e9ecef;
-            border-top: 3px solid #232F3E;
-        }
-        
-        /* Professional tab buttons */
-        .stButton > button {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border: 2px solid #dee2e6;
-            border-radius: 6px;
-            padding: 0.75rem 1.25rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #495057;
-            transition: all 0.3s ease;
-            width: 100%;
-            height: 3rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        
-        .stButton > button:hover {
-            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-            border-color: #232F3E;
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(35,47,62,0.2);
-        }
-        
-        .stButton > button:active, .stButton > button:focus {
-            background: linear-gradient(135deg, #FF9900 0%, #232F3E 100%);
-            border-color: #FF9900;
-            color: white;
-            box-shadow: 0 2px 8px rgba(255,153,0,0.3);
-        }
-        
-        /* Standardized section headers - more compact */
-        .section-header {
-            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-            color: white;
-            padding: 0.75rem 1.25rem;
-            border-radius: 6px;
-            margin: 1.25rem 0 1rem 0;
-            font-size: 1.1rem;
-            font-weight: 600;
-            box-shadow: 0 2px 10px rgba(35,47,62,0.2);
-            border-left: 4px solid #FF9900;
-        }
-        
-        /* Enhanced metric cards - more professional */
-        .metric-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            padding: 1.25rem;
-            border-radius: 8px;
-            border-left: 4px solid #FF9900;
-            margin: 0.75rem 0;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            border: 1px solid #e9ecef;
-        }
-        
-        .metric-card:hover {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-            border-left-color: #232F3E;
-        }
-        
-        /* Professional recommendation boxes */
-        .recommendation-box {
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-            padding: 1.25rem;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            border-left: 4px solid #232F3E;
-            margin: 1rem 0;
-            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
-        }
-        
-        /* Enhanced AI insight boxes */
-        .ai-insight {
-            background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
-            padding: 1rem;
-            border-radius: 6px;
-            border-left: 4px solid #007bff;
-            margin: 1rem 0;
-            font-style: italic;
-            box-shadow: 0 2px 10px rgba(0,123,255,0.1);
-            border: 1px solid #b8daff;
-        }
-        
-        /* Executive summary styling - more compact */
-        .executive-summary {
-            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin: 1.25rem 0;
-            box-shadow: 0 4px 20px rgba(35,47,62,0.2);
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        /* Status indicators - more professional */
-        .status-indicator {
-            display: inline-block;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            margin: 0.25rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-        
-        .status-excellent {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-        }
-        
-        .status-good {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            color: white;
-        }
-        
-        .status-warning {
-            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-            color: #212529;
-        }
-        
-        .status-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            color: white;
-        }
-        
-        /* Security badges - more professional */
-        .security-badge {
-            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-            color: white;
-            padding: 0.3rem 0.7rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            margin: 0.25rem;
-            display: inline-block;
-            box-shadow: 0 2px 6px rgba(35,47,62,0.3);
-            font-weight: 600;
-        }
-        
-        /* Compliance items */
-        .compliance-item {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            border-radius: 6px;
-            border-left: 4px solid #232F3E;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #e9ecef;
-        }
-        
-        /* Network frame - more professional */
-        .networking-frame {
-            border: 2px solid #232F3E;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            box-shadow: 0 4px 16px rgba(35,47,62,0.1);
-            padding: 1.25rem;
-            margin: 1rem 0;
-        }
-        
-        /* Real-time indicators */
-        .real-time-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-            margin-right: 6px;
-            box-shadow: 0 0 6px rgba(40,167,69,0.5);
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.1); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        
-        /* Enhanced animations */
-        @keyframes slideIn {
-            from { 
-                opacity: 0; 
-                transform: translateY(15px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
-            }
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        /* Professional navigation buttons */
-        .nav-button {
-            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
-            border: none;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
-            margin: 0.25rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(35,47,62,0.3);
-            font-weight: 600;
-        }
-        
-        .nav-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(35,47,62,0.4);
-        }
-        
-        /* Professional tables */
-        .dataframe {
-            border-radius: 6px;
-            overflow: hidden;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
-            border: 1px solid #dee2e6;
-        }
-        
-        /* Responsive design - enterprise optimized */
-        @media (max-width: 768px) {
+    def setup_custom_css(self):
+        """Setup enhanced custom CSS styling with professional enterprise design"""
+        st.markdown("""
+        <style>
+            /* Enhanced main header - more compact and professional */
             .main-header {
-                padding: 0.75rem 1rem;
+                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                padding: 1rem 2rem;
+                border-radius: 8px;
+                color: white;
+                text-align: center;
+                margin-bottom: 1.5rem;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                border: 1px solid rgba(255,255,255,0.1);
             }
             
             .main-header h1 {
-                font-size: 1.5rem;
+                font-size: 1.8rem;
+                margin: 0;
+                font-weight: 600;
+                letter-spacing: -0.5px;
             }
             
-            .metric-card {
+            .main-header p {
+                margin: 0.5rem 0 0 0;
+                font-size: 0.95rem;
+                font-weight: 400;
+            }
+            
+            /* Enhanced professional tab container */
+            .tab-container {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
                 padding: 1rem;
+                border-radius: 8px;
+                margin-bottom: 2rem;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                border: 1px solid #e9ecef;
+                border-top: 3px solid #232F3E;
             }
             
-            .recommendation-box {
-                padding: 1rem;
-            }
-            
+            /* Professional tab buttons */
             .stButton > button {
-                height: 2.5rem;
-                font-size: 0.8rem;
-                padding: 0.5rem 1rem;
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                border: 2px solid #dee2e6;
+                border-radius: 6px;
+                padding: 0.75rem 1.25rem;
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: #495057;
+                transition: all 0.3s ease;
+                width: 100%;
+                height: 3rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             }
-        }
-        
-        /* Enhanced conclusion page styling */
-        .conclusion-container {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            border: 1px solid #e9ecef;
-            border-top: 3px solid #232F3E;
-        }
-        
-        .decision-banner {
-            text-align: center;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin: 1.5rem 0;
-            font-size: 1rem;
-            font-weight: 600;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-        
-        .phase-container {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 8px;
-            padding: 1.25rem;
-            margin: 1rem 0;
-            border-left: 4px solid #17a2b8;
-            box-shadow: 0 3px 15px rgba(0,0,0,0.06);
-            border: 1px solid #e9ecef;
-        }
-        
-        /* Success criteria styling */
-        .success-criteria {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            border: 1px solid #c3e6cb;
-            border-radius: 6px;
-            padding: 1rem;
-            margin: 1rem 0;
-            border-left: 4px solid #28a745;
-        }
-        
-        .risk-mitigation {
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-            border: 1px solid #ffeaa7;
-            border-radius: 6px;
-            padding: 1rem;
-            margin: 1rem 0;
-            border-left: 4px solid #ffc107;
-        }
-        
-        /* Professional sidebar styling */
-        .sidebar .sidebar-content {
-            background: #f8f9fa;
-        }
-        
-        /* Enterprise-grade form elements */
-        .stSelectbox > div > div {
-            border-radius: 6px;
-            border: 1px solid #ced4da;
-        }
-        
-        .stNumberInput > div > div > input {
-            border-radius: 6px;
-            border: 1px solid #ced4da;
-        }
-        
-        .stTextInput > div > div > input {
-            border-radius: 6px;
-            border: 1px solid #ced4da;
-        }
-        
-        /* Professional metrics styling */
-        [data-testid="metric-container"] {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border: 1px solid #e9ecef;
-            padding: 1rem;
-            border-radius: 6px;
-            border-left: 3px solid #FF9900;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        
-        [data-testid="metric-container"]:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            
+            .stButton > button:hover {
+                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                border-color: #232F3E;
+                color: white;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(35,47,62,0.2);
+            }
+            
+            .stButton > button:active, .stButton > button:focus {
+                background: linear-gradient(135deg, #FF9900 0%, #232F3E 100%);
+                border-color: #FF9900;
+                color: white;
+                box-shadow: 0 2px 8px rgba(255,153,0,0.3);
+            }
+            
+            /* Standardized section headers - more compact */
+            .section-header {
+                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                color: white;
+                padding: 0.75rem 1.25rem;
+                border-radius: 6px;
+                margin: 1.25rem 0 1rem 0;
+                font-size: 1.1rem;
+                font-weight: 600;
+                box-shadow: 0 2px 10px rgba(35,47,62,0.2);
+                border-left: 4px solid #FF9900;
+            }
+            
+            /* Enhanced metric cards - more professional */
+            .metric-card {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                padding: 1.25rem;
+                border-radius: 8px;
+                border-left: 4px solid #FF9900;
+                margin: 0.75rem 0;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+                border: 1px solid #e9ecef;
+            }
+            
+            .metric-card:hover {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+                border-left-color: #232F3E;
+            }
+            
+            /* Professional recommendation boxes */
+            .recommendation-box {
+                background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+                padding: 1.25rem;
+                border-radius: 8px;
+                border: 1px solid #dee2e6;
+                border-left: 4px solid #232F3E;
+                margin: 1rem 0;
+                box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            }
+            
+            /* Enhanced AI insight boxes */
+            .ai-insight {
+                background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
+                padding: 1rem;
+                border-radius: 6px;
+                border-left: 4px solid #007bff;
+                margin: 1rem 0;
+                font-style: italic;
+                box-shadow: 0 2px 10px rgba(0,123,255,0.1);
+                border: 1px solid #b8daff;
+            }
+            
+            /* Executive summary styling - more compact */
+            .executive-summary {
+                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                color: white;
+                padding: 1.5rem;
+                border-radius: 8px;
+                margin: 1.25rem 0;
+                box-shadow: 0 4px 20px rgba(35,47,62,0.2);
+                text-align: center;
+                border: 1px solid rgba(255,255,255,0.1);
+            }
+            
+            /* Status indicators - more professional */
+            .status-indicator {
+                display: inline-block;
+                padding: 0.4rem 0.8rem;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 0.85rem;
+                margin: 0.25rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                border: 1px solid rgba(0,0,0,0.1);
+            }
+            
+            .status-excellent {
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+            }
+            
+            .status-good {
+                background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+                color: white;
+            }
+            
+            .status-warning {
+                background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+                color: #212529;
+            }
+            
+            .status-danger {
+                background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                color: white;
+            }
+            
+            /* Security badges - more professional */
+            .security-badge {
+                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                color: white;
+                padding: 0.3rem 0.7rem;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                margin: 0.25rem;
+                display: inline-block;
+                box-shadow: 0 2px 6px rgba(35,47,62,0.3);
+                font-weight: 600;
+            }
+            
+            /* Compliance items */
+            .compliance-item {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                padding: 0.75rem;
+                margin: 0.5rem 0;
+                border-radius: 6px;
+                border-left: 4px solid #232F3E;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                border: 1px solid #e9ecef;
+            }
+            
+            /* Network frame - more professional */
+            .networking-frame {
+                border: 2px solid #232F3E;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                box-shadow: 0 4px 16px rgba(35,47,62,0.1);
+                padding: 1.25rem;
+                margin: 1rem 0;
+            }
+            
+            /* Real-time indicators */
+            .real-time-indicator {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                border-radius: 50%;
+                animation: pulse 2s infinite;
+                margin-right: 6px;
+                box-shadow: 0 0 6px rgba(40,167,69,0.5);
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.7; transform: scale(1.1); }
+                100% { opacity: 1; transform: scale(1); }
+            }
+            
+            /* Enhanced animations */
+            @keyframes slideIn {
+                from { 
+                    opacity: 0; 
+                    transform: translateY(15px); 
+                }
+                to { 
+                    opacity: 1; 
+                    transform: translateY(0); 
+                }
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            /* Professional navigation buttons */
+            .nav-button {
+                background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+                border: none;
+                color: white;
+                padding: 0.75rem 1.5rem;
+                border-radius: 6px;
+                margin: 0.25rem;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(35,47,62,0.3);
+                font-weight: 600;
+            }
+            
+            .nav-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(35,47,62,0.4);
+            }
+            
+            /* Professional tables */
+            .dataframe {
+                border-radius: 6px;
+                overflow: hidden;
+                box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+                border: 1px solid #dee2e6;
+            }
+            
+            /* Responsive design - enterprise optimized */
+            @media (max-width: 768px) {
+                .main-header {
+                    padding: 0.75rem 1rem;
+                }
+                
+                .main-header h1 {
+                    font-size: 1.5rem;
+                }
+                
+                .metric-card {
+                    padding: 1rem;
+                }
+                
+                .recommendation-box {
+                    padding: 1rem;
+                }
+                
+                .stButton > button {
+                    height: 2.5rem;
+                    font-size: 0.8rem;
+                    padding: 0.5rem 1rem;
+                }
+            }
+            
+            /* Enhanced conclusion page styling */
+            .conclusion-container {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                border-radius: 8px;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                border: 1px solid #e9ecef;
+                border-top: 3px solid #232F3E;
+            }
+            
+            .decision-banner {
+                text-align: center;
+                padding: 1.5rem;
+                border-radius: 8px;
+                margin: 1.5rem 0;
+                font-size: 1rem;
+                font-weight: 600;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+                border: 1px solid rgba(0,0,0,0.1);
+            }
+            
+            .phase-container {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                border-radius: 8px;
+                padding: 1.25rem;
+                margin: 1rem 0;
+                border-left: 4px solid #17a2b8;
+                box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+                border: 1px solid #e9ecef;
+            }
+            
+            /* Success criteria styling */
+            .success-criteria {
+                background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                border: 1px solid #c3e6cb;
+                border-radius: 6px;
+                padding: 1rem;
+                margin: 1rem 0;
+                border-left: 4px solid #28a745;
+            }
+            
+            .risk-mitigation {
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border: 1px solid #ffeaa7;
+                border-radius: 6px;
+                padding: 1rem;
+                margin: 1rem 0;
+                border-left: 4px solid #ffc107;
+            }
+            
+            /* Professional sidebar styling */
+            .sidebar .sidebar-content {
+                background: #f8f9fa;
+            }
+            
+            /* Enterprise-grade form elements */
+            .stSelectbox > div > div {
+                border-radius: 6px;
+                border: 1px solid #ced4da;
+            }
+            
+            .stNumberInput > div > div > input {
+                border-radius: 6px;
+                border: 1px solid #ced4da;
+            }
+            
+            .stTextInput > div > div > input {
+                border-radius: 6px;
+                border: 1px solid #ced4da;
+            }
+            
+            /* Professional metrics styling */
+            [data-testid="metric-container"] {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                border: 1px solid #e9ecef;
+                padding: 1rem;
+                border-radius: 6px;
+                border-left: 3px solid #FF9900;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            }
+            
+            [data-testid="metric-container"]:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
     </style>
     """, unsafe_allow_html=True)
