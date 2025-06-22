@@ -706,6 +706,186 @@ class EnterpriseCalculator:
         
         return {"score": avg_impact, "level": level, "recommendation": recommendation}
     
+    def get_optimal_networking_architecture(self, source_location, target_region, data_size_gb, 
+                                        dx_bandwidth_mbps, database_types, data_types, config=None):
+        """AI-powered networking architecture recommendations with real-time metrics"""
+        
+        # Get latency for the route
+        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
+        
+        # Analyze data characteristics
+        has_databases = len(database_types) > 0
+        has_large_files = any("Large" in dt or "Media" in dt for dt in data_types)
+        data_size_tb = data_size_gb / 1024
+        
+        recommendations = {
+            "primary_method": "",
+            "secondary_method": "",
+            "networking_option": "",
+            "db_migration_tool": "",
+            "rationale": "",
+            "estimated_performance": {},
+            "cost_efficiency": "",
+            "risk_level": "",
+            "ai_analysis": ""
+        }
+        
+        # Network architecture decision logic
+        if dx_bandwidth_mbps >= 1000 and estimated_latency < 50:
+            recommendations["networking_option"] = "Direct Connect (Primary)"
+            network_score = 9
+        elif dx_bandwidth_mbps >= 500:
+            recommendations["networking_option"] = "Direct Connect with Internet Backup"
+            network_score = 7
+        else:
+            recommendations["networking_option"] = "Internet with VPN"
+            network_score = 5
+        
+        # Database migration tool selection
+        if has_databases and data_size_tb > 10:
+            if len(database_types) > 2:
+                recommendations["db_migration_tool"] = "DMS+DataSync"
+            else:
+                recommendations["db_migration_tool"] = "DMS"
+        elif has_large_files and data_size_tb > 50:
+            if dx_bandwidth_mbps < 1000:
+                recommendations["db_migration_tool"] = "Snowball Edge"
+            else:
+                recommendations["db_migration_tool"] = "DataSync"
+        elif data_size_tb > 100:
+            recommendations["db_migration_tool"] = "Parallel Copy"
+        else:
+            recommendations["db_migration_tool"] = "DataSync"
+        
+        # Primary method selection
+        if data_size_tb > 50 and dx_bandwidth_mbps < 1000:
+            recommendations["primary_method"] = "Snowball Edge"
+            recommendations["secondary_method"] = "DataSync (for ongoing sync)"
+        elif has_databases:
+            recommendations["primary_method"] = recommendations["db_migration_tool"]
+            recommendations["secondary_method"] = "Storage Gateway (for hybrid)"
+        else:
+            recommendations["primary_method"] = "DataSync"
+            recommendations["secondary_method"] = "S3 Transfer Acceleration"
+        
+        # Generate AI rationale
+        recommendations["rationale"] = self._generate_ai_rationale(
+            source_location, target_region, data_size_tb, dx_bandwidth_mbps, 
+            has_databases, has_large_files, estimated_latency, network_score
+        )
+        
+        # Calculate performance metrics
+        if config:
+            # Use actual configuration for performance calculation
+            try:
+                actual_throughput_result = self.calculate_enterprise_throughput(
+                    config.get('datasync_instance_type', 'm5.large'), 
+                    config.get('num_datasync_agents', 1), 
+                    config.get('avg_file_size', '10-100MB (Medium files)'), 
+                    dx_bandwidth_mbps, 
+                    config.get('network_latency', 25), 
+                    config.get('network_jitter', 5), 
+                    config.get('packet_loss', 0.1), 
+                    config.get('qos_enabled', True), 
+                    config.get('dedicated_bandwidth', 60), 
+                    config.get('real_world_mode', True)
+                )
+                
+                if len(actual_throughput_result) == 4:
+                    actual_throughput, network_efficiency, theoretical_throughput, real_world_efficiency = actual_throughput_result
+                else:
+                    actual_throughput, network_efficiency = actual_throughput_result
+                    theoretical_throughput = actual_throughput * 1.5
+                
+                optimized_throughput = min(actual_throughput, dx_bandwidth_mbps * (config.get('dedicated_bandwidth', 60) / 100))
+                optimized_throughput = max(1, optimized_throughput)
+                
+                # Calculate timing
+                available_hours_per_day = 16 if config.get('business_hours_restriction', True) else 24
+                estimated_days = (data_size_gb * 0.85 * 8) / (optimized_throughput * available_hours_per_day * 3600) / 1000
+                estimated_days = max(0.1, estimated_days)
+                
+                recommendations["estimated_performance"] = {
+                    "throughput_mbps": optimized_throughput,
+                    "estimated_days": estimated_days,
+                    "network_efficiency": network_efficiency,
+                    "agents_used": config.get('num_datasync_agents', 1),
+                    "instance_type": config.get('datasync_instance_type', 'm5.large')
+                }
+            except Exception as e:
+                # Fallback if calculation fails
+                recommendations["estimated_performance"] = {
+                    "throughput_mbps": min(dx_bandwidth_mbps * 0.6, 1000),
+                    "estimated_days": max(1, data_size_tb / 1),
+                    "network_efficiency": 0.7,
+                    "agents_used": 1,
+                    "instance_type": "m5.large"
+                }
+        else:
+            # Simplified calculation without config
+            base_throughput = min(dx_bandwidth_mbps * 0.6, 1000)
+            recommendations["estimated_performance"] = {
+                "throughput_mbps": base_throughput,
+                "estimated_days": (data_size_gb * 8) / (base_throughput * 86400) / 1000,
+                "network_efficiency": network_score / 10,
+                "agents_used": 1,
+                "instance_type": "m5.large"
+            }
+        
+        # Cost and risk assessment
+        if data_size_tb > 100 and dx_bandwidth_mbps < 1000:
+            recommendations["cost_efficiency"] = "High (Physical transfer)"
+            recommendations["risk_level"] = "Medium"
+        elif dx_bandwidth_mbps >= 1000:
+            recommendations["cost_efficiency"] = "Medium (Network transfer)"
+            recommendations["risk_level"] = "Low"
+        else:
+            recommendations["cost_efficiency"] = "Medium"
+            recommendations["risk_level"] = "Medium"
+        
+        return recommendations
+
+    def _generate_ai_rationale(self, source, target, data_size_tb, bandwidth, has_db, has_large_files, latency, network_score):
+        """Generate intelligent rationale for recommendations"""
+        
+        rationale_parts = []
+        
+        # Geographic analysis
+        if latency < 30:
+            rationale_parts.append(f"Excellent geographic proximity between {source} and {target} (≈{latency}ms latency)")
+        elif latency < 80:
+            rationale_parts.append(f"Good connectivity between {source} and {target} (≈{latency}ms latency)")
+        else:
+            rationale_parts.append(f"Significant distance between {source} and {target} (≈{latency}ms latency) - consider regional optimization")
+        
+        # Bandwidth analysis
+        if bandwidth >= 10000:
+            rationale_parts.append("High-bandwidth Direct Connect enables optimal network transfer performance")
+        elif bandwidth >= 1000:
+            rationale_parts.append("Adequate Direct Connect bandwidth supports efficient network-based migration")
+        else:
+            rationale_parts.append("Limited bandwidth suggests physical transfer methods for large datasets")
+        
+        # Data characteristics
+        if data_size_tb > 100:
+            rationale_parts.append(f"Large dataset ({data_size_tb:.1f}TB) requires high-throughput migration strategy")
+        
+        if has_db:
+            rationale_parts.append("Database workloads require specialized migration tools with minimal downtime capabilities")
+        
+        if has_large_files:
+            rationale_parts.append("Large file presence optimizes for high-throughput, parallel transfer methods")
+        
+        # Performance prediction
+        if network_score >= 8:
+            rationale_parts.append("Network conditions are optimal for direct cloud migration")
+        elif network_score >= 6:
+            rationale_parts.append("Network conditions support cloud migration with some optimization needed")
+        else:
+            rationale_parts.append("Network limitations suggest hybrid or physical transfer approaches")
+        
+        return ". ".join(rationale_parts) + "."
+    
     
     def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents, 
                                 compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
