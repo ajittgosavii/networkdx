@@ -45,23 +45,8 @@ class EnterpriseCalculator:
     """Enterprise-grade calculator for AWS migration planning"""
     
     def __init__(self):
-        self.file_size_multipliers = {
-            "< 1MB (Many small files)": 0.25,
-            "1-10MB (Small files)": 0.45,
-            "10-100MB (Medium files)": 0.70,
-            "100MB-1GB (Large files)": 0.90,
-            "> 1GB (Very large files)": 0.95
-        }
-        pass
-        
-        # ADD THIS TEST METHOD HERE
-    def test_debug_method(self):
-        """Simple test method to verify class methods work"""
-        st.write("🔧 TEST: EnterpriseCalculator class method is working!")
-        print("🔧 TEST: Console print from EnterpriseCalculator")
-        return "TEST_SUCCESSFUL"
-        
-        
+        """Initialize the calculator with all required data structures"""
+        # Ensure instance_performance is the first thing we initialize
         self.instance_performance = {
             "m5.large": {"cpu": 2, "memory": 8, "network": 750, "baseline_throughput": 150, "cost_hour": 0.096},
             "m5.xlarge": {"cpu": 4, "memory": 16, "network": 750, "baseline_throughput": 250, "cost_hour": 0.192},
@@ -75,6 +60,14 @@ class EnterpriseCalculator:
             "r5.4xlarge": {"cpu": 16, "memory": 128, "network": 4000, "baseline_throughput": 700, "cost_hour": 1.008}
         }
         
+        self.file_size_multipliers = {
+            "< 1MB (Many small files)": 0.25,
+            "1-10MB (Small files)": 0.45,
+            "10-100MB (Medium files)": 0.70,
+            "100MB-1GB (Large files)": 0.90,
+            "> 1GB (Very large files)": 0.95
+        }
+                    
         self.compliance_requirements = {
             "SOX": {"encryption_required": True, "audit_trail": True, "data_retention": 7},
             "GDPR": {"encryption_required": True, "data_residency": True, "right_to_delete": True},
@@ -152,11 +145,43 @@ class EnterpriseCalculator:
                 "complexity": "Medium"
             }
         }
+
+    def verify_initialization(self):
+        """Verify that all required attributes are properly initialized"""
+        required_attributes = [
+            'instance_performance',
+            'file_size_multipliers', 
+            'compliance_requirements',
+            'geographic_latency',
+            'db_migration_tools'
+        ]
+        
+        missing_attributes = []
+        for attr in required_attributes:
+            if not hasattr(self, attr):
+                missing_attributes.append(attr)
+        
+        if missing_attributes:
+            raise AttributeError(f"Missing required attributes: {missing_attributes}")
+        
+        # Verify instance_performance has expected keys
+        if not self.instance_performance or not isinstance(self.instance_performance, dict):
+            raise ValueError("instance_performance is not properly initialized")
+        
+        return True
     
     def calculate_enterprise_throughput(self, instance_type, num_agents, file_size_category, 
                                         network_bw_mbps, latency, jitter, packet_loss, qos_enabled, 
                                         dedicated_bandwidth, real_world_mode=True):
         """Calculate optimized throughput considering all network factors including real-world limitations"""
+        
+        # Verify initialization first
+        self.verify_initialization()
+        
+        # Ensure instance_type exists in our data
+        if instance_type not in self.instance_performance:
+            raise ValueError(f"Unknown instance type: {instance_type}. Available types: {list(self.instance_performance.keys())}")
+        
         base_performance = self.instance_performance[instance_type]["baseline_throughput"]
         file_efficiency = self.file_size_multipliers[file_size_category]
         
@@ -231,6 +256,14 @@ class EnterpriseCalculator:
     def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents, 
                                    compliance_frameworks, s3_storage_class):
         """Calculate comprehensive migration costs"""
+        
+        # Verify initialization first
+        self.verify_initialization()
+        
+        # Ensure instance_type exists
+        if instance_type not in self.instance_performance:
+            raise ValueError(f"Unknown instance type: {instance_type}")
+        
         instance_cost_hour = self.instance_performance[instance_type]["cost_hour"]
         datasync_compute_cost = instance_cost_hour * num_agents * 24 * transfer_days
         
@@ -567,79 +600,210 @@ class EnterpriseCalculator:
         except Exception as e:
             st.error(f"Claude AI API Error: {str(e)}")
             return None
-        
-# STEP 1: FIRST, let's add debugging to see if the new method is being called
-# Add this at the very beginning of your new get_intelligent_datasync_recommendations method
 
     def get_intelligent_datasync_recommendations(self, config, metrics):
         """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
-        # FIRST LINE - DEBUG MESSAGE
-        st.write("🔧 DEBUG: NEW DataSync method called!")
-        st.success("🔧 DEBUG: Method is definitely running!")
-        print("🔧 DEBUG: Console - method called")
-        
         
         try:
-            # DEBUG: Add this line to confirm new method is running
-            #print("🔧 DEBUG: NEW DataSync optimization method is running!")
-            st.write("🔧 DEBUG: Inside try block")
+            # Verify initialization
+            self.verify_initialization()
             
             current_instance = config['datasync_instance_type']
             current_agents = config['num_datasync_agents']
             data_size_gb = config['data_size_gb']
             data_size_tb = data_size_gb / 1024
             
-            # DEBUG: Show current configuration
-            st.write(f"🔧 DEBUG: Config parsed - {current_agents}x {current_instance}, {data_size_tb:.1f}TB")
+            # Current efficiency analysis
+            if 'theoretical_throughput' in metrics and metrics['theoretical_throughput'] > 0:
+                current_efficiency = (metrics['optimized_throughput'] / metrics['theoretical_throughput']) * 100
+            else:
+                current_efficiency = metrics['network_efficiency'] * 100
             
-           # Return a simple result for testing
+            # Performance rating
+            if current_efficiency >= 80:
+                performance_rating = "Excellent"
+            elif current_efficiency >= 60:
+                performance_rating = "Good"
+            elif current_efficiency >= 40:
+                performance_rating = "Fair"
+            else:
+                performance_rating = "Poor"
+            
+            # Scaling effectiveness analysis
+            if current_agents == 1:
+                scaling_rating = "Under-scaled"
+                scaling_efficiency = 0.6
+            elif current_agents <= 3:
+                scaling_rating = "Well-scaled"
+                scaling_efficiency = 0.85
+            elif current_agents <= 6:
+                scaling_rating = "Optimal"
+                scaling_efficiency = 0.95
+            else:
+                scaling_rating = "Over-scaled"
+                scaling_efficiency = 0.7
+            
+            # Instance recommendation logic
+            current_instance_info = self.instance_performance[current_instance]
+            recommended_instance = current_instance
+            upgrade_needed = False
+            
+            # Check if we need a more powerful instance
+            if data_size_tb > 50 and current_instance == "m5.large":
+                recommended_instance = "m5.2xlarge"
+                upgrade_needed = True
+                reason = f"Large dataset ({data_size_tb:.1f}TB) requires more CPU/memory for optimal performance"
+                expected_gain = 25
+                cost_impact = 100  # Percentage increase
+            elif data_size_tb > 100 and "m5.large" in current_instance:
+                recommended_instance = "c5.4xlarge"
+                upgrade_needed = True
+                reason = f"Very large dataset ({data_size_tb:.1f}TB) benefits from compute-optimized instances"
+                expected_gain = 40
+                cost_impact = 150
+            else:
+                reason = "Current instance type is appropriate for workload"
+                expected_gain = 0
+                cost_impact = 0
+            
+            # Agent recommendation logic
+            optimal_agents = max(1, min(10, int(data_size_tb / 10) + 1))
+            
+            if current_agents < optimal_agents:
+                agent_change = optimal_agents - current_agents
+                agent_reasoning = f"Scale up to {optimal_agents} agents for optimal parallelization"
+                performance_change = agent_change * 15  # 15% improvement per agent
+                cost_change = agent_change * 100  # 100% cost increase per agent
+            elif current_agents > optimal_agents:
+                agent_change = optimal_agents - current_agents
+                agent_reasoning = f"Scale down to {optimal_agents} agents for cost optimization"
+                performance_change = agent_change * 10  # 10% reduction per agent removed
+                cost_change = agent_change * 100  # 100% cost reduction per agent removed
+            else:
+                agent_change = 0
+                agent_reasoning = f"Current {current_agents} agents is optimal for this workload"
+                performance_change = 0
+                cost_change = 0
+            
+            # Bottleneck analysis
+            bottlenecks = []
+            recommendations_list = []
+            
+            if current_instance == "m5.large" and data_size_tb > 20:
+                bottlenecks.append("Instance CPU/Memory constraints for large dataset")
+                recommendations_list.append("Upgrade to m5.2xlarge or c5.2xlarge for better performance")
+            
+            if current_agents == 1 and data_size_tb > 5:
+                bottlenecks.append("Single agent limiting parallel processing")
+                recommendations_list.append("Scale to 3-5 agents for optimal throughput")
+            
+            if config.get('network_latency', 25) > 50:
+                bottlenecks.append("High network latency affecting transfer efficiency")
+                recommendations_list.append("Consider regional optimization or network tuning")
+            
+            # Cost-performance analysis
+            hourly_cost = current_instance_info["cost_hour"] * current_agents
+            cost_per_mbps = hourly_cost / max(1, metrics['optimized_throughput'])
+            
+            # Efficiency ranking (1-20, where 1 is best)
+            if cost_per_mbps < 0.001:
+                efficiency_ranking = 1
+            elif cost_per_mbps < 0.002:
+                efficiency_ranking = 3
+            elif cost_per_mbps < 0.005:
+                efficiency_ranking = 6
+            elif cost_per_mbps < 0.01:
+                efficiency_ranking = 10
+            else:
+                efficiency_ranking = 15
+            
+            # Alternative configurations
+            alternatives = []
+            
+            # Cost-optimized alternative
+            if current_instance != "m5.large":
+                alternatives.append({
+                    "name": "Cost-Optimized",
+                    "instance": "m5.large",
+                    "agents": max(2, current_agents),
+                    "description": "Lower cost with acceptable performance"
+                })
+            
+            # Performance-optimized alternative
+            if current_instance != "c5.4xlarge":
+                alternatives.append({
+                    "name": "Performance-Optimized", 
+                    "instance": "c5.4xlarge",
+                    "agents": min(current_agents, 6),
+                    "description": "Maximum throughput with premium pricing"
+                })
+            
+            # Balanced alternative
+            alternatives.append({
+                "name": "Balanced",
+                "instance": "m5.xlarge",
+                "agents": optimal_agents,
+                "description": "Optimal balance of cost and performance"
+            })
+            
             return {
                 "current_analysis": {
-                    "current_efficiency": 85,
-                    "performance_rating": "DEBUG MODE ACTIVE",
-                    "scaling_effectiveness": {"scaling_rating": "Debug", "efficiency": 0.85}
-            },
-            "recommended_instance": {
-                "recommended_instance": current_instance,
-                "upgrade_needed": False,
-                "reason": "DEBUG: Method is working correctly!",
-                "expected_performance_gain": 0,
-                "cost_impact_percent": 0
-            },
-            "recommended_agents": {
-                "recommended_agents": current_agents,
-                "change_needed": 0,
-                "reasoning": "DEBUG: Current configuration detected successfully",
-                "performance_change_percent": 0,
-                "cost_change_percent": 0
-            },
-            "bottleneck_analysis": ([], ["DEBUG: No bottlenecks in debug mode"]),
-            "cost_performance_analysis": {
-                "current_cost_efficiency": 0.1,
-                "efficiency_ranking": 1
-            },
-            "alternative_configurations": [
-                {
-                    "name": "DEBUG CONFIG",
-                    "instance": current_instance,
-                    "agents": current_agents,
-                    "description": "Debug mode active - method working!"
-                }
-            ]
-        }
-        
-        except Exception as e:
-            st.error(f"🔧 DEBUG: Exception in method: {str(e)}")
-            import traceback
-            st.code(traceback.format_exc())
+                    "current_efficiency": current_efficiency,
+                    "performance_rating": performance_rating,
+                    "scaling_effectiveness": {
+                        "scaling_rating": scaling_rating,
+                        "efficiency": scaling_efficiency
+                    }
+                },
+                "recommended_instance": {
+                    "recommended_instance": recommended_instance,
+                    "upgrade_needed": upgrade_needed,
+                    "reason": reason,
+                    "expected_performance_gain": expected_gain,
+                    "cost_impact_percent": cost_impact
+                },
+                "recommended_agents": {
+                    "recommended_agents": optimal_agents,
+                    "change_needed": agent_change,
+                    "reasoning": agent_reasoning,
+                    "performance_change_percent": performance_change,
+                    "cost_change_percent": cost_change
+                },
+                "bottleneck_analysis": (bottlenecks, recommendations_list),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": cost_per_mbps,
+                    "efficiency_ranking": efficiency_ranking
+                },
+                "alternative_configurations": alternatives
+            }
             
+        except Exception as e:
             # Return safe fallback
             return {
-                "current_analysis": {"current_efficiency": 75, "performance_rating": "Error Mode"},
-                "recommended_instance": {"recommended_instance": config['datasync_instance_type'], "upgrade_needed": False, "reason": f"Error: {str(e)}"},
-                "recommended_agents": {"recommended_agents": config['num_datasync_agents'], "change_needed": 0, "reasoning": "Error fallback"},
-                "bottleneck_analysis": ([], []),
-                "cost_performance_analysis": {"current_cost_efficiency": 0.1, "efficiency_ranking": 10},
+                "current_analysis": {
+                    "current_efficiency": 75,
+                    "performance_rating": "Unable to analyze",
+                    "scaling_effectiveness": {"scaling_rating": "Unknown", "efficiency": 0.75}
+                },
+                "recommended_instance": {
+                    "recommended_instance": config.get('datasync_instance_type', 'm5.large'),
+                    "upgrade_needed": False,
+                    "reason": f"Analysis error: {str(e)}",
+                    "expected_performance_gain": 0,
+                    "cost_impact_percent": 0
+                },
+                "recommended_agents": {
+                    "recommended_agents": config.get('num_datasync_agents', 1),
+                    "change_needed": 0,
+                    "reasoning": "Unable to analyze due to error",
+                    "performance_change_percent": 0,
+                    "cost_change_percent": 0
+                },
+                "bottleneck_analysis": ([], [f"Analysis error: {str(e)}"]),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": 0.1,
+                    "efficiency_ranking": 10
+                },
                 "alternative_configurations": []
             }
 
@@ -648,6 +812,9 @@ class PDFReportGenerator:
     """Generate comprehensive PDF reports for migration analysis"""
     
     def __init__(self):
+        if not PDF_AVAILABLE:
+            return
+            
         self.styles = getSampleStyleSheet()
         self.title_style = ParagraphStyle(
             'CustomTitle',
@@ -696,6 +863,9 @@ class PDFReportGenerator:
     
     def generate_conclusion_report(self, config, metrics, recommendations):
         """Generate comprehensive conclusion report"""
+        if not PDF_AVAILABLE:
+            return None
+            
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
         
@@ -779,109 +949,6 @@ class PDFReportGenerator:
         story.append(Paragraph(ai_recommendations, self.body_style))
         story.append(Spacer(1, 15))
         
-        # Decision Matrix
-        story.append(Paragraph("Decision Matrix", self.heading_style))
-        decision_data = [
-            ['Factor', 'Score', 'Weight', 'Weighted Score', 'Status'],
-            ['Performance', f"{performance_score:.0f}/50", '50%', f"{performance_score:.0f}", 'Excellent' if performance_score >= 40 else 'Good' if performance_score >= 30 else 'Poor'],
-            ['Cost Efficiency', f"{cost_score:.0f}/50", '50%', f"{cost_score:.0f}", 'Excellent' if cost_score >= 40 else 'Good' if cost_score >= 30 else 'Poor'],
-            ['Timeline', f"{timeline_score:.0f}/30", '30%', f"{timeline_score:.0f}", 'Excellent' if timeline_score >= 25 else 'Good' if timeline_score >= 20 else 'Poor'],
-            ['Risk Management', f"{risk_score}/20", '20%', f"{risk_score}", 'Excellent' if risk_score >= 18 else 'Good' if risk_score >= 15 else 'Poor'],
-            ['TOTAL', f"{overall_score:.0f}/150", '100%', f"{overall_score:.0f}", strategy_status]
-        ]
-        
-        decision_table = Table(decision_data, colWidths=[1.5*inch, 1*inch, 0.8*inch, 1*inch, 1.2*inch])
-        decision_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.lightblue),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(decision_table)
-        story.append(Spacer(1, 20))
-        
-        # Implementation Roadmap
-        story.append(Paragraph("Implementation Roadmap", self.heading_style))
-        
-        phases = [
-            ("Phase 1: Preparation (Weeks 1-2)", [
-                f"Setup {config['num_datasync_agents']} DataSync agents with {config['datasync_instance_type']} instances",
-                f"Configure {recommendations['networking_option']} connectivity",
-                "Implement security controls and encryption",
-                "Setup monitoring and compliance tracking"
-            ]),
-            ("Phase 2: Pilot Migration (Weeks 3-4)", [
-                f"Migrate 10% of data using {recommendations['primary_method']}",
-                "Validate performance and security controls",
-                "Test disaster recovery procedures",
-                "Fine-tune configuration based on results"
-            ]),
-            (f"Phase 3: Full Migration (Weeks 5-{4 + max(2, int(metrics['transfer_days'] / 7))})", [
-                f"Execute full {metrics['data_size_tb']:.1f}TB migration",
-                f"Maintain {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput",
-                "Continuous monitoring and optimization",
-                "Regular checkpoints and progress reporting"
-            ]),
-            ("Phase 4: Validation & Cutover", [
-                "Data integrity verification",
-                "Performance validation",
-                "User acceptance testing",
-                "Production cutover and decommissioning"
-            ])
-        ]
-        
-        for phase_title, activities in phases:
-            story.append(Paragraph(phase_title, self.subheading_style))
-            for activity in activities:
-                story.append(Paragraph(f"• {activity}", self.body_style))
-            story.append(Spacer(1, 10))
-        
-        # Risk Mitigation
-        story.append(Paragraph("Risk Mitigation & Contingency Planning", self.heading_style))
-        
-        risk_mitigation = f"""
-        <b>Performance Risk:</b> Implement {recommendations['secondary_method']} as backup method<br/>
-        <b>Timeline Risk:</b> Maintain {config.get('dx_secondary_mbps', config['dx_bandwidth_mbps'])} Mbps redundant connectivity<br/>
-        <b>Security Risk:</b> Enable real-time monitoring for {config['data_classification']} data<br/>
-        <b>Compliance Risk:</b> Automated audit trail for {len(config['compliance_frameworks'])} frameworks<br/>
-        <b>Technical Risk:</b> 24/7 technical support and escalation procedures
-        """
-        story.append(Paragraph(risk_mitigation, self.body_style))
-        story.append(Spacer(1, 15))
-        
-        # Success Criteria
-        story.append(Paragraph("Success Criteria", self.heading_style))
-        success_criteria = f"""
-        <b>Performance Target:</b> Achieve ≥{recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput<br/>
-        <b>Timeline Target:</b> Complete migration within {config['max_transfer_days']} days<br/>
-        <b>Budget Target:</b> Stay within ${config['budget_allocated']:,.0f} allocated budget<br/>
-        <b>Security Target:</b> Maintain {config['data_classification']} data classification requirements<br/>
-        <b>Compliance Target:</b> Achieve 100% compliance with {len(config['compliance_frameworks'])} frameworks<br/>
-        <b>Business Target:</b> {metrics['business_impact']['level']} business impact mitigation
-        """
-        story.append(Paragraph(success_criteria, self.body_style))
-        story.append(Spacer(1, 20))
-        
-        # Final Recommendation
-        final_recommendation = f"""
-        <b>FINAL STRATEGIC DIRECTION:</b> {strategy_status}<br/>
-        <b>AI CONFIDENCE:</b> {85 + (overall_score - 100) * 0.3:.0f}% based on comprehensive analysis<br/>
-        <b>RECOMMENDED ACTION:</b> {strategy_action}<br/>
-        <br/>
-        <b>Next Steps:</b><br/>
-        1. Executive Approval: Present this analysis to stakeholders<br/>
-        2. Resource Allocation: Secure budget and technical resources<br/>
-        3. Team Formation: Assemble migration team with defined roles<br/>
-        4. Infrastructure Setup: Begin Phase 1 preparation activities<br/>
-        5. Communication Plan: Notify affected users and departments
-        """
-        story.append(Paragraph("Final Strategic Recommendation", self.heading_style))
-        story.append(Paragraph(final_recommendation, self.highlight_style))
-        
         # Build PDF
         doc.build(story)
         buffer.seek(0)
@@ -889,6 +956,9 @@ class PDFReportGenerator:
     
     def generate_cost_analysis_report(self, config, metrics):
         """Generate detailed cost analysis report"""
+        if not PDF_AVAILABLE:
+            return None
+            
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
         
@@ -910,109 +980,6 @@ class PDFReportGenerator:
         """
         story.append(Paragraph(cost_summary, self.highlight_style))
         story.append(Spacer(1, 20))
-        
-        # Detailed Cost Breakdown
-        story.append(Paragraph("Detailed Cost Breakdown", self.heading_style))
-        cost_data = [
-            ['Cost Category', 'Amount ($)', 'Percentage (%)', 'Per TB ($)'],
-            ['Compute (DataSync)', f"${metrics['cost_breakdown']['compute']:,.2f}", 
-             f"{(metrics['cost_breakdown']['compute']/metrics['cost_breakdown']['total'])*100:.1f}%",
-             f"${metrics['cost_breakdown']['compute']/metrics['data_size_tb']:.2f}"],
-            ['Data Transfer', f"${metrics['cost_breakdown']['transfer']:,.2f}", 
-             f"{(metrics['cost_breakdown']['transfer']/metrics['cost_breakdown']['total'])*100:.1f}%",
-             f"${metrics['cost_breakdown']['transfer']/metrics['data_size_tb']:.2f}"],
-            ['S3 Storage', f"${metrics['cost_breakdown']['storage']:,.2f}", 
-             f"{(metrics['cost_breakdown']['storage']/metrics['cost_breakdown']['total'])*100:.1f}%",
-             f"${metrics['cost_breakdown']['storage']/metrics['data_size_tb']:.2f}"],
-            ['Compliance', f"${metrics['cost_breakdown']['compliance']:,.2f}", 
-             f"{(metrics['cost_breakdown']['compliance']/metrics['cost_breakdown']['total'])*100:.1f}%",
-             f"${metrics['cost_breakdown']['compliance']/metrics['data_size_tb']:.2f}"],
-            ['Monitoring', f"${metrics['cost_breakdown']['monitoring']:,.2f}", 
-             f"{(metrics['cost_breakdown']['monitoring']/metrics['cost_breakdown']['total'])*100:.1f}%",
-             f"${metrics['cost_breakdown']['monitoring']/metrics['data_size_tb']:.2f}"],
-            ['TOTAL', f"${metrics['cost_breakdown']['total']:,.2f}", '100.0%',
-             f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.2f}"]
-        ]
-        
-        cost_table = Table(cost_data, colWidths=[1.8*inch, 1.5*inch, 1.2*inch, 1*inch])
-        cost_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.lightblue),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(cost_table)
-        story.append(Spacer(1, 20))
-        
-        # ROI Analysis
-        story.append(Paragraph("Return on Investment (ROI) Analysis", self.heading_style))
-        
-        # Calculate ROI metrics
-        on_premises_annual_cost = metrics['data_size_tb'] * 1000 * 12  # $1000/TB/month on-premises
-        aws_annual_cost = metrics['cost_breakdown']['storage'] * 12 + (metrics['cost_breakdown']['total'] * 0.1)
-        annual_savings = max(0, on_premises_annual_cost - aws_annual_cost)
-        roi_percentage = (annual_savings / metrics['cost_breakdown']['total']) * 100 if metrics['cost_breakdown']['total'] > 0 else 0
-        payback_period = metrics['cost_breakdown']['total'] / annual_savings if annual_savings > 0 else 0
-        
-        roi_data = [
-            ['Metric', 'Value', 'Analysis'],
-            ['On-premises Annual Cost', f"${on_premises_annual_cost:,.0f}", 'Current state'],
-            ['AWS Annual Cost', f"${aws_annual_cost:,.0f}", 'Target state'],
-            ['Annual Savings', f"${annual_savings:,.0f}", 'Cost reduction'],
-            ['ROI Percentage', f"{roi_percentage:.1f}%", 'Return rate'],
-            ['Payback Period', f"{payback_period:.1f} years" if payback_period > 0 and payback_period < 50 else "N/A", 'Break-even timeline']
-        ]
-        
-        roi_table = Table(roi_data, colWidths=[2*inch, 1.5*inch, 2*inch])
-        roi_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(roi_table)
-        story.append(Spacer(1, 20))
-        
-        # Cost Optimization Recommendations
-        story.append(Paragraph("Cost Optimization Opportunities", self.heading_style))
-        
-        optimizations = []
-        if config['s3_storage_class'] == 'Standard':
-            potential_savings = metrics['cost_breakdown']['storage'] * 0.4
-            optimizations.append(f"Switch to Standard-IA storage class: Save ~${potential_savings:.0f}")
-        
-        if not config['enable_lifecycle']:
-            lifecycle_savings = metrics['cost_breakdown']['storage'] * 0.2
-            optimizations.append(f"Enable lifecycle policies: Save ~${lifecycle_savings:.0f}")
-        
-        if config['num_datasync_agents'] > 3:
-            agent_savings = (config['num_datasync_agents'] - 3) * 50 * metrics['transfer_days']
-            optimizations.append(f"Optimize agent count: Save ~${agent_savings:.0f}")
-        
-        if not optimizations:
-            optimizations.append("Configuration is already cost-optimized!")
-        
-        for opt in optimizations:
-            story.append(Paragraph(f"• {opt}", self.body_style))
-        
-        story.append(Spacer(1, 20))
-        
-        # Risk Factors
-        story.append(Paragraph("Cost Risk Factors", self.heading_style))
-        risk_factors = f"""
-        <b>Data Growth:</b> {config['data_growth_rate']}% annual growth may increase future costs<br/>
-        <b>Compliance:</b> {len(config['compliance_frameworks'])} frameworks add ${len(config['compliance_frameworks']) * 500:,.0f} in compliance costs<br/>
-        <b>Network:</b> {config['dx_bandwidth_mbps']} Mbps Direct Connect provides cost-effective transfer<br/>
-        <b>Timeline:</b> {metrics['transfer_days']:.1f} day timeline minimizes extended operational costs<br/>
-        <b>Storage Class:</b> {config['s3_storage_class']} storage provides balance of cost and access
-        """
-        story.append(Paragraph(risk_factors, self.body_style))
         
         # Build PDF
         doc.build(story)
@@ -1758,8 +1725,8 @@ class MigrationPlatform:
         success_change = f"+{calculated_success_rate - 85:.0f}%" if calculated_success_rate > 85 else f"{calculated_success_rate - 85:.0f}%"
         
         # Dynamic cost savings calculation
-        on_premises_cost = metrics['data_size_tb'] * 1000 * 12  # $1000/TB/month
-        aws_annual_cost = metrics['cost_breakdown']['storage'] * 12 + metrics['cost_breakdown']['total']
+        on_premises_cost = metrics['data_size_tb'] * 1000 * 12  # $1000/TB/month on-premises
+        aws_annual_cost = metrics['cost_breakdown']['storage'] * 12 + (metrics['cost_breakdown']['total'] * 0.1)
         annual_savings = max(0, on_premises_cost - aws_annual_cost)
         
         # Add optimization savings
@@ -1933,30 +1900,7 @@ class MigrationPlatform:
 
         # Get intelligent DataSync recommendations
         try:
-            try:
-                # TEST: First verify the calculator class works
-                test_result = self.calculator.test_debug_method()
-                st.write(f"🔧 TEST RESULT: {test_result}")
-                
-                # TEST: Now try the actual method
-                st.write("🔧 About to call get_intelligent_datasync_recommendations...")
-                datasync_recommendations = self.calculator.get_intelligent_datasync_recommendations(config, metrics)
-                st.write("🔧 Method call completed successfully!")
-                
-            except Exception as e:
-                st.error(f"🔧 ERROR: {str(e)}")
-                import traceback
-                st.code(traceback.format_exc())
-                
-                # Fallback for debugging
-                datasync_recommendations = {
-                    "current_analysis": {"current_efficiency": 75, "performance_rating": "Debug Mode"},
-                    "recommended_instance": {"recommended_instance": "DEBUG", "upgrade_needed": False, "reason": "Error fallback"},
-                    "recommended_agents": {"recommended_agents": 1, "change_needed": 0, "reasoning": "Error fallback"},
-                    "bottleneck_analysis": ([], []),
-                    "cost_performance_analysis": {"current_cost_efficiency": 0.1, "efficiency_ranking": 10},
-                    "alternative_configurations": []
-                }
+            datasync_recommendations = self.calculator.get_intelligent_datasync_recommendations(config, metrics)
             
             col1, col2, col3 = st.columns([1, 1, 1])
             
@@ -2144,97 +2088,6 @@ class MigrationPlatform:
             </div>
             """, unsafe_allow_html=True)
 
-        # Add this comparison table to show the difference
-        st.markdown("### 📊 Current vs AI-Recommended Configuration Comparison")
-
-        try:
-            if 'datasync_recommendations' in locals():
-                instance_rec = datasync_recommendations["recommended_instance"]
-                agent_rec = datasync_recommendations["recommended_agents"]
-                
-                comparison_data = pd.DataFrame({
-                    "Aspect": [
-                        "Instance Type",
-                        "Number of Agents", 
-                        "Expected Throughput",
-                        "Hourly Cost",
-                        "Efficiency Rating",
-                        "Cost per Mbps",
-                        "Performance Rating"
-                    ],
-                    "Current Configuration": [
-                        config['datasync_instance_type'],
-                        config['num_datasync_agents'],
-                        f"{metrics['optimized_throughput']:.0f} Mbps",
-                        f"${self.calculator.instance_performance[config['datasync_instance_type']]['cost_hour'] * config['num_datasync_agents']:.2f}",
-                        f"{current_analysis['current_efficiency']:.1f}%",
-                        f"${cost_perf['current_cost_efficiency']:.3f}",
-                        current_analysis['performance_rating']
-                    ],
-                    "AI Recommended": [
-                        instance_rec['recommended_instance'],
-                        agent_rec['recommended_agents'],
-                        f"{metrics['optimized_throughput'] * (1 + agent_rec['performance_change_percent']/100):.0f} Mbps",
-                        f"${self.calculator.instance_performance[instance_rec['recommended_instance']]['cost_hour'] * agent_rec['recommended_agents']:.2f}",
-                        f"{min(95, current_analysis['current_efficiency'] + abs(agent_rec['performance_change_percent'])):.1f}%",
-                        f"${cost_perf['current_cost_efficiency'] * (1 + instance_rec['cost_impact_percent']/100):.3f}",
-                        "Optimized"
-                    ],
-                    "Improvement": [
-                        "✅ Optimized" if not instance_rec['upgrade_needed'] else f"⬆️ Upgrade",
-                        "✅ Optimal" if agent_rec['change_needed'] == 0 else f"{'⬆️' if agent_rec['change_needed'] > 0 else '⬇️'} {agent_rec['change_needed']:+d}",
-                        f"{agent_rec['performance_change_percent']:+.1f}%",
-                        f"{instance_rec['cost_impact_percent']:+.1f}%",
-                        f"+{abs(agent_rec['performance_change_percent']):.1f}%" if abs(agent_rec['performance_change_percent']) > 0 else "✅",
-                        f"{instance_rec['cost_impact_percent']:+.1f}%",
-                        "Enhanced" if instance_rec['upgrade_needed'] or agent_rec['change_needed'] != 0 else "✅"
-                    ]
-                })
-                
-                self.safe_dataframe_display(comparison_data)
-                
-                # Summary recommendation
-                if instance_rec['upgrade_needed'] or agent_rec['change_needed'] != 0:
-                    st.markdown(f"""
-                    <div class="recommendation-box">
-                        <h4>🎯 Summary Recommendation</h4>
-                        <p><strong>Action:</strong> {instance_rec['reason']}</p>
-                        <p><strong>Agent Optimization:</strong> {agent_rec['reasoning']}</p>
-                        <p><strong>Expected Benefits:</strong> {agent_rec['performance_change_percent']:+.1f}% performance, {instance_rec['cost_impact_percent']:+.1f}% cost impact</p>
-                        <p><strong>Implementation:</strong> Can be applied during next maintenance window</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.success("✅ Your current DataSync configuration is already optimal for your workload!")
-                    
-        except Exception as e:
-            st.warning(f"Could not generate detailed comparison: {str(e)}")
-
-        # Add real-time monitoring indicators
-        st.markdown("---")
-        current_time = datetime.now().strftime("%H:%M:%S")
-        st.markdown(f"""
-        <div style="text-align: center; color: #666; font-size: 0.9em;">
-            <span class="real-time-indicator"></span>DataSync Analysis updated: {current_time} | 
-            Configuration: {config['num_datasync_agents']}x {config['datasync_instance_type']} | 
-            Performance Mode: {'Real-world' if config.get('real_world_mode') else 'Theoretical'}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Configuration change tracker
-        if st.session_state.config_change_count > 0:
-            st.markdown(f"""
-            <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; border-left: 4px solid #28a745;">
-                <strong>🔄 Real-time Updates:</strong> Configuration has been updated {st.session_state.config_change_count} time(s). 
-                AI recommendations automatically refreshed with your current settings:
-                <br>• <strong>Agents:</strong> {config['num_datasync_agents']}x {config['datasync_instance_type']}
-                <br>• <strong>Data Size:</strong> {config['data_size_gb']:,} GB
-                <br>• <strong>Network:</strong> {config['dx_bandwidth_mbps']} Mbps DX
-                <br>• <strong>AI Calculated Throughput:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps
-                <br>• <strong>Performance Mode:</strong> {'Real-world modeling' if config.get('real_world_mode') else 'Theoretical maximum'}
-            </div>
-            """, unsafe_allow_html=True)
-        
         # Real-time activities and dynamic alerts
         col1, col2 = st.columns(2)
         
@@ -2457,71 +2310,6 @@ class MigrationPlatform:
         
         with col4:
             st.metric("Packet Loss", f"{config['packet_loss']}%", "Quality indicator")
-        
-        # Real-world vs Theoretical Performance Analysis
-        if 'theoretical_throughput' in metrics and 'real_world_efficiency' in metrics:
-            st.markdown('<div class="section-header">🌍 Real-world vs Theoretical Performance</div>', unsafe_allow_html=True)
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Performance comparison metrics
-                performance_data = pd.DataFrame({
-                    "Scenario": ["Theoretical (Lab)", "Real-world (Field)", "Your Configuration"],
-                    "Throughput (Mbps)": [
-                        metrics['theoretical_throughput'],
-                        metrics['optimized_throughput'],
-                        metrics['optimized_throughput']
-                    ],
-                    "Efficiency": [
-                        "95%",
-                        f"{metrics['real_world_efficiency']*100:.1f}%",
-                        f"{(metrics['optimized_throughput']/metrics['theoretical_throughput'])*100:.1f}%"
-                    ],
-                    "Factors": [
-                        "Perfect conditions",
-                        "Storage I/O, DataSync overhead, TCP limits",
-                        "Current configuration"
-                    ]
-                })
-                self.safe_dataframe_display(performance_data)
-            
-            with col2:
-                # Create comparison chart
-                fig_comparison = go.Figure()
-                
-                scenarios = ["Theoretical", "Real-world", "Your Config"]
-                throughputs = [
-                    metrics['theoretical_throughput'],
-                    metrics['theoretical_throughput'] * metrics['real_world_efficiency'],
-                    metrics['optimized_throughput']
-                ]
-                colors = ['lightblue', 'orange', 'lightgreen']
-                
-                fig_comparison.add_trace(go.Bar(
-                    x=scenarios,
-                    y=throughputs,
-                    marker_color=colors,
-                    text=[f"{t:.0f} Mbps" for t in throughputs],
-                    textposition='auto'
-                ))
-                
-                fig_comparison.update_layout(
-                    title="Performance Reality Check",
-                    yaxis_title="Throughput (Mbps)",
-                    height=300
-                )
-                st.plotly_chart(fig_comparison, use_container_width=True)
-            
-            # Real-world bottlenecks analysis
-            st.markdown(f"""
-            <div class="ai-insight">
-                <strong>🔍 Performance Analysis:</strong> Your actual throughput ({metrics['optimized_throughput']:.0f} Mbps) 
-                represents {(metrics['optimized_throughput']/metrics['theoretical_throughput'])*100:.1f}% of theoretical maximum 
-                ({metrics['theoretical_throughput']:.0f} Mbps). This {(1-(metrics['optimized_throughput']/metrics['theoretical_throughput']))*100:.1f}% 
-                reduction is primarily due to storage I/O limitations, DataSync protocol overhead, and AWS API throttling.
-            </div>
-            """, unsafe_allow_html=True)
         
         # AI-Powered Network Architecture Recommendations
         st.markdown('<div class="section-header">🤖 AI-Powered Network Architecture Recommendations</div>', unsafe_allow_html=True)
@@ -3203,15 +2991,18 @@ class MigrationPlatform:
                 if st.button("📋 Download Conclusion Report", type="primary"):
                     try:
                         pdf_buffer = self.pdf_generator.generate_conclusion_report(config, metrics, recommendations)
-                        pdf_bytes = pdf_buffer.getvalue()
-                        
-                        st.download_button(
-                            label="📥 Download Executive Summary PDF",
-                            data=pdf_bytes,
-                            file_name=f"{config['project_name']}_Executive_Summary_{datetime.now().strftime('%Y%m%d')}.pdf",
-                            mime="application/pdf"
-                        )
-                        st.success("✅ Conclusion report generated successfully!")
+                        if pdf_buffer:
+                            pdf_bytes = pdf_buffer.getvalue()
+                            
+                            st.download_button(
+                                label="📥 Download Executive Summary PDF",
+                                data=pdf_bytes,
+                                file_name=f"{config['project_name']}_Executive_Summary_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                mime="application/pdf"
+                            )
+                            st.success("✅ Conclusion report generated successfully!")
+                        else:
+                            st.error("❌ Error generating PDF: PDF generator not available")
                     except Exception as e:
                         st.error(f"❌ Error generating PDF: {str(e)}")
             
@@ -3219,35 +3010,39 @@ class MigrationPlatform:
                 if st.button("💰 Download Cost Analysis", type="primary"):
                     try:
                         pdf_buffer = self.pdf_generator.generate_cost_analysis_report(config, metrics)
-                        pdf_bytes = pdf_buffer.getvalue()
-                        
-                        st.download_button(
-                            label="📥 Download Cost Analysis PDF",
-                            data=pdf_bytes,
-                            file_name=f"{config['project_name']}_Cost_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
-                            mime="application/pdf"
-                        )
-                        st.success("✅ Cost analysis report generated successfully!")
+                        if pdf_buffer:
+                            pdf_bytes = pdf_buffer.getvalue()
+                            
+                            st.download_button(
+                                label="📥 Download Cost Analysis PDF",
+                                data=pdf_bytes,
+                                file_name=f"{config['project_name']}_Cost_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                mime="application/pdf"
+                            )
+                            st.success("✅ Cost analysis report generated successfully!")
+                        else:
+                            st.error("❌ Error generating PDF: PDF generator not available")
                     except Exception as e:
                         st.error(f"❌ Error generating PDF: {str(e)}")
             
             with col3:
                 if st.button("📊 Download Complete Report", type="primary"):
                     try:
-                        # Generate both reports
+                        # Generate conclusion report (primary report)
                         conclusion_pdf = self.pdf_generator.generate_conclusion_report(config, metrics, recommendations)
-                        cost_pdf = self.pdf_generator.generate_cost_analysis_report(config, metrics)
                         
-                        # For now, download the conclusion report (in a full implementation, you could merge PDFs)
-                        pdf_bytes = conclusion_pdf.getvalue()
-                        
-                        st.download_button(
-                            label="📥 Download Complete Analysis PDF",
-                            data=pdf_bytes,
-                            file_name=f"{config['project_name']}_Complete_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
-                            mime="application/pdf"
-                        )
-                        st.success("✅ Complete analysis report generated successfully!")
+                        if conclusion_pdf:
+                            pdf_bytes = conclusion_pdf.getvalue()
+                            
+                            st.download_button(
+                                label="📥 Download Complete Analysis PDF",
+                                data=pdf_bytes,
+                                file_name=f"{config['project_name']}_Complete_Analysis_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                mime="application/pdf"
+                            )
+                            st.success("✅ Complete analysis report generated successfully!")
+                        else:
+                            st.error("❌ Error generating PDF: PDF generator not available")
                     except Exception as e:
                         st.error(f"❌ Error generating PDF: {str(e)}")
         else:
@@ -3293,241 +3088,14 @@ class MigrationPlatform:
             })
             self.safe_dataframe_display(decision_factors)
         
-        # AI-powered specific recommendations
-        st.markdown('<div class="section-header">🤖 AI-Powered Strategic Recommendations</div>', unsafe_allow_html=True)
-        
-        # Generate tailored recommendations based on the analysis
-        specific_recommendations = []
-        
-        # Performance recommendations
-        if metrics['optimized_throughput'] < 500:
-            specific_recommendations.append({
-                "category": "🚀 Performance Optimization",
-                "recommendation": f"Upgrade to {config['num_datasync_agents'] + 2} DataSync agents with c5.4xlarge instances to achieve 2x throughput improvement",
-                "impact": "High",
-                "effort": "Medium",
-                "timeline": "2-3 weeks"
-            })
-        
-        # Cost recommendations
-        if metrics['cost_breakdown']['total'] > config['budget_allocated']:
-            savings_opportunity = metrics['cost_breakdown']['total'] - config['budget_allocated']
-            specific_recommendations.append({
-                "category": "💰 Cost Optimization",
-                "recommendation": f"Switch to Standard-IA storage and optimize transfer schedule to save ${savings_opportunity:,.0f}",
-                "impact": "High",
-                "effort": "Low",
-                "timeline": "1 week"
-            })
-        
-        # Timeline recommendations
-        if metrics['transfer_days'] > config['max_transfer_days']:
-            specific_recommendations.append({
-                "category": "⏱️ Timeline Acceleration",
-                "recommendation": f"Implement parallel {recommendations['primary_method']} with {recommendations['secondary_method']} to meet {config['max_transfer_days']}-day deadline",
-                "impact": "Critical",
-                "effort": "High",
-                "timeline": "2-4 weeks"
-            })
-        
-        # Security recommendations
-        if config['data_classification'] in ["Restricted", "Top Secret"] and not config['encryption_at_rest']:
-            specific_recommendations.append({
-                "category": "🔒 Security Enhancement",
-                "recommendation": "Enable encryption at rest and implement additional access controls for classified data",
-                "impact": "Critical",
-                "effort": "Medium",
-                "timeline": "1-2 weeks"
-            })
-        
-        # Network recommendations
-        if config['network_latency'] > 50:
-            specific_recommendations.append({
-                "category": "🌐 Network Optimization",
-                "recommendation": f"Optimize routing or consider regional data centers to reduce {config['network_latency']}ms latency",
-                "impact": "Medium",
-                "effort": "High",
-                "timeline": "4-6 weeks"
-            })
-        
-        # Display recommendations in a structured format
-        if specific_recommendations:
-            for i, rec in enumerate(specific_recommendations, 1):
-                impact_colors = {"Critical": "#dc3545", "High": "#fd7e14", "Medium": "#ffc107", "Low": "#28a745"}
-                effort_colors = {"High": "#dc3545", "Medium": "#ffc107", "Low": "#28a745"}
-                
-                st.markdown(f"""
-                <div class="phase-container">
-                    <h4>{i}. {rec['category']}</h4>
-                    <p><strong>Recommendation:</strong> {rec['recommendation']}</p>
-                    <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-                        <span><strong>Impact:</strong> <span style="color: {impact_colors[rec['impact']]};">●</span> {rec['impact']}</span>
-                        <span><strong>Effort:</strong> <span style="color: {effort_colors[rec['effort']]};">●</span> {rec['effort']}</span>
-                        <span><strong>Timeline:</strong> {rec['timeline']}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="success-criteria">
-                <h4>✅ Optimal Configuration Achieved</h4>
-                <p>Your current configuration is already optimized across all dimensions! No immediate changes required.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Implementation roadmap
-        st.markdown('<div class="section-header">🗺️ Phased Implementation Roadmap</div>', unsafe_allow_html=True)
-        
-        # Create a phased implementation plan
-        phases = [
-            {
-                "title": "1️⃣ Preparation & Setup",
-                "duration": "Weeks 1-2",
-                "activities": [
-                    f"Setup {config['num_datasync_agents']} DataSync agents with {config['datasync_instance_type']} instances",
-                    f"Configure {recommendations['networking_option']} connectivity",
-                    "Implement security controls and encryption",
-                    "Setup monitoring and compliance tracking"
-                ],
-                "deliverables": "Infrastructure ready, security validated",
-                "dependencies": "Network infrastructure, Security approval"
-            },
-            {
-                "title": "2️⃣ Pilot Migration",
-                "duration": "Weeks 3-4",
-                "activities": [
-                    f"Migrate 10% of data using {recommendations['primary_method']}",
-                    "Validate performance and security controls",
-                    "Test disaster recovery procedures",
-                    "Fine-tune configuration based on results"
-                ],
-                "deliverables": "Pilot completed, lessons learned documented",
-                "dependencies": "Phase 1 completion, Stakeholder approval"
-            },
-            {
-                "title": f"3️⃣ Full Migration",
-                "duration": f"Weeks 5-{4 + max(2, int(metrics['transfer_days'] / 7))}",
-                "activities": [
-                    f"Execute full {metrics['data_size_tb']:.1f}TB migration",
-                    f"Maintain {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput",
-                    "Continuous monitoring and optimization",
-                    "Regular checkpoints and progress reporting"
-                ],
-                "deliverables": "Complete data migration",
-                "dependencies": "Successful pilot completion"
-            },
-            {
-                "title": "4️⃣ Validation & Cutover",
-                "duration": f"Week {5 + max(2, int(metrics['transfer_days'] / 7))}",
-                "activities": [
-                    "Data integrity verification",
-                    "Performance validation",
-                    "User acceptance testing",
-                    "Production cutover and decommissioning"
-                ],
-                "deliverables": "Live production system",
-                "dependencies": "Migration completion, Testing approval"
-            }
-        ]
-        
-        # Display roadmap in expandable sections
-        for phase in phases:
-            with st.expander(f"{phase['title']} ({phase['duration']})"):
-                col1, col2 = st.columns([2, 1])
-                with col1:
-                    st.write(f"**🎯 Key Activities:**")
-                    for activity in phase["activities"]:
-                        st.write(f"• {activity}")
-                    st.write(f"**📋 Deliverables:** {phase['deliverables']}")
-                with col2:
-                    st.write(f"**⏱️ Duration:** {phase['duration']}")
-                    st.write(f"**🔗 Dependencies:** {phase['dependencies']}")
-        
-        # Risk mitigation and contingency planning
-        st.markdown('<div class="section-header">🛡️ Risk Mitigation & Contingency Strategy</div>', unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="risk-mitigation">
-                <h4>🛡️ Risk Mitigation Strategies</h4>
-                <p><strong>Performance Risk:</strong> Implement {recommendations['secondary_method']} as backup method</p>
-                <p><strong>Timeline Risk:</strong> Maintain {config['dx_secondary_mbps'] if config.get('dx_redundant') else config['dx_bandwidth_mbps']} Mbps redundant connectivity</p>
-                <p><strong>Security Risk:</strong> Enable real-time monitoring for {config['data_classification']} data</p>
-                <p><strong>Compliance Risk:</strong> Automated audit trail for {len(config['compliance_frameworks'])} frameworks</p>
-                <p><strong>Technical Risk:</strong> 24/7 technical support and escalation procedures</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div class="risk-mitigation">
-                <h4>🚨 Contingency Plans</h4>
-                <p><strong>Plan A:</strong> Primary migration path as recommended</p>
-                <p><strong>Plan B:</strong> Fallback to Snowball Edge if performance issues</p>
-                <p><strong>Plan C:</strong> Hybrid approach with Storage Gateway</p>
-                <p><strong>Emergency:</strong> Pause/resume capability with rollback option</p>
-                <p><strong>Escalation:</strong> Executive decision matrix for critical issues</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Success criteria and final decision framework
-        st.markdown('<div class="section-header">🎯 Success Criteria & Decision Framework</div>', unsafe_allow_html=True)
-        
-        # Success criteria
-        success_criteria = {
-            "🎯 Performance Target": f"Achieve ≥{recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps sustained throughput",
-            "⏱️ Timeline Target": f"Complete migration within {config['max_transfer_days']} days",
-            "💰 Budget Target": f"Stay within ${config['budget_allocated']:,.0f} allocated budget",
-            "🔒 Security Target": f"Maintain {config['data_classification']} data classification requirements",
-            "📋 Compliance Target": f"Achieve 100% compliance with {len(config['compliance_frameworks'])} frameworks",
-            "💼 Business Target": f"{metrics['business_impact']['level']} business impact mitigation"
-        }
-        
-        # Display success criteria
-        criteria_met = 0
-        total_criteria = len(success_criteria)
-        
-        st.markdown('<div class="success-criteria">', unsafe_allow_html=True)
-        st.markdown("### 🎯 Project Success Criteria")
-        
-        for criterion, target in success_criteria.items():
-            if ("Performance" in criterion and metrics['optimized_throughput'] >= recommendations['estimated_performance']['throughput_mbps'] * 0.9) or \
-               ("Timeline" in criterion and metrics['transfer_days'] <= config['max_transfer_days']) or \
-               ("Budget" in criterion and metrics['cost_breakdown']['total'] <= config['budget_allocated']) or \
-               ("Security" in criterion) or \
-               ("Compliance" in criterion and not metrics['compliance_risks']) or \
-               ("Business" in criterion):
-                st.write(f"✅ **{criterion}:** {target}")
-                criteria_met += 1
-            else:
-                st.write(f"⚠️ **{criterion}:** {target}")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Final go/no-go decision
-        success_rate = (criteria_met / total_criteria) * 100
-        
-        if success_rate >= 80:
-            final_decision = "🟢 GO - Proceed with migration as planned"
-            decision_color = "#28a745"
-        elif success_rate >= 60:
-            final_decision = "🟡 CONDITIONAL GO - Address identified risks before proceeding"
-            decision_color = "#ffc107"
-        else:
-            final_decision = "🔴 NO-GO - Significant reconfiguration required"
-            decision_color = "#dc3545"
-        
         # Final recommendation with comprehensive summary
         st.markdown(f"""
-        <div class="decision-banner" style="background: linear-gradient(135deg, {decision_color}20 0%, {decision_color}10 100%); border: 2px solid {decision_color};">
-            <h2 style="color: {decision_color}; margin: 0;">🎯 FINAL STRATEGIC DECISION</h2>
-            <h3 style="margin: 10px 0 20px 0; color: #2c3e50;">{final_decision}</h3>
+        <div class="decision-banner" style="background: linear-gradient(135deg, {strategy_color}20 0%, {strategy_color}10 100%); border: 2px solid {strategy_color};">
+            <h2 style="color: {strategy_color}; margin: 0;">🎯 FINAL STRATEGIC DECISION</h2>
+            <h3 style="margin: 10px 0 20px 0; color: #2c3e50;">{strategy_status}</h3>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; text-align: left;">
                 <div>
-                    <p><strong>📊 Success Criteria Met:</strong> {criteria_met}/{total_criteria} ({success_rate:.0f}%)</p>
                     <p><strong>🤖 AI Confidence Level:</strong> {85 + (overall_score - 100) * 0.3:.0f}%</p>
                     <p><strong>⚡ Expected Throughput:</strong> {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps</p>
                     <p><strong>⏱️ Projected Duration:</strong> {metrics['transfer_days']:.1f} days</p>
@@ -3536,92 +3104,8 @@ class MigrationPlatform:
                     <p><strong>💰 Total Investment:</strong> ${metrics['cost_breakdown']['total']:,.0f}</p>
                     <p><strong>⚠️ Risk Assessment:</strong> {recommendations['risk_level']} risk level</p>
                     <p><strong>🎯 Recommended Action:</strong> {strategy_action}</p>
-                    <p><strong>📈 Business Impact:</strong> {metrics['business_impact']['level']} priority</p>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Next steps
-        st.markdown('<div class="section-header">🚀 Immediate Next Steps</div>', unsafe_allow_html=True)
-        
-        next_steps = []
-        
-        if success_rate >= 80:
-            next_steps = [
-                "**1. Executive Approval:** Present this analysis to stakeholders for final approval",
-                "**2. Resource Allocation:** Secure budget and technical resources immediately",
-                "**3. Team Formation:** Assemble migration team with defined roles and responsibilities",
-                "**4. Infrastructure Setup:** Begin Phase 1 preparation activities within 1 week",
-                "**5. Communication Plan:** Notify affected users and departments of timeline"
-            ]
-        elif success_rate >= 60:
-            next_steps = [
-                "**1. Risk Mitigation:** Address identified performance and cost concerns",
-                "**2. Configuration Optimization:** Implement recommended improvements",
-                "**3. Stakeholder Review:** Present modified plan to stakeholders",
-                "**4. Pilot Planning:** Prepare for limited pilot migration",
-                "**5. Contingency Preparation:** Finalize backup plans and procedures"
-            ]
-        else:
-            next_steps = [
-                "**1. Strategy Revision:** Fundamental reassessment of migration approach",
-                "**2. Alternative Analysis:** Evaluate different migration methods and tools",
-                "**3. Budget Review:** Reassess budget allocation and timeline requirements",
-                "**4. Technical Consultation:** Engage additional technical expertise",
-                "**5. Requirement Clarification:** Revisit business requirements and constraints"
-            ]
-        
-        for step in next_steps:
-            st.markdown(f"• {step}")
-        
-        # Contact and support information
-        st.markdown("---")
-        st.markdown('<div class="section-header">📞 Support & Emergency Contacts</div>', unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            **🏢 Project Management**
-            - Migration Lead: John Smith
-            - Technical Lead: Sarah Johnson  
-            - Email: migration-team@company.com
-            - Phone: +1 (555) 123-4567
-            """)
-        
-        with col2:
-            st.markdown("""
-            **🤖 AI & Analytics Support**
-            - Claude AI Platform: Enabled
-            - Real-time Monitoring: Active
-            - Performance Analytics: Live
-            - Email: ai-support@company.com
-            """)
-        
-        with col3:
-            st.markdown("""
-            **🆘 Emergency Contacts**
-            - 24/7 Hotline: +1 (555) 911-HELP
-            - AWS Support: Enterprise
-            - Security Team: security@company.com
-            - Escalation: cto@company.com
-            """)
-        
-        # Document information and signature block
-        st.markdown("---")
-        current_timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
-        
-        st.markdown(f"""
-        <div class="ai-insight">
-            <strong>📋 Document Information</strong><br>
-            <strong>Generated:</strong> {current_timestamp}<br>
-            <strong>AI Analysis by:</strong> Claude Sonnet 4 (Real-time Analysis)<br>
-            <strong>Report Version:</strong> Enterprise v2.0<br>
-            <strong>Analyst:</strong> {st.session_state.user_profile["role"]} - {st.session_state.user_profile["organization"]}<br>
-            <strong>Classification:</strong> {config['data_classification']} - Handle According to Policy<br><br>
-            <em>This analysis is based on current configuration and real-time AI recommendations. 
-            Results may vary based on actual network conditions and implementation specifics.</em>
         </div>
         """, unsafe_allow_html=True)
         
@@ -3703,69 +3187,6 @@ class MigrationPlatform:
             st.write(f"**Throughput:** {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps")
             st.write(f"**Risk:** {recommendations['risk_level']}")
             st.write(f"**Efficiency:** {recommendations['cost_efficiency']}")
-            
-            # Real-time performance insights
-            if config.get('real_world_mode', True) and 'theoretical_throughput' in metrics:
-                performance_gap = (1 - (metrics['optimized_throughput'] / metrics['theoretical_throughput'])) * 100
-                if performance_gap > 40:
-                    st.write(f"**Optimization:** {performance_gap:.0f}% gap - Major improvement possible")
-                elif performance_gap > 20:
-                    st.write(f"**Optimization:** {performance_gap:.0f}% gap - Good optimization potential")
-                else:
-                    st.write(f"**Optimization:** {performance_gap:.0f}% gap - Well optimized")
-            
-            # Dynamic bottleneck identification
-            bottlenecks = []
-            if config['datasync_instance_type'] == "m5.large" and config['avg_file_size'] == "> 1GB (Very large files)":
-                bottlenecks.append("Instance CPU/Memory")
-            if config['dx_bandwidth_mbps'] < 1000:
-                bottlenecks.append("Network Bandwidth")
-            if config['network_latency'] > 50:
-                bottlenecks.append("Network Latency")
-            if config['num_datasync_agents'] < 3:
-                bottlenecks.append("Agent Count")
-            
-            if bottlenecks:
-                st.write(f"**Bottlenecks:** {', '.join(bottlenecks[:2])}")
-            
-            # Quick actions with real-time context
-            st.subheader("⚡ Smart Actions")
-            
-            if st.button("🔄 Refresh Analysis", type="secondary"):
-                # Log the refresh action
-                st.session_state.audit_log.append({
-                    "timestamp": datetime.now().isoformat(),
-                    "type": "MANUAL_REFRESH",
-                    "details": f"User refreshed analysis for {config['project_name']}",
-                    "user": st.session_state.user_profile["role"]
-                })
-                st.rerun()
-            
-            # Dynamic action recommendations
-            if recommendations['primary_method'] != "DataSync":
-                if st.button(f"🤖 Switch to {recommendations['primary_method']}", type="secondary"):
-                    st.info(f"AI recommends switching to {recommendations['primary_method']} for optimal performance")
-            
-            # Performance optimization action
-            if 'theoretical_throughput' in metrics:
-                efficiency = metrics['optimized_throughput'] / metrics['theoretical_throughput']
-                if efficiency < 0.7:
-                    if st.button("🚀 Apply Performance Optimizations", type="secondary"):
-                        st.info("Performance optimizations would upgrade instance type, increase agents, and optimize network settings")
-            
-            # Budget optimization action
-            if metrics['cost_breakdown']['total'] > config['budget_allocated']:
-                if st.button("💰 Optimize Costs", type="secondary"):
-                    st.info("Cost optimizations would adjust storage class, instance types, and transfer schedule")
-            
-            # Real-time configuration summary
-            st.subheader("📊 Config Summary")
-            st.write(f"**Data:** {metrics['data_size_tb']:.1f} TB")
-            st.write(f"**Agents:** {config['num_datasync_agents']}x {config['datasync_instance_type']}")
-            st.write(f"**Bandwidth:** {config['dx_bandwidth_mbps']} Mbps")
-            st.write(f"**Mode:** {'Real-world' if config.get('real_world_mode') else 'Theoretical'}")
-            st.write(f"**Duration:** {metrics['transfer_days']:.1f} days")
-            st.write(f"**Cost:** ${metrics['cost_breakdown']['total']:,.0f}")
     
     def log_audit_event(self, event_type, details):
         """Log audit events"""
