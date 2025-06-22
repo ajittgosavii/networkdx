@@ -1531,6 +1531,7 @@ class MigrationPlatform:
         self.pdf_generator = PDFReportGenerator() if PDF_AVAILABLE else None
         self.initialize_session_state()
         self.setup_custom_css()
+        pass
         
         # Add real-time tracking
         self.last_update_time = datetime.now()
@@ -1554,7 +1555,23 @@ class MigrationPlatform:
             st.session_state.last_config_hash = None
         if 'config_change_count' not in st.session_state:
             st.session_state.config_change_count = 0
+        pass
     
+    def detect_configuration_changes(self, config):  # <-- ADD HERE
+        """Detect when configuration changes and log them"""
+        import hashlib
+        
+        config_str = json.dumps(config, sort_keys=True)
+        current_hash = hashlib.md5(config_str.encode()).hexdigest()
+        
+        if st.session_state.last_config_hash != current_hash:
+            if st.session_state.last_config_hash is not None:
+                st.session_state.config_change_count += 1
+                self.log_audit_event("CONFIG_CHANGED", f"Configuration updated - Change #{st.session_state.config_change_count}")
+            
+            st.session_state.last_config_hash = current_hash
+            return True
+        return False
     
     
     def setup_custom_css(self):
@@ -2257,25 +2274,7 @@ region = "us-west-2"  # Your preferred compute region
             }
         }
     
-    def detect_configuration_changes(self, config):
-        """Detect when configuration changes and log them"""
-        import hashlib
-        
-        # Create a hash of the current configuration
-        config_str = json.dumps(config, sort_keys=True)
-        current_hash = hashlib.md5(config_str.encode()).hexdigest()
-        
-        # Check if configuration changed
-        if st.session_state.last_config_hash != current_hash:
-            if st.session_state.last_config_hash is not None:  # Not the first load
-                st.session_state.config_change_count += 1
-                # Log configuration change
-                self.log_audit_event("CONFIG_CHANGED", f"Configuration updated - Change #{st.session_state.config_change_count}")
-            
-            st.session_state.last_config_hash = current_hash
-            return True
-        return False
-    
+     
     
     def render_dashboard_tab(self, config, metrics):
         """Render the dashboard tab with enhanced styling"""
