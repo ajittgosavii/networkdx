@@ -424,12 +424,15 @@ class AWSPricingManager:
             }
 
 
+# TARGETED FIX: Replace the EnterpriseCalculator class in your original code with this corrected version
+# This fixes the duplicate __init__ methods and indentation issues that were causing the AttributeError
+
 class EnterpriseCalculator:
     """Enterprise-grade calculator for AWS migration planning"""
     
     def __init__(self):
         """Initialize the calculator with all required data structures"""
-        # Ensure instance_performance is the first thing we initialize
+        # Instance performance data
         self.instance_performance = {
             "m5.large": {"cpu": 2, "memory": 8, "network": 750, "baseline_throughput": 150, "cost_hour": 0.096},
             "m5.xlarge": {"cpu": 4, "memory": 16, "network": 750, "baseline_throughput": 250, "cost_hour": 0.192},
@@ -528,9 +531,11 @@ class EnterpriseCalculator:
                 "complexity": "Medium"
             }
         }
-         # Initialize pricing manager with secrets
+        
+        # Initialize pricing manager
         self.pricing_manager = None
         self._init_pricing_manager()
+    
     def _init_pricing_manager(self):
         """Initialize pricing manager with Streamlit secrets"""
         try:
@@ -543,9 +548,7 @@ class EnterpriseCalculator:
             
         except Exception as e:
             st.warning(f"Could not initialize pricing manager: {str(e)}")
-            self.pricing_manager = None    
-    
-    
+            self.pricing_manager = None
     
     def verify_initialization(self):
         """Verify that all required attributes are properly initialized"""
@@ -720,13 +723,9 @@ class EnterpriseCalculator:
         estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
         estimated_latency = float(estimated_latency)
         
-        # Get latency for the route
-        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
-        
         # Analyze data characteristics
         has_databases = len(database_types) > 0
         has_large_files = any("Large" in dt or "Media" in dt for dt in data_types)
-        data_size_tb = data_size_gb / 1024
         
         recommendations = {
             "primary_method": "",
@@ -896,7 +895,6 @@ class EnterpriseCalculator:
         
         return ". ".join(rationale_parts) + "."
     
-    
     def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents, 
                                 compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
         """Calculate comprehensive migration costs using real-time AWS pricing"""
@@ -913,7 +911,6 @@ class EnterpriseCalculator:
                 region=region,
                 bandwidth_mbps=dx_bandwidth_mbps
             )
-          
         
         # Calculate costs using real-time pricing
         
@@ -967,374 +964,6 @@ class EnterpriseCalculator:
                 "dx_hourly_rate": dx_hourly_cost
             }
         }
-    
-    # Add this method to render real-time pricing information in the UI
-def render_pricing_info_section(self, config, metrics):
-    """Render real-time pricing information section with secrets status"""
-    st.markdown('<div class="section-header">💰 Real-time AWS Pricing</div>', unsafe_allow_html=True)
-    
-    cost_breakdown = metrics['cost_breakdown']
-    
-    # Show pricing source and configuration status
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        pricing_source = cost_breakdown.get('pricing_source', 'Unknown')
-        if pricing_source == "AWS API":
-            st.success(f"✅ Live AWS API")
-        else:
-            st.warning(f"⚠️ Fallback Mode")
-    
-    with col2:
-        last_updated = cost_breakdown.get('last_updated', 'Unknown')
-        st.info(f"🕐 {last_updated}")
-    
-    with col3:
-        # Check secrets configuration status
-        if hasattr(st, 'secrets') and 'aws' in st.secrets:
-            st.success("🔑 Secrets OK")
-        else:
-            st.error("🔑 No Secrets")
-    
-    with col4:
-        if st.button("🔄 Refresh", type="secondary"):
-            # Clear cache and recalculate
-            if hasattr(self.calculator, 'pricing_manager') and self.calculator.pricing_manager:
-                self.calculator.pricing_manager.cache.clear()
-                self.calculator.pricing_manager.last_cache_update.clear()
-                # Reinitialize pricing manager to refresh connection
-                self.calculator._init_pricing_manager()
-            st.rerun()
-    
-    # Show AWS configuration details
-    if hasattr(st, 'secrets') and 'aws' in st.secrets:
-        aws_info = st.secrets["aws"]
-        
-        st.subheader("🔧 AWS Configuration")
-        
-        config_data = pd.DataFrame({
-            "Setting": [
-                "Access Key ID",
-                "Region",
-                "Pricing Region",
-                "Connection Status"
-            ],
-            "Value": [
-                f"{aws_info.get('access_key_id', 'Not set')[:8]}..." if aws_info.get('access_key_id') else "Not set",
-                aws_info.get('region', 'us-east-1'),
-                "us-east-1 (Fixed)",
-                "✅ Connected" if pricing_source == "AWS API" else "❌ Disconnected"
-            ],
-            "Notes": [
-                "From secrets.toml",
-                "For EC2/S3 pricing",
-                "Pricing API limitation",
-                "Real-time status"
-            ]
-        })
-        
-        self.safe_dataframe_display(config_data)
-    
-    # Display detailed pricing rates (existing code)
-    if 'cost_breakdown_detailed' in cost_breakdown:
-        detailed = cost_breakdown['cost_breakdown_detailed']
-        
-        st.subheader("📊 Current AWS Rates")
-        
-        pricing_data = pd.DataFrame({
-            "Service": [
-                "EC2 Instance (per hour)",
-                "Data Transfer (per GB)",
-                "S3 Storage (per GB/month)",
-                "Direct Connect (per hour)"
-            ],
-            "Rate (USD)": [
-                f"${detailed['instance_hourly_rate']:.4f}",
-                f"${detailed['transfer_rate_per_gb']:.4f}",
-                f"${detailed['s3_rate_per_gb']:.6f}",
-                f"${detailed['dx_hourly_rate']:.4f}"
-            ],
-            "Service Type": [
-                f"{config['datasync_instance_type']}",
-                "AWS Data Transfer",
-                f"S3 {config['s3_storage_class']}",
-                f"{config['dx_bandwidth_mbps']} Mbps DX"
-            ],
-            "Source": [
-                pricing_source,
-                pricing_source,
-                pricing_source,
-                pricing_source
-            ]
-        })
-        
-        self.safe_dataframe_display(pricing_data)
-        
-        # Show pricing comparison if both API and fallback are available
-        if pricing_source == "AWS API":
-            st.info("💡 Pricing fetched in real-time from AWS. Rates update automatically every hour.")
-        else:
-            st.warning("⚠️ Using fallback pricing. Configure AWS secrets for real-time rates.")
-    
-    def assess_compliance_requirements(self, frameworks, data_classification, data_residency):
-        """Assess compliance requirements and identify risks"""
-        requirements = set()
-        risks = []
-        
-        for framework in frameworks:
-            if framework in self.compliance_requirements:
-                reqs = self.compliance_requirements[framework]
-                requirements.update(reqs.keys())
-                
-                # Check for compliance conflicts
-                if framework == "GDPR" and data_residency == "No restrictions":
-                    risks.append("GDPR requires data residency controls")
-                
-                if framework in ["HIPAA", "PCI-DSS"] and data_classification == "Public":
-                    risks.append(f"{framework} incompatible with Public data classification")
-        
-        return list(requirements), risks
-    
-    def calculate_business_impact(self, transfer_days, data_types):
-        """Calculate business impact score based on data types"""
-        impact_weights = {
-            "Customer Data": 0.9,
-            "Financial Records": 0.95,
-            "Employee Data": 0.7,
-            "Intellectual Property": 0.85,
-            "System Logs": 0.3,
-            "Application Data": 0.8,
-            "Database Backups": 0.6,
-            "Media Files": 0.4,
-            "Documents": 0.5
-        }
-        
-        if not data_types:
-            return {"score": 0.5, "level": "Medium", "recommendation": "Standard migration approach"}
-        
-        avg_impact = sum(impact_weights.get(dt, 0.5) for dt in data_types) / len(data_types)
-        
-        if avg_impact >= 0.8:
-            level = "Critical"
-            recommendation = "Phased migration with extensive testing"
-        elif avg_impact >= 0.6:
-            level = "High"
-            recommendation = "Careful planning with pilot phase"
-        elif avg_impact >= 0.4:
-            level = "Medium"
-            recommendation = "Standard migration approach"
-        else:
-            level = "Low"
-            recommendation = "Direct migration acceptable"
-        
-        return {"score": avg_impact, "level": level, "recommendation": recommendation}
-    
-    def get_optimal_networking_architecture(self, source_location, target_region, data_size_gb, 
-                                          dx_bandwidth_mbps, database_types, data_types, config=None):
-        """AI-powered networking architecture recommendations with real-time metrics"""
-        
-        # Get latency for the route
-        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
-        
-        # Analyze data characteristics
-        has_databases = len(database_types) > 0
-        has_large_files = any("Large" in dt or "Media" in dt for dt in data_types)
-        data_size_tb = data_size_gb / 1024
-        
-        recommendations = {
-            "primary_method": "",
-            "secondary_method": "",
-            "networking_option": "",
-            "db_migration_tool": "",
-            "rationale": "",
-            "estimated_performance": {},
-            "cost_efficiency": "",
-            "risk_level": "",
-            "ai_analysis": ""
-        }
-        
-        # Try to get real AI analysis if enabled
-        if config and config.get('enable_real_ai') and config.get('claude_api_key'):
-            real_ai_analysis = self.get_real_ai_analysis(config, config['claude_api_key'], config.get('ai_model'))
-            if real_ai_analysis:
-                recommendations["ai_analysis"] = real_ai_analysis
-        
-        # Network architecture decision logic (fallback built-in AI)
-        if dx_bandwidth_mbps >= 1000 and estimated_latency < 50:
-            recommendations["networking_option"] = "Direct Connect (Primary)"
-            network_score = 9
-        elif dx_bandwidth_mbps >= 500:
-            recommendations["networking_option"] = "Direct Connect with Internet Backup"
-            network_score = 7
-        else:
-            recommendations["networking_option"] = "Internet with VPN"
-            network_score = 5
-        
-        # Database migration tool selection
-        if has_databases and data_size_tb > 10:
-            if len(database_types) > 2:
-                recommendations["db_migration_tool"] = "DMS+DataSync"
-            else:
-                recommendations["db_migration_tool"] = "DMS"
-        elif has_large_files and data_size_tb > 50:
-            if dx_bandwidth_mbps < 1000:
-                recommendations["db_migration_tool"] = "Snowball Edge"
-            else:
-                recommendations["db_migration_tool"] = "DataSync"
-        elif data_size_tb > 100:
-            recommendations["db_migration_tool"] = "Parallel Copy"
-        else:
-            recommendations["db_migration_tool"] = "DataSync"
-        
-        # Primary method selection
-        if data_size_tb > 50 and dx_bandwidth_mbps < 1000:
-            recommendations["primary_method"] = "Snowball Edge"
-            recommendations["secondary_method"] = "DataSync (for ongoing sync)"
-        elif has_databases:
-            recommendations["primary_method"] = recommendations["db_migration_tool"]
-            recommendations["secondary_method"] = "Storage Gateway (for hybrid)"
-        else:
-            recommendations["primary_method"] = "DataSync"
-            recommendations["secondary_method"] = "S3 Transfer Acceleration"
-        
-        # Generate built-in AI rationale
-        recommendations["rationale"] = self._generate_ai_rationale(
-            source_location, target_region, data_size_tb, dx_bandwidth_mbps, 
-            has_databases, has_large_files, estimated_latency, network_score
-        )
-        
-        # Use actual calculated performance instead of simplified estimates
-        if config:
-            # Calculate actual performance using the same method as the main metrics
-            actual_throughput_result = self.calculate_enterprise_throughput(
-                config.get('datasync_instance_type', 'm5.large'), 
-                config.get('num_datasync_agents', 1), 
-                config.get('avg_file_size', '10-100MB (Medium files)'), 
-                dx_bandwidth_mbps, 
-                config.get('network_latency', 25), 
-                config.get('network_jitter', 5), 
-                config.get('packet_loss', 0.1), 
-                config.get('qos_enabled', True), 
-                config.get('dedicated_bandwidth', 60), 
-                config.get('real_world_mode', True)
-            )
-            
-            if len(actual_throughput_result) == 4:
-                actual_throughput, network_efficiency, theoretical_throughput, real_world_efficiency = actual_throughput_result
-            else:
-                actual_throughput, network_efficiency = actual_throughput_result
-                theoretical_throughput = actual_throughput * 1.5
-            
-            # Apply network optimizations (same as main calculation)
-            tcp_efficiency = {"Default": 1.0, "64KB": 1.05, "128KB": 1.1, "256KB": 1.15, 
-                            "512KB": 1.2, "1MB": 1.25, "2MB": 1.3}
-            mtu_efficiency = {"1500 (Standard)": 1.0, "9000 (Jumbo Frames)": 1.15, "Custom": 1.1}
-            congestion_efficiency = {"Cubic (Default)": 1.0, "BBR": 1.2, "Reno": 0.95, "Vegas": 1.05}
-            
-            tcp_factor = tcp_efficiency.get(config.get('tcp_window_size', 'Default'), 1.0)
-            mtu_factor = mtu_efficiency.get(config.get('mtu_size', '1500 (Standard)'), 1.0)
-            congestion_factor = congestion_efficiency.get(config.get('network_congestion_control', 'Cubic (Default)'), 1.0)
-            wan_factor = 1.3 if config.get('wan_optimization', False) else 1.0
-            
-            optimized_ai_throughput = actual_throughput * tcp_factor * mtu_factor * congestion_factor * wan_factor
-            optimized_ai_throughput = min(optimized_ai_throughput, dx_bandwidth_mbps * (config.get('dedicated_bandwidth', 60) / 100))
-            optimized_ai_throughput = max(1, optimized_ai_throughput)
-            
-            # Calculate timing with real configuration
-            effective_data_gb = data_size_gb * 0.85
-            available_hours_per_day = 16 if config.get('business_hours_restriction', True) else 24
-            estimated_days = (effective_data_gb * 8) / (optimized_ai_throughput * available_hours_per_day * 3600) / 1000
-            estimated_days = max(0.1, estimated_days)
-            
-            recommendations["estimated_performance"] = {
-                "throughput_mbps": optimized_ai_throughput,
-                "estimated_days": estimated_days,
-                "network_efficiency": network_efficiency,
-                "agents_used": config.get('num_datasync_agents', 1),
-                "instance_type": config.get('datasync_instance_type', 'm5.large'),
-                "optimization_factors": {
-                    "tcp_factor": tcp_factor,
-                    "mtu_factor": mtu_factor,
-                    "congestion_factor": congestion_factor,
-                    "wan_factor": wan_factor
-                }
-            }
-        else:
-            # Fallback to simplified calculation if no config provided
-            if recommendations["networking_option"] == "Direct Connect (Primary)":
-                base_throughput = min(dx_bandwidth_mbps * 0.8, 2000)
-            elif "Direct Connect" in recommendations["networking_option"]:
-                base_throughput = min(dx_bandwidth_mbps * 0.6, 1500)
-            else:
-                base_throughput = min(500, dx_bandwidth_mbps * 0.4)
-            
-            recommendations["estimated_performance"] = {
-                "throughput_mbps": base_throughput,
-                "estimated_days": (data_size_gb * 8) / (base_throughput * 86400) / 1000,
-                "network_efficiency": network_score / 10,
-                "agents_used": 1,
-                "instance_type": "m5.large",
-                "optimization_factors": {
-                    "tcp_factor": 1.0,
-                    "mtu_factor": 1.0,
-                    "congestion_factor": 1.0,
-                    "wan_factor": 1.0
-                }
-            }
-        
-        # Cost and risk assessment
-        if data_size_tb > 100 and dx_bandwidth_mbps < 1000:
-            recommendations["cost_efficiency"] = "High (Physical transfer)"
-            recommendations["risk_level"] = "Medium"
-        elif dx_bandwidth_mbps >= 1000:
-            recommendations["cost_efficiency"] = "Medium (Network transfer)"
-            recommendations["risk_level"] = "Low"
-        else:
-            recommendations["cost_efficiency"] = "Medium"
-            recommendations["risk_level"] = "Medium"
-        
-        return recommendations
-        
-    def _generate_ai_rationale(self, source, target, data_size_tb, bandwidth, has_db, has_large_files, latency, network_score):
-        """Generate intelligent rationale for recommendations"""
-        
-        rationale_parts = []
-        
-        # Geographic analysis
-        if latency < 30:
-            rationale_parts.append(f"Excellent geographic proximity between {source} and {target} (≈{latency}ms latency)")
-        elif latency < 80:
-            rationale_parts.append(f"Good connectivity between {source} and {target} (≈{latency}ms latency)")
-        else:
-            rationale_parts.append(f"Significant distance between {source} and {target} (≈{latency}ms latency) - consider regional optimization")
-        
-        # Bandwidth analysis
-        if bandwidth >= 10000:
-            rationale_parts.append("High-bandwidth Direct Connect enables optimal network transfer performance")
-        elif bandwidth >= 1000:
-            rationale_parts.append("Adequate Direct Connect bandwidth supports efficient network-based migration")
-        else:
-            rationale_parts.append("Limited bandwidth suggests physical transfer methods for large datasets")
-        
-        # Data characteristics
-        if data_size_tb > 100:
-            rationale_parts.append(f"Large dataset ({data_size_tb:.1f}TB) requires high-throughput migration strategy")
-        
-        if has_db:
-            rationale_parts.append("Database workloads require specialized migration tools with minimal downtime capabilities")
-        
-        if has_large_files:
-            rationale_parts.append("Large file presence optimizes for high-throughput, parallel transfer methods")
-        
-        # Performance prediction
-        if network_score >= 8:
-            rationale_parts.append("Network conditions are optimal for direct cloud migration")
-        elif network_score >= 6:
-            rationale_parts.append("Network conditions support cloud migration with some optimization needed")
-        else:
-            rationale_parts.append("Network limitations suggest hybrid or physical transfer approaches")
-        
-        return ". ".join(rationale_parts) + "."
     
     def get_real_ai_analysis(self, config, api_key, model="claude-sonnet-4-20250514"):
         """Get real Claude AI analysis using Anthropic API"""
@@ -1425,253 +1054,6 @@ def render_pricing_info_section(self, config, metrics):
             
             # Instance recommendation logic
             current_instance_info = self.instance_performance[current_instance]
-            recommended_instance = current_instance
-            upgrade_needed = False
-            
-            # Check if we need a more powerful instance
-            if data_size_tb > 50 and current_instance == "m5.large":
-                recommended_instance = "m5.2xlarge"
-                upgrade_needed = True
-                reason = f"Large dataset ({data_size_tb:.1f}TB) requires more CPU/memory for optimal performance"
-                expected_gain = 25
-                cost_impact = 100  # Percentage increase
-            elif data_size_tb > 100 and "m5.large" in current_instance:
-                recommended_instance = "c5.4xlarge"
-                upgrade_needed = True
-                reason = f"Very large dataset ({data_size_tb:.1f}TB) benefits from compute-optimized instances"
-                expected_gain = 40
-                cost_impact = 150
-            else:
-                reason = "Current instance type is appropriate for workload"
-                expected_gain = 0
-                cost_impact = 0
-            
-            # Agent recommendation logic
-            optimal_agents = max(1, min(10, int(data_size_tb / 10) + 1))
-            
-            if current_agents < optimal_agents:
-                agent_change = optimal_agents - current_agents
-                agent_reasoning = f"Scale up to {optimal_agents} agents for optimal parallelization"
-                performance_change = agent_change * 15  # 15% improvement per agent
-                cost_change = agent_change * 100  # 100% cost increase per agent
-            elif current_agents > optimal_agents:
-                agent_change = optimal_agents - current_agents
-                agent_reasoning = f"Scale down to {optimal_agents} agents for cost optimization"
-                performance_change = agent_change * 10  # 10% reduction per agent removed
-                cost_change = agent_change * 100  # 100% cost reduction per agent removed
-            else:
-                agent_change = 0
-                agent_reasoning = f"Current {current_agents} agents is optimal for this workload"
-                performance_change = 0
-                cost_change = 0
-            
-            # Bottleneck analysis
-            bottlenecks = []
-            recommendations_list = []
-            
-            if current_instance == "m5.large" and data_size_tb > 20:
-                bottlenecks.append("Instance CPU/Memory constraints for large dataset")
-                recommendations_list.append("Upgrade to m5.2xlarge or c5.2xlarge for better performance")
-            
-            if current_agents == 1 and data_size_tb > 5:
-                bottlenecks.append("Single agent limiting parallel processing")
-                recommendations_list.append("Scale to 3-5 agents for optimal throughput")
-            
-            if config.get('network_latency', 25) > 50:
-                bottlenecks.append("High network latency affecting transfer efficiency")
-                recommendations_list.append("Consider regional optimization or network tuning")
-            
-            # Cost-performance analysis
-            hourly_cost = current_instance_info["cost_hour"] * current_agents
-            cost_per_mbps = hourly_cost / max(1, metrics['optimized_throughput'])
-            
-            # Efficiency ranking (1-20, where 1 is best)
-            if cost_per_mbps < 0.001:
-                efficiency_ranking = 1
-            elif cost_per_mbps < 0.002:
-                efficiency_ranking = 3
-            elif cost_per_mbps < 0.005:
-                efficiency_ranking = 6
-            elif cost_per_mbps < 0.01:
-                efficiency_ranking = 10
-            else:
-                efficiency_ranking = 15
-            
-            # Alternative configurations
-            alternatives = []
-            
-            # Cost-optimized alternative
-            if current_instance != "m5.large":
-                alternatives.append({
-                    "name": "Cost-Optimized",
-                    "instance": "m5.large",
-                    "agents": max(2, current_agents),
-                    "description": "Lower cost with acceptable performance"
-                })
-            
-            # Performance-optimized alternative
-            if current_instance != "c5.4xlarge":
-                alternatives.append({
-                    "name": "Performance-Optimized", 
-                    "instance": "c5.4xlarge",
-                    "agents": min(current_agents, 6),
-                    "description": "Maximum throughput with premium pricing"
-                })
-            
-            # Balanced alternative
-            alternatives.append({
-                "name": "Balanced",
-                "instance": "m5.xlarge",
-                "agents": optimal_agents,
-                "description": "Optimal balance of cost and performance"
-            })
-            
-            return {
-                "current_analysis": {
-                    "current_efficiency": current_efficiency,
-                    "performance_rating": performance_rating,
-                    "scaling_effectiveness": {
-                        "scaling_rating": scaling_rating,
-                        "efficiency": scaling_efficiency
-                    }
-                },
-                "recommended_instance": {
-                    "recommended_instance": recommended_instance,
-                    "upgrade_needed": upgrade_needed,
-                    "reason": reason,
-                    "expected_performance_gain": expected_gain,
-                    "cost_impact_percent": cost_impact
-                },
-                "recommended_agents": {
-                    "recommended_agents": optimal_agents,
-                    "change_needed": agent_change,
-                    "reasoning": agent_reasoning,
-                    "performance_change_percent": performance_change,
-                    "cost_change_percent": cost_change
-                },
-                "bottleneck_analysis": (bottlenecks, recommendations_list),
-                "cost_performance_analysis": {
-                    "current_cost_efficiency": cost_per_mbps,
-                    "efficiency_ranking": efficiency_ranking
-                },
-                "alternative_configurations": alternatives
-            }
-            
-        except Exception as e:
-            # Return safe fallback
-            return {
-                "current_analysis": {
-                    "current_efficiency": 75,
-                    "performance_rating": "Unable to analyze",
-                    "scaling_effectiveness": {"scaling_rating": "Unknown", "efficiency": 0.75}
-                },
-                "recommended_instance": {
-                    "recommended_instance": config.get('datasync_instance_type', 'm5.large'),
-                    "upgrade_needed": False,
-                    "reason": f"Analysis error: {str(e)}",
-                    "expected_performance_gain": 0,
-                    "cost_impact_percent": 0
-                },
-                "recommended_agents": {
-                    "recommended_agents": config.get('num_datasync_agents', 1),
-                    "change_needed": 0,
-                    "reasoning": "Unable to analyze due to error",
-                    "performance_change_percent": 0,
-                    "cost_change_percent": 0
-                },
-                "bottleneck_analysis": ([], [f"Analysis error: {str(e)}"]),
-                "cost_performance_analysis": {
-                    "current_cost_efficiency": 0.1,
-                    "efficiency_ranking": 10
-                },
-                "alternative_configurations": []
-            }
-    def __init__(self):
-        """Initialize the calculator with all required data structures"""
-        # Instance performance data
-        self.instance_performance = {
-            "m5.large": {"cpu": 2, "memory": 8, "network": 750, "baseline_throughput": 150, "cost_hour": 0.096},
-            "m5.xlarge": {"cpu": 4, "memory": 16, "network": 750, "baseline_throughput": 250, "cost_hour": 0.192},
-            "m5.2xlarge": {"cpu": 8, "memory": 32, "network": 1000, "baseline_throughput": 400, "cost_hour": 0.384},
-            "m5.4xlarge": {"cpu": 16, "memory": 64, "network": 2000, "baseline_throughput": 600, "cost_hour": 0.768},
-            "m5.8xlarge": {"cpu": 32, "memory": 128, "network": 4000, "baseline_throughput": 1000, "cost_hour": 1.536},
-            "c5.2xlarge": {"cpu": 8, "memory": 16, "network": 2000, "baseline_throughput": 500, "cost_hour": 0.34},
-            "c5.4xlarge": {"cpu": 16, "memory": 32, "network": 4000, "baseline_throughput": 800, "cost_hour": 0.68},
-            "c5.9xlarge": {"cpu": 36, "memory": 72, "network": 10000, "baseline_throughput": 1500, "cost_hour": 1.53},
-            "r5.2xlarge": {"cpu": 8, "memory": 64, "network": 2000, "baseline_throughput": 450, "cost_hour": 0.504},
-            "r5.4xlarge": {"cpu": 16, "memory": 128, "network": 4000, "baseline_throughput": 700, "cost_hour": 1.008}
-        }
-        
-        self.file_size_multipliers = {
-            "< 1MB (Many small files)": 0.25,
-            "1-10MB (Small files)": 0.45,
-            "10-100MB (Medium files)": 0.70,
-            "100MB-1GB (Large files)": 0.90,
-            "> 1GB (Very large files)": 0.95
-        }
-        
-        # Database migration tools
-        self.db_migration_tools = {
-            "DMS": {
-                "name": "Database Migration Service",
-                "best_for": ["Homogeneous", "Heterogeneous", "Continuous Replication"],
-                "data_size_limit": "Large (TB scale)",
-                "downtime": "Minimal",
-                "cost_factor": 1.0,
-                "complexity": "Medium"
-            },
-            "DataSync": {
-                "name": "AWS DataSync",
-                "best_for": ["File Systems", "Object Storage", "Large Files"],
-                "data_size_limit": "Very Large (PB scale)",
-                "downtime": "None",
-                "cost_factor": 0.8,
-                "complexity": "Low"
-            }
-        }
-    
-    def get_intelligent_datasync_recommendations(self, config, metrics):
-        """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
-        
-        try:
-            current_instance = config['datasync_instance_type']
-            current_agents = config['num_datasync_agents']
-            data_size_gb = config['data_size_gb']
-            data_size_tb = data_size_gb / 1024
-            
-            # Current efficiency analysis
-            if 'theoretical_throughput' in metrics and metrics['theoretical_throughput'] > 0:
-                current_efficiency = (metrics['optimized_throughput'] / metrics['theoretical_throughput']) * 100
-            else:
-                max_theoretical = config['dx_bandwidth_mbps'] * 0.8
-                current_efficiency = (metrics['optimized_throughput'] / max_theoretical) * 100 if max_theoretical > 0 else 70
-            
-            # Performance rating
-            if current_efficiency >= 80:
-                performance_rating = "Excellent"
-            elif current_efficiency >= 60:
-                performance_rating = "Good"
-            elif current_efficiency >= 40:
-                performance_rating = "Fair"
-            else:
-                performance_rating = "Poor"
-            
-            # Scaling effectiveness analysis
-            if current_agents == 1:
-                scaling_rating = "Under-scaled"
-                scaling_efficiency = 0.6
-            elif current_agents <= 3:
-                scaling_rating = "Well-scaled"
-                scaling_efficiency = 0.85
-            elif current_agents <= 6:
-                scaling_rating = "Optimal"
-                scaling_efficiency = 0.95
-            else:
-                scaling_rating = "Over-scaled"
-                scaling_efficiency = 0.7
-            
-            # Instance recommendation logic
-            current_instance_info = self.instance_performance.get(current_instance, self.instance_performance["m5.large"])
             recommended_instance = current_instance
             upgrade_needed = False
             
