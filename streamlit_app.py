@@ -528,11 +528,9 @@ class EnterpriseCalculator:
                 "complexity": "Medium"
             }
         }
-        
-        # Initialize pricing manager
+         # Initialize pricing manager with secrets
         self.pricing_manager = None
         self._init_pricing_manager()
-    
     def _init_pricing_manager(self):
         """Initialize pricing manager with Streamlit secrets"""
         try:
@@ -545,7 +543,9 @@ class EnterpriseCalculator:
             
         except Exception as e:
             st.warning(f"Could not initialize pricing manager: {str(e)}")
-            self.pricing_manager = None
+            self.pricing_manager = None    
+    
+    
     
     def verify_initialization(self):
         """Verify that all required attributes are properly initialized"""
@@ -571,11 +571,821 @@ class EnterpriseCalculator:
         
         return True
     
+    def calculate_enterprise_throughput(self, instance_type, num_agents, file_size_category, 
+                                        network_bw_mbps, latency, jitter, packet_loss, qos_enabled, 
+                                        dedicated_bandwidth, real_world_mode=True):
+        """Calculate optimized throughput considering all network factors including real-world limitations"""
+        
+        # Verify initialization first
+        self.verify_initialization()
+        
+        # Ensure instance_type exists in our data
+        if instance_type not in self.instance_performance:
+            raise ValueError(f"Unknown instance type: {instance_type}. Available types: {list(self.instance_performance.keys())}")
+        
+        base_performance = self.instance_performance[instance_type]["baseline_throughput"]
+        file_efficiency = self.file_size_multipliers[file_size_category]
+        
+        # Network impact calculations
+        latency_factor = max(0.4, 1 - (latency - 5) / 500)
+        jitter_factor = max(0.8, 1 - jitter / 100)
+        packet_loss_factor = max(0.6, 1 - packet_loss / 10)
+        qos_factor = 1.2 if qos_enabled else 1.0
+        
+        network_efficiency = latency_factor * jitter_factor * packet_loss_factor * qos_factor
+        
+        # Real-world efficiency factors (based on actual field testing)
+        if real_world_mode:
+            # DataSync specific overhead
+            datasync_overhead = 0.75  # DataSync protocol overhead, checksums, metadata
+            
+            # Storage I/O limitations (major factor often overlooked)
+            storage_io_factor = 0.6  # Source storage IOPS limitations, especially for spinning disks
+            
+            # TCP window scaling and buffer limitations
+            tcp_efficiency = 0.8  # Real TCP performance vs theoretical
+            
+            # AWS API rate limiting (S3 PUT/GET limits)
+            s3_api_efficiency = 0.85  # S3 request rate limits and throttling
+            
+            # File system overhead
+            filesystem_overhead = 0.9  # File system metadata, fragmentation
+            
+            # Instance resource constraints
+            if instance_type == "m5.large":
+                cpu_memory_factor = 0.7  # m5.large CPU/memory constraints for large files
+            elif instance_type in ["m5.xlarge", "m5.2xlarge"]:
+                cpu_memory_factor = 0.8
+            else:
+                cpu_memory_factor = 0.9
+            
+            # Concurrent workload impact
+            concurrent_workload_factor = 0.85  # Other applications sharing resources
+            
+            # Time-of-day variations (AWS regional load)
+            peak_hour_factor = 0.9  # Performance degradation during peak hours
+            
+            # Error handling and retransmissions
+            error_handling_overhead = 0.95  # Retry logic, error correction
+            
+            # Combined real-world efficiency
+            real_world_efficiency = (datasync_overhead * storage_io_factor * tcp_efficiency * 
+                                   s3_api_efficiency * filesystem_overhead * cpu_memory_factor * 
+                                   concurrent_workload_factor * peak_hour_factor * error_handling_overhead)
+        else:
+            # Laboratory/theoretical conditions
+            real_world_efficiency = 0.95  # Only minor protocol overhead
+        
+        # Multi-agent scaling with diminishing returns
+        total_throughput = 0
+        for i in range(num_agents):
+            agent_efficiency = max(0.4, 1 - (i * 0.05))
+            agent_throughput = (base_performance * file_efficiency * network_efficiency * 
+                              real_world_efficiency * agent_efficiency)
+            total_throughput += agent_throughput
+        
+        # Apply bandwidth limitation
+        max_available_bandwidth = network_bw_mbps * (dedicated_bandwidth / 100)
+        effective_throughput = min(total_throughput, max_available_bandwidth)
+        
+        # Return both theoretical and real-world calculations
+        theoretical_throughput = min(base_performance * file_efficiency * network_efficiency * num_agents, 
+                                   max_available_bandwidth)
+        
+        return effective_throughput, network_efficiency, theoretical_throughput, real_world_efficiency
+    
+    def assess_compliance_requirements(self, frameworks, data_classification, data_residency):
+        """Assess compliance requirements and identify risks"""
+        requirements = set()
+        risks = []
+        
+        for framework in frameworks:
+            if framework in self.compliance_requirements:
+                reqs = self.compliance_requirements[framework]
+                requirements.update(reqs.keys())
+                
+                # Check for compliance conflicts
+                if framework == "GDPR" and data_residency == "No restrictions":
+                    risks.append("GDPR requires data residency controls")
+                
+                if framework in ["HIPAA", "PCI-DSS"] and data_classification == "Public":
+                    risks.append(f"{framework} incompatible with Public data classification")
+        
+        return list(requirements), risks
+    
+    def calculate_business_impact(self, transfer_days, data_types):
+        """Calculate business impact score based on data types"""
+        impact_weights = {
+            "Customer Data": 0.9,
+            "Financial Records": 0.95,
+            "Employee Data": 0.7,
+            "Intellectual Property": 0.85,
+            "System Logs": 0.3,
+            "Application Data": 0.8,
+            "Database Backups": 0.6,
+            "Media Files": 0.4,
+            "Documents": 0.5
+        }
+        
+        if not data_types:
+            return {"score": 0.5, "level": "Medium", "recommendation": "Standard migration approach"}
+        
+        avg_impact = sum(impact_weights.get(dt, 0.5) for dt in data_types) / len(data_types)
+        
+        if avg_impact >= 0.8:
+            level = "Critical"
+            recommendation = "Phased migration with extensive testing"
+        elif avg_impact >= 0.6:
+            level = "High"
+            recommendation = "Careful planning with pilot phase"
+        elif avg_impact >= 0.4:
+            level = "Medium"
+            recommendation = "Standard migration approach"
+        else:
+            level = "Low"
+            recommendation = "Direct migration acceptable"
+        
+        return {"score": avg_impact, "level": level, "recommendation": recommendation}
+    
+    def get_optimal_networking_architecture(self, source_location, target_region, data_size_gb, 
+                                      dx_bandwidth_mbps, database_types, data_types, config=None):
+        """AI-powered networking architecture recommendations with real-time metrics"""
+        
+        # Ensure numeric types
+        data_size_gb = float(data_size_gb) if data_size_gb else 1000
+        dx_bandwidth_mbps = float(dx_bandwidth_mbps) if dx_bandwidth_mbps else 1000
+        data_size_tb = data_size_gb / 1024
+        
+        # Get latency for the route
+        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
+        estimated_latency = float(estimated_latency)
+        
+        # Get latency for the route
+        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
+        
+        # Analyze data characteristics
+        has_databases = len(database_types) > 0
+        has_large_files = any("Large" in dt or "Media" in dt for dt in data_types)
+        data_size_tb = data_size_gb / 1024
+        
+        recommendations = {
+            "primary_method": "",
+            "secondary_method": "",
+            "networking_option": "",
+            "db_migration_tool": "",
+            "rationale": "",
+            "estimated_performance": {},
+            "cost_efficiency": "",
+            "risk_level": "",
+            "ai_analysis": ""
+        }
+        
+        # Network architecture decision logic
+        if dx_bandwidth_mbps >= 1000 and estimated_latency < 50:
+            recommendations["networking_option"] = "Direct Connect (Primary)"
+            network_score = 9
+        elif dx_bandwidth_mbps >= 500:
+            recommendations["networking_option"] = "Direct Connect with Internet Backup"
+            network_score = 7
+        else:
+            recommendations["networking_option"] = "Internet with VPN"
+            network_score = 5
+        
+        # Database migration tool selection
+        if has_databases and data_size_tb > 10:
+            if len(database_types) > 2:
+                recommendations["db_migration_tool"] = "DMS+DataSync"
+            else:
+                recommendations["db_migration_tool"] = "DMS"
+        elif has_large_files and data_size_tb > 50:
+            if dx_bandwidth_mbps < 1000:
+                recommendations["db_migration_tool"] = "Snowball Edge"
+            else:
+                recommendations["db_migration_tool"] = "DataSync"
+        elif data_size_tb > 100:
+            recommendations["db_migration_tool"] = "Parallel Copy"
+        else:
+            recommendations["db_migration_tool"] = "DataSync"
+        
+        # Primary method selection
+        if data_size_tb > 50 and dx_bandwidth_mbps < 1000:
+            recommendations["primary_method"] = "Snowball Edge"
+            recommendations["secondary_method"] = "DataSync (for ongoing sync)"
+        elif has_databases:
+            recommendations["primary_method"] = recommendations["db_migration_tool"]
+            recommendations["secondary_method"] = "Storage Gateway (for hybrid)"
+        else:
+            recommendations["primary_method"] = "DataSync"
+            recommendations["secondary_method"] = "S3 Transfer Acceleration"
+        
+        # Generate AI rationale
+        recommendations["rationale"] = self._generate_ai_rationale(
+            source_location, target_region, data_size_tb, dx_bandwidth_mbps, 
+            has_databases, has_large_files, estimated_latency, network_score
+        )
+        
+        # Calculate performance metrics
+        if config:
+            # Use actual configuration for performance calculation
+            try:
+                actual_throughput_result = self.calculate_enterprise_throughput(
+                    config.get('datasync_instance_type', 'm5.large'), 
+                    config.get('num_datasync_agents', 1), 
+                    config.get('avg_file_size', '10-100MB (Medium files)'), 
+                    dx_bandwidth_mbps, 
+                    config.get('network_latency', 25), 
+                    config.get('network_jitter', 5), 
+                    config.get('packet_loss', 0.1), 
+                    config.get('qos_enabled', True), 
+                    config.get('dedicated_bandwidth', 60), 
+                    config.get('real_world_mode', True)
+                )
+                
+                if len(actual_throughput_result) == 4:
+                    actual_throughput, network_efficiency, theoretical_throughput, real_world_efficiency = actual_throughput_result
+                else:
+                    actual_throughput, network_efficiency = actual_throughput_result
+                    theoretical_throughput = actual_throughput * 1.5
+                
+                optimized_throughput = min(actual_throughput, dx_bandwidth_mbps * (config.get('dedicated_bandwidth', 60) / 100))
+                optimized_throughput = max(1, optimized_throughput)
+                
+                # Calculate timing
+                available_hours_per_day = 16 if config.get('business_hours_restriction', True) else 24
+                estimated_days = (data_size_gb * 0.85 * 8) / (optimized_throughput * available_hours_per_day * 3600) / 1000
+                estimated_days = max(0.1, estimated_days)
+                
+                recommendations["estimated_performance"] = {
+                    "throughput_mbps": optimized_throughput,
+                    "estimated_days": estimated_days,
+                    "network_efficiency": network_efficiency,
+                    "agents_used": config.get('num_datasync_agents', 1),
+                    "instance_type": config.get('datasync_instance_type', 'm5.large')
+                }
+            except Exception as e:
+                # Fallback if calculation fails
+                recommendations["estimated_performance"] = {
+                    "throughput_mbps": min(dx_bandwidth_mbps * 0.6, 1000),
+                    "estimated_days": max(1, data_size_tb / 1),
+                    "network_efficiency": 0.7,
+                    "agents_used": 1,
+                    "instance_type": "m5.large"
+                }
+        else:
+            # Simplified calculation without config
+            base_throughput = min(dx_bandwidth_mbps * 0.6, 1000)
+            recommendations["estimated_performance"] = {
+                "throughput_mbps": base_throughput,
+                "estimated_days": (data_size_gb * 8) / (base_throughput * 86400) / 1000,
+                "network_efficiency": network_score / 10,
+                "agents_used": 1,
+                "instance_type": "m5.large"
+            }
+        
+        # Cost and risk assessment
+        if data_size_tb > 100 and dx_bandwidth_mbps < 1000:
+            recommendations["cost_efficiency"] = "High (Physical transfer)"
+            recommendations["risk_level"] = "Medium"
+        elif dx_bandwidth_mbps >= 1000:
+            recommendations["cost_efficiency"] = "Medium (Network transfer)"
+            recommendations["risk_level"] = "Low"
+        else:
+            recommendations["cost_efficiency"] = "Medium"
+            recommendations["risk_level"] = "Medium"
+        
+        return recommendations
+
+    def _generate_ai_rationale(self, source, target, data_size_tb, bandwidth, has_db, has_large_files, latency, network_score):
+        """Generate intelligent rationale for recommendations"""
+        
+        rationale_parts = []
+        
+        # Geographic analysis
+        if latency < 30:
+            rationale_parts.append(f"Excellent geographic proximity between {source} and {target} (≈{latency}ms latency)")
+        elif latency < 80:
+            rationale_parts.append(f"Good connectivity between {source} and {target} (≈{latency}ms latency)")
+        else:
+            rationale_parts.append(f"Significant distance between {source} and {target} (≈{latency}ms latency) - consider regional optimization")
+        
+        # Bandwidth analysis
+        if bandwidth >= 10000:
+            rationale_parts.append("High-bandwidth Direct Connect enables optimal network transfer performance")
+        elif bandwidth >= 1000:
+            rationale_parts.append("Adequate Direct Connect bandwidth supports efficient network-based migration")
+        else:
+            rationale_parts.append("Limited bandwidth suggests physical transfer methods for large datasets")
+        
+        # Data characteristics
+        if data_size_tb > 100:
+            rationale_parts.append(f"Large dataset ({data_size_tb:.1f}TB) requires high-throughput migration strategy")
+        
+        if has_db:
+            rationale_parts.append("Database workloads require specialized migration tools with minimal downtime capabilities")
+        
+        if has_large_files:
+            rationale_parts.append("Large file presence optimizes for high-throughput, parallel transfer methods")
+        
+        # Performance prediction
+        if network_score >= 8:
+            rationale_parts.append("Network conditions are optimal for direct cloud migration")
+        elif network_score >= 6:
+            rationale_parts.append("Network conditions support cloud migration with some optimization needed")
+        else:
+            rationale_parts.append("Network limitations suggest hybrid or physical transfer approaches")
+        
+        return ". ".join(rationale_parts) + "."
+    
+    
+    def calculate_enterprise_costs(self, data_size_gb, transfer_days, instance_type, num_agents, 
+                                compliance_frameworks, s3_storage_class, region=None, dx_bandwidth_mbps=1000):
+        """Calculate comprehensive migration costs using real-time AWS pricing"""
+        
+        # Initialize pricing manager if not already done
+        if not hasattr(self, 'pricing_manager'):
+            self.pricing_manager = AWSPricingManager(region=region or 'us-east-1')
+        
+        # Get real-time pricing for all components
+        with st.spinner("🔄 Fetching real-time AWS pricing..."):
+            pricing = self.pricing_manager.get_comprehensive_pricing(
+                instance_type=instance_type,
+                storage_class=s3_storage_class,
+                region=region,
+                bandwidth_mbps=dx_bandwidth_mbps
+            )
+          
+        
+        # Calculate costs using real-time pricing
+        
+        # 1. DataSync compute costs (EC2 instances)
+        instance_cost_hour = pricing['ec2']
+        datasync_compute_cost = instance_cost_hour * num_agents * 24 * transfer_days
+        
+        # 2. Data transfer costs
+        transfer_rate_per_gb = pricing['transfer']
+        data_transfer_cost = data_size_gb * transfer_rate_per_gb
+        
+        # 3. S3 storage costs
+        s3_rate_per_gb = pricing['s3']
+        s3_storage_cost = data_size_gb * s3_rate_per_gb
+        
+        # 4. Direct Connect costs (if applicable)
+        dx_hourly_cost = pricing['dx']
+        dx_cost = dx_hourly_cost * 24 * transfer_days
+        
+        # 5. Additional enterprise costs (compliance, monitoring, etc.)
+        compliance_cost = len(compliance_frameworks) * 500  # Compliance tooling per framework
+        monitoring_cost = 200 * transfer_days  # Enhanced monitoring per day
+        
+        # 6. AWS service costs (DataSync service fees)
+        datasync_service_cost = data_size_gb * 0.0125  # $0.0125 per GB processed
+        
+        # 7. CloudWatch and logging costs
+        cloudwatch_cost = num_agents * 50 * transfer_days  # Monitoring per agent per day
+        
+        # Calculate total cost
+        total_cost = (datasync_compute_cost + data_transfer_cost + s3_storage_cost + 
+                    dx_cost + compliance_cost + monitoring_cost + datasync_service_cost + 
+                    cloudwatch_cost)
+        
+        return {
+            "compute": datasync_compute_cost,
+            "transfer": data_transfer_cost,
+            "storage": s3_storage_cost,
+            "direct_connect": dx_cost,
+            "datasync_service": datasync_service_cost,
+            "compliance": compliance_cost,
+            "monitoring": monitoring_cost,
+            "cloudwatch": cloudwatch_cost,
+            "total": total_cost,
+            "pricing_source": "AWS API" if pricing else "Fallback",
+            "last_updated": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+            "cost_breakdown_detailed": {
+                "instance_hourly_rate": instance_cost_hour,
+                "transfer_rate_per_gb": transfer_rate_per_gb,
+                "s3_rate_per_gb": s3_rate_per_gb,
+                "dx_hourly_rate": dx_hourly_cost
+            }
+        }
+    
+    # Add this method to render real-time pricing information in the UI
+def render_pricing_info_section(self, config, metrics):
+    """Render real-time pricing information section with secrets status"""
+    st.markdown('<div class="section-header">💰 Real-time AWS Pricing</div>', unsafe_allow_html=True)
+    
+    cost_breakdown = metrics['cost_breakdown']
+    
+    # Show pricing source and configuration status
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        pricing_source = cost_breakdown.get('pricing_source', 'Unknown')
+        if pricing_source == "AWS API":
+            st.success(f"✅ Live AWS API")
+        else:
+            st.warning(f"⚠️ Fallback Mode")
+    
+    with col2:
+        last_updated = cost_breakdown.get('last_updated', 'Unknown')
+        st.info(f"🕐 {last_updated}")
+    
+    with col3:
+        # Check secrets configuration status
+        if hasattr(st, 'secrets') and 'aws' in st.secrets:
+            st.success("🔑 Secrets OK")
+        else:
+            st.error("🔑 No Secrets")
+    
+    with col4:
+        if st.button("🔄 Refresh", type="secondary"):
+            # Clear cache and recalculate
+            if hasattr(self.calculator, 'pricing_manager') and self.calculator.pricing_manager:
+                self.calculator.pricing_manager.cache.clear()
+                self.calculator.pricing_manager.last_cache_update.clear()
+                # Reinitialize pricing manager to refresh connection
+                self.calculator._init_pricing_manager()
+            st.rerun()
+    
+    # Show AWS configuration details
+    if hasattr(st, 'secrets') and 'aws' in st.secrets:
+        aws_info = st.secrets["aws"]
+        
+        st.subheader("🔧 AWS Configuration")
+        
+        config_data = pd.DataFrame({
+            "Setting": [
+                "Access Key ID",
+                "Region",
+                "Pricing Region",
+                "Connection Status"
+            ],
+            "Value": [
+                f"{aws_info.get('access_key_id', 'Not set')[:8]}..." if aws_info.get('access_key_id') else "Not set",
+                aws_info.get('region', 'us-east-1'),
+                "us-east-1 (Fixed)",
+                "✅ Connected" if pricing_source == "AWS API" else "❌ Disconnected"
+            ],
+            "Notes": [
+                "From secrets.toml",
+                "For EC2/S3 pricing",
+                "Pricing API limitation",
+                "Real-time status"
+            ]
+        })
+        
+        self.safe_dataframe_display(config_data)
+    
+    # Display detailed pricing rates (existing code)
+    if 'cost_breakdown_detailed' in cost_breakdown:
+        detailed = cost_breakdown['cost_breakdown_detailed']
+        
+        st.subheader("📊 Current AWS Rates")
+        
+        pricing_data = pd.DataFrame({
+            "Service": [
+                "EC2 Instance (per hour)",
+                "Data Transfer (per GB)",
+                "S3 Storage (per GB/month)",
+                "Direct Connect (per hour)"
+            ],
+            "Rate (USD)": [
+                f"${detailed['instance_hourly_rate']:.4f}",
+                f"${detailed['transfer_rate_per_gb']:.4f}",
+                f"${detailed['s3_rate_per_gb']:.6f}",
+                f"${detailed['dx_hourly_rate']:.4f}"
+            ],
+            "Service Type": [
+                f"{config['datasync_instance_type']}",
+                "AWS Data Transfer",
+                f"S3 {config['s3_storage_class']}",
+                f"{config['dx_bandwidth_mbps']} Mbps DX"
+            ],
+            "Source": [
+                pricing_source,
+                pricing_source,
+                pricing_source,
+                pricing_source
+            ]
+        })
+        
+        self.safe_dataframe_display(pricing_data)
+        
+        # Show pricing comparison if both API and fallback are available
+        if pricing_source == "AWS API":
+            st.info("💡 Pricing fetched in real-time from AWS. Rates update automatically every hour.")
+        else:
+            st.warning("⚠️ Using fallback pricing. Configure AWS secrets for real-time rates.")
+    
+    def assess_compliance_requirements(self, frameworks, data_classification, data_residency):
+        """Assess compliance requirements and identify risks"""
+        requirements = set()
+        risks = []
+        
+        for framework in frameworks:
+            if framework in self.compliance_requirements:
+                reqs = self.compliance_requirements[framework]
+                requirements.update(reqs.keys())
+                
+                # Check for compliance conflicts
+                if framework == "GDPR" and data_residency == "No restrictions":
+                    risks.append("GDPR requires data residency controls")
+                
+                if framework in ["HIPAA", "PCI-DSS"] and data_classification == "Public":
+                    risks.append(f"{framework} incompatible with Public data classification")
+        
+        return list(requirements), risks
+    
+    def calculate_business_impact(self, transfer_days, data_types):
+        """Calculate business impact score based on data types"""
+        impact_weights = {
+            "Customer Data": 0.9,
+            "Financial Records": 0.95,
+            "Employee Data": 0.7,
+            "Intellectual Property": 0.85,
+            "System Logs": 0.3,
+            "Application Data": 0.8,
+            "Database Backups": 0.6,
+            "Media Files": 0.4,
+            "Documents": 0.5
+        }
+        
+        if not data_types:
+            return {"score": 0.5, "level": "Medium", "recommendation": "Standard migration approach"}
+        
+        avg_impact = sum(impact_weights.get(dt, 0.5) for dt in data_types) / len(data_types)
+        
+        if avg_impact >= 0.8:
+            level = "Critical"
+            recommendation = "Phased migration with extensive testing"
+        elif avg_impact >= 0.6:
+            level = "High"
+            recommendation = "Careful planning with pilot phase"
+        elif avg_impact >= 0.4:
+            level = "Medium"
+            recommendation = "Standard migration approach"
+        else:
+            level = "Low"
+            recommendation = "Direct migration acceptable"
+        
+        return {"score": avg_impact, "level": level, "recommendation": recommendation}
+    
+    def get_optimal_networking_architecture(self, source_location, target_region, data_size_gb, 
+                                          dx_bandwidth_mbps, database_types, data_types, config=None):
+        """AI-powered networking architecture recommendations with real-time metrics"""
+        
+        # Get latency for the route
+        estimated_latency = self.geographic_latency.get(source_location, {}).get(target_region, 50)
+        
+        # Analyze data characteristics
+        has_databases = len(database_types) > 0
+        has_large_files = any("Large" in dt or "Media" in dt for dt in data_types)
+        data_size_tb = data_size_gb / 1024
+        
+        recommendations = {
+            "primary_method": "",
+            "secondary_method": "",
+            "networking_option": "",
+            "db_migration_tool": "",
+            "rationale": "",
+            "estimated_performance": {},
+            "cost_efficiency": "",
+            "risk_level": "",
+            "ai_analysis": ""
+        }
+        
+        # Try to get real AI analysis if enabled
+        if config and config.get('enable_real_ai') and config.get('claude_api_key'):
+            real_ai_analysis = self.get_real_ai_analysis(config, config['claude_api_key'], config.get('ai_model'))
+            if real_ai_analysis:
+                recommendations["ai_analysis"] = real_ai_analysis
+        
+        # Network architecture decision logic (fallback built-in AI)
+        if dx_bandwidth_mbps >= 1000 and estimated_latency < 50:
+            recommendations["networking_option"] = "Direct Connect (Primary)"
+            network_score = 9
+        elif dx_bandwidth_mbps >= 500:
+            recommendations["networking_option"] = "Direct Connect with Internet Backup"
+            network_score = 7
+        else:
+            recommendations["networking_option"] = "Internet with VPN"
+            network_score = 5
+        
+        # Database migration tool selection
+        if has_databases and data_size_tb > 10:
+            if len(database_types) > 2:
+                recommendations["db_migration_tool"] = "DMS+DataSync"
+            else:
+                recommendations["db_migration_tool"] = "DMS"
+        elif has_large_files and data_size_tb > 50:
+            if dx_bandwidth_mbps < 1000:
+                recommendations["db_migration_tool"] = "Snowball Edge"
+            else:
+                recommendations["db_migration_tool"] = "DataSync"
+        elif data_size_tb > 100:
+            recommendations["db_migration_tool"] = "Parallel Copy"
+        else:
+            recommendations["db_migration_tool"] = "DataSync"
+        
+        # Primary method selection
+        if data_size_tb > 50 and dx_bandwidth_mbps < 1000:
+            recommendations["primary_method"] = "Snowball Edge"
+            recommendations["secondary_method"] = "DataSync (for ongoing sync)"
+        elif has_databases:
+            recommendations["primary_method"] = recommendations["db_migration_tool"]
+            recommendations["secondary_method"] = "Storage Gateway (for hybrid)"
+        else:
+            recommendations["primary_method"] = "DataSync"
+            recommendations["secondary_method"] = "S3 Transfer Acceleration"
+        
+        # Generate built-in AI rationale
+        recommendations["rationale"] = self._generate_ai_rationale(
+            source_location, target_region, data_size_tb, dx_bandwidth_mbps, 
+            has_databases, has_large_files, estimated_latency, network_score
+        )
+        
+        # Use actual calculated performance instead of simplified estimates
+        if config:
+            # Calculate actual performance using the same method as the main metrics
+            actual_throughput_result = self.calculate_enterprise_throughput(
+                config.get('datasync_instance_type', 'm5.large'), 
+                config.get('num_datasync_agents', 1), 
+                config.get('avg_file_size', '10-100MB (Medium files)'), 
+                dx_bandwidth_mbps, 
+                config.get('network_latency', 25), 
+                config.get('network_jitter', 5), 
+                config.get('packet_loss', 0.1), 
+                config.get('qos_enabled', True), 
+                config.get('dedicated_bandwidth', 60), 
+                config.get('real_world_mode', True)
+            )
+            
+            if len(actual_throughput_result) == 4:
+                actual_throughput, network_efficiency, theoretical_throughput, real_world_efficiency = actual_throughput_result
+            else:
+                actual_throughput, network_efficiency = actual_throughput_result
+                theoretical_throughput = actual_throughput * 1.5
+            
+            # Apply network optimizations (same as main calculation)
+            tcp_efficiency = {"Default": 1.0, "64KB": 1.05, "128KB": 1.1, "256KB": 1.15, 
+                            "512KB": 1.2, "1MB": 1.25, "2MB": 1.3}
+            mtu_efficiency = {"1500 (Standard)": 1.0, "9000 (Jumbo Frames)": 1.15, "Custom": 1.1}
+            congestion_efficiency = {"Cubic (Default)": 1.0, "BBR": 1.2, "Reno": 0.95, "Vegas": 1.05}
+            
+            tcp_factor = tcp_efficiency.get(config.get('tcp_window_size', 'Default'), 1.0)
+            mtu_factor = mtu_efficiency.get(config.get('mtu_size', '1500 (Standard)'), 1.0)
+            congestion_factor = congestion_efficiency.get(config.get('network_congestion_control', 'Cubic (Default)'), 1.0)
+            wan_factor = 1.3 if config.get('wan_optimization', False) else 1.0
+            
+            optimized_ai_throughput = actual_throughput * tcp_factor * mtu_factor * congestion_factor * wan_factor
+            optimized_ai_throughput = min(optimized_ai_throughput, dx_bandwidth_mbps * (config.get('dedicated_bandwidth', 60) / 100))
+            optimized_ai_throughput = max(1, optimized_ai_throughput)
+            
+            # Calculate timing with real configuration
+            effective_data_gb = data_size_gb * 0.85
+            available_hours_per_day = 16 if config.get('business_hours_restriction', True) else 24
+            estimated_days = (effective_data_gb * 8) / (optimized_ai_throughput * available_hours_per_day * 3600) / 1000
+            estimated_days = max(0.1, estimated_days)
+            
+            recommendations["estimated_performance"] = {
+                "throughput_mbps": optimized_ai_throughput,
+                "estimated_days": estimated_days,
+                "network_efficiency": network_efficiency,
+                "agents_used": config.get('num_datasync_agents', 1),
+                "instance_type": config.get('datasync_instance_type', 'm5.large'),
+                "optimization_factors": {
+                    "tcp_factor": tcp_factor,
+                    "mtu_factor": mtu_factor,
+                    "congestion_factor": congestion_factor,
+                    "wan_factor": wan_factor
+                }
+            }
+        else:
+            # Fallback to simplified calculation if no config provided
+            if recommendations["networking_option"] == "Direct Connect (Primary)":
+                base_throughput = min(dx_bandwidth_mbps * 0.8, 2000)
+            elif "Direct Connect" in recommendations["networking_option"]:
+                base_throughput = min(dx_bandwidth_mbps * 0.6, 1500)
+            else:
+                base_throughput = min(500, dx_bandwidth_mbps * 0.4)
+            
+            recommendations["estimated_performance"] = {
+                "throughput_mbps": base_throughput,
+                "estimated_days": (data_size_gb * 8) / (base_throughput * 86400) / 1000,
+                "network_efficiency": network_score / 10,
+                "agents_used": 1,
+                "instance_type": "m5.large",
+                "optimization_factors": {
+                    "tcp_factor": 1.0,
+                    "mtu_factor": 1.0,
+                    "congestion_factor": 1.0,
+                    "wan_factor": 1.0
+                }
+            }
+        
+        # Cost and risk assessment
+        if data_size_tb > 100 and dx_bandwidth_mbps < 1000:
+            recommendations["cost_efficiency"] = "High (Physical transfer)"
+            recommendations["risk_level"] = "Medium"
+        elif dx_bandwidth_mbps >= 1000:
+            recommendations["cost_efficiency"] = "Medium (Network transfer)"
+            recommendations["risk_level"] = "Low"
+        else:
+            recommendations["cost_efficiency"] = "Medium"
+            recommendations["risk_level"] = "Medium"
+        
+        return recommendations
+        
+    def _generate_ai_rationale(self, source, target, data_size_tb, bandwidth, has_db, has_large_files, latency, network_score):
+        """Generate intelligent rationale for recommendations"""
+        
+        rationale_parts = []
+        
+        # Geographic analysis
+        if latency < 30:
+            rationale_parts.append(f"Excellent geographic proximity between {source} and {target} (≈{latency}ms latency)")
+        elif latency < 80:
+            rationale_parts.append(f"Good connectivity between {source} and {target} (≈{latency}ms latency)")
+        else:
+            rationale_parts.append(f"Significant distance between {source} and {target} (≈{latency}ms latency) - consider regional optimization")
+        
+        # Bandwidth analysis
+        if bandwidth >= 10000:
+            rationale_parts.append("High-bandwidth Direct Connect enables optimal network transfer performance")
+        elif bandwidth >= 1000:
+            rationale_parts.append("Adequate Direct Connect bandwidth supports efficient network-based migration")
+        else:
+            rationale_parts.append("Limited bandwidth suggests physical transfer methods for large datasets")
+        
+        # Data characteristics
+        if data_size_tb > 100:
+            rationale_parts.append(f"Large dataset ({data_size_tb:.1f}TB) requires high-throughput migration strategy")
+        
+        if has_db:
+            rationale_parts.append("Database workloads require specialized migration tools with minimal downtime capabilities")
+        
+        if has_large_files:
+            rationale_parts.append("Large file presence optimizes for high-throughput, parallel transfer methods")
+        
+        # Performance prediction
+        if network_score >= 8:
+            rationale_parts.append("Network conditions are optimal for direct cloud migration")
+        elif network_score >= 6:
+            rationale_parts.append("Network conditions support cloud migration with some optimization needed")
+        else:
+            rationale_parts.append("Network limitations suggest hybrid or physical transfer approaches")
+        
+        return ". ".join(rationale_parts) + "."
+    
+    def get_real_ai_analysis(self, config, api_key, model="claude-sonnet-4-20250514"):
+        """Get real Claude AI analysis using Anthropic API"""
+        if not ANTHROPIC_AVAILABLE or not api_key:
+            return None
+        
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            
+            # Prepare context for Claude
+            context = f"""
+            You are an expert AWS migration architect. Analyze this migration scenario and provide recommendations:
+            
+            Project: {config.get('project_name', 'N/A')}
+            Data Size: {config.get('data_size_gb', 0)} GB
+            Source: {config.get('source_location', 'N/A')}
+            Target: {config.get('target_aws_region', 'N/A')}
+            Network: {config.get('dx_bandwidth_mbps', 0)} Mbps Direct Connect
+            Databases: {', '.join(config.get('database_types', []))}
+            Data Types: {', '.join(config.get('data_types', []))}
+            Compliance: {', '.join(config.get('compliance_frameworks', []))}
+            Data Classification: {config.get('data_classification', 'N/A')}
+            
+            Provide specific recommendations for:
+            1. Best migration method and tools
+            2. Network architecture approach
+            3. Performance optimization strategies
+            4. Risk mitigation approaches
+            5. Cost optimization suggestions
+            
+            Be concise but specific. Focus on AWS best practices.
+            """
+            
+            response = client.messages.create(
+                model=model,
+                max_tokens=1000,
+                temperature=0.3,
+                messages=[{"role": "user", "content": context}]
+            )
+            
+            return response.content[0].text if response.content else None
+            
+        except Exception as e:
+            st.error(f"Claude AI API Error: {str(e)}")
+            return None
+
     def get_intelligent_datasync_recommendations(self, config, metrics):
         """Get intelligent, dynamic DataSync optimization recommendations based on workload analysis"""
         
         try:
-            # Verify initialization first
+            # Verify initialization
             self.verify_initialization()
             
             current_instance = config['datasync_instance_type']
@@ -587,8 +1397,7 @@ class EnterpriseCalculator:
             if 'theoretical_throughput' in metrics and metrics['theoretical_throughput'] > 0:
                 current_efficiency = (metrics['optimized_throughput'] / metrics['theoretical_throughput']) * 100
             else:
-                max_theoretical = config['dx_bandwidth_mbps'] * 0.8
-                current_efficiency = (metrics['optimized_throughput'] / max_theoretical) * 100 if max_theoretical > 0 else 70
+                current_efficiency = metrics['network_efficiency'] * 100
             
             # Performance rating
             if current_efficiency >= 80:
@@ -615,7 +1424,7 @@ class EnterpriseCalculator:
                 scaling_efficiency = 0.7
             
             # Instance recommendation logic
-            current_instance_info = self.instance_performance.get(current_instance, self.instance_performance["m5.large"])
+            current_instance_info = self.instance_performance[current_instance]
             recommended_instance = current_instance
             upgrade_needed = False
             
@@ -777,9 +1586,6 @@ class EnterpriseCalculator:
                 },
                 "alternative_configurations": []
             }
-
-    # ... [rest of your calculator methods would go here]
-            
     def __init__(self):
         """Initialize the calculator with all required data structures"""
         # Instance performance data
@@ -1509,281 +2315,383 @@ class MigrationPlatform:
             }
         
     
-    def setup_custom_css(self):
-        """Setup enhanced custom CSS styling with professional design"""
-        st.markdown("""
-        <style>
-            /* Main container styling */
+def setup_custom_css(self):
+    """Setup enhanced custom CSS styling with professional enterprise design"""
+    st.markdown("""
+    <style>
+        /* Enhanced main header - more compact and professional */
+        .main-header {
+            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .main-header h1 {
+            font-size: 1.8rem;
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        
+        .main-header p {
+            margin: 0.5rem 0 0 0;
+            font-size: 0.95rem;
+            font-weight: 400;
+        }
+        
+        /* Enhanced professional tab container */
+        .tab-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            border-top: 3px solid #232F3E;
+        }
+        
+        /* Professional tab buttons */
+        .stButton > button {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            padding: 0.75rem 1.25rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #495057;
+            transition: all 0.3s ease;
+            width: 100%;
+            height: 3rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .stButton > button:hover {
+            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+            border-color: #232F3E;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(35,47,62,0.2);
+        }
+        
+        .stButton > button:active, .stButton > button:focus {
+            background: linear-gradient(135deg, #FF9900 0%, #232F3E 100%);
+            border-color: #FF9900;
+            color: white;
+            box-shadow: 0 2px 8px rgba(255,153,0,0.3);
+        }
+        
+        /* Standardized section headers - more compact */
+        .section-header {
+            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 6px;
+            margin: 1.25rem 0 1rem 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(35,47,62,0.2);
+            border-left: 4px solid #FF9900;
+        }
+        
+        /* Enhanced metric cards - more professional */
+        .metric-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 1.25rem;
+            border-radius: 8px;
+            border-left: 4px solid #FF9900;
+            margin: 0.75rem 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid #e9ecef;
+        }
+        
+        .metric-card:hover {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            border-left-color: #232F3E;
+        }
+        
+        /* Professional recommendation boxes */
+        .recommendation-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 1.25rem;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            border-left: 4px solid #232F3E;
+            margin: 1rem 0;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+        }
+        
+        /* Enhanced AI insight boxes */
+        .ai-insight {
+            background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+            margin: 1rem 0;
+            font-style: italic;
+            box-shadow: 0 2px 10px rgba(0,123,255,0.1);
+            border: 1px solid #b8daff;
+        }
+        
+        /* Executive summary styling - more compact */
+        .executive-summary {
+            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            box-shadow: 0 4px 20px rgba(35,47,62,0.2);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* Status indicators - more professional */
+        .status-indicator {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin: 0.25rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .status-excellent {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .status-good {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+        }
+        
+        .status-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #212529;
+        }
+        
+        .status-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        
+        /* Security badges - more professional */
+        .security-badge {
+            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+            color: white;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin: 0.25rem;
+            display: inline-block;
+            box-shadow: 0 2px 6px rgba(35,47,62,0.3);
+            font-weight: 600;
+        }
+        
+        /* Compliance items */
+        .compliance-item {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
+            border-left: 4px solid #232F3E;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+        
+        /* Network frame - more professional */
+        .networking-frame {
+            border: 2px solid #232F3E;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            box-shadow: 0 4px 16px rgba(35,47,62,0.1);
+            padding: 1.25rem;
+            margin: 1rem 0;
+        }
+        
+        /* Real-time indicators */
+        .real-time-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            margin-right: 6px;
+            box-shadow: 0 0 6px rgba(40,167,69,0.5);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        /* Enhanced animations */
+        @keyframes slideIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(15px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Professional navigation buttons */
+        .nav-button {
+            background: linear-gradient(135deg, #232F3E 0%, #FF9900 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            margin: 0.25rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(35,47,62,0.3);
+            font-weight: 600;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(35,47,62,0.4);
+        }
+        
+        /* Professional tables */
+        .dataframe {
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+            border: 1px solid #dee2e6;
+        }
+        
+        /* Responsive design - enterprise optimized */
+        @media (max-width: 768px) {
             .main-header {
-                background: linear-gradient(135deg, #FF9900 0%, #232F3E 100%);
-                padding: 2rem;
-                border-radius: 15px;
-                color: white;
-                text-align: center;
-                margin-bottom: 2rem;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                padding: 0.75rem 1rem;
             }
             
-            /* Enhanced tab container */
-            .tab-container {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                padding: 1.5rem;
-                border-radius: 12px;
-                margin-bottom: 2rem;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-                border: 1px solid #dee2e6;
+            .main-header h1 {
+                font-size: 1.5rem;
             }
             
-            /* Standardized section headers */
-            .section-header {
-                background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-                color: white;
-                padding: 1rem 1.5rem;
-                border-radius: 8px;
-                margin: 1.5rem 0 1rem 0;
-                font-size: 1.2rem;
-                font-weight: bold;
-                box-shadow: 0 2px 8px rgba(0,123,255,0.3);
-            }
-            
-            /* Enhanced metric cards */
             .metric-card {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                padding: 1.5rem;
-                border-radius: 12px;
-                border-left: 5px solid #FF9900;
-                margin: 0.75rem 0;
-                transition: all 0.3s ease;
-                box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-                border: 1px solid #e9ecef;
+                padding: 1rem;
             }
             
-            .metric-card:hover {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                transform: translateY(-3px);
-                box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-            }
-            
-            /* Professional recommendation boxes */
             .recommendation-box {
-                background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
-                padding: 1.5rem;
-                border-radius: 12px;
-                border-left: 5px solid #007bff;
-                margin: 1rem 0;
-                box-shadow: 0 3px 15px rgba(0,123,255,0.1);
-                border: 1px solid #b8daff;
+                padding: 1rem;
             }
             
-            /* Enhanced AI insight boxes */
-            .ai-insight {
-                background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
-                padding: 1.25rem;
-                border-radius: 10px;
-                border-left: 4px solid #007bff;
-                margin: 1rem 0;
-                font-style: italic;
-                box-shadow: 0 2px 10px rgba(0,123,255,0.1);
-                border: 1px solid #cce7ff;
-            }
-            
-            /* Executive summary styling */
-            .executive-summary {
-                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-                color: white;
-                padding: 2rem;
-                border-radius: 15px;
-                margin: 1.5rem 0;
-                box-shadow: 0 6px 24px rgba(40,167,69,0.2);
-                text-align: center;
-            }
-            
-            /* Status indicators */
-            .status-indicator {
-                display: inline-block;
+            .stButton > button {
+                height: 2.5rem;
+                font-size: 0.8rem;
                 padding: 0.5rem 1rem;
-                border-radius: 20px;
-                font-weight: bold;
-                margin: 0.25rem;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             }
-            
-            .status-excellent {
-                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-                color: white;
-            }
-            
-            .status-good {
-                background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-                color: white;
-            }
-            
-            .status-warning {
-                background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-                color: #212529;
-            }
-            
-            .status-danger {
-                background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-                color: white;
-            }
-            
-            /* Security badges */
-            .security-badge {
-                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-                color: white;
-                padding: 0.4rem 0.8rem;
-                border-radius: 15px;
-                font-size: 0.85rem;
-                margin: 0.25rem;
-                display: inline-block;
-                box-shadow: 0 2px 6px rgba(40,167,69,0.3);
-            }
-            
-            /* Compliance items */
-            .compliance-item {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                padding: 0.75rem;
-                margin: 0.5rem 0;
-                border-radius: 8px;
-                border-left: 4px solid #007bff;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            }
-            
-            /* Network frame */
-            .networking-frame {
-                border: 2px solid #FF9900;
-                border-radius: 15px;
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                box-shadow: 0 6px 20px rgba(255,153,0,0.1);
-                padding: 1.5rem;
-                margin: 1rem 0;
-            }
-            
-            /* Real-time indicators */
-            .real-time-indicator {
-                display: inline-block;
-                width: 10px;
-                height: 10px;
-                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-                border-radius: 50%;
-                animation: pulse 2s infinite;
-                margin-right: 8px;
-                box-shadow: 0 0 8px rgba(40,167,69,0.5);
-            }
-            
-            @keyframes pulse {
-                0% { opacity: 1; transform: scale(1); }
-                50% { opacity: 0.7; transform: scale(1.1); }
-                100% { opacity: 1; transform: scale(1); }
-            }
-            
-            /* Enhanced animations */
-            @keyframes slideIn {
-                from { 
-                    opacity: 0; 
-                    transform: translateY(20px); 
-                }
-                to { 
-                    opacity: 1; 
-                    transform: translateY(0); 
-                }
-            }
-            
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-            
-            /* Navigation buttons */
-            .nav-button {
-                background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-                border: none;
-                color: white;
-                padding: 0.75rem 1.5rem;
-                border-radius: 8px;
-                margin: 0.25rem;
-                transition: all 0.3s ease;
-                box-shadow: 0 2px 8px rgba(0,123,255,0.3);
-            }
-            
-            .nav-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,123,255,0.4);
-            }
-            
-            /* Tables */
-            .dataframe {
-                border-radius: 8px;
-                overflow: hidden;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                border: 1px solid #dee2e6;
-            }
-            
-            /* Responsive design */
-            @media (max-width: 768px) {
-                .main-header {
-                    padding: 1rem;
-                }
-                
-                .metric-card {
-                    padding: 1rem;
-                }
-                
-                .recommendation-box {
-                    padding: 1rem;
-                }
-            }
-            
-            /* Enhanced conclusion page styling */
-            .conclusion-container {
-                background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-                border-radius: 15px;
-                padding: 2rem;
-                margin: 1rem 0;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                border: 1px solid #e9ecef;
-            }
-            
-            .decision-banner {
-                text-align: center;
-                padding: 2rem;
-                border-radius: 15px;
-                margin: 2rem 0;
-                font-size: 1.1rem;
-                font-weight: bold;
-                box-shadow: 0 6px 24px rgba(0,0,0,0.1);
-            }
-            
-            .phase-container {
-                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                border-radius: 12px;
-                padding: 1.5rem;
-                margin: 1rem 0;
-                border-left: 5px solid #17a2b8;
-                box-shadow: 0 3px 15px rgba(0,0,0,0.08);
-            }
-            
-            /* Success criteria styling */
-            .success-criteria {
-                background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-                border: 1px solid #c3e6cb;
-                border-radius: 10px;
-                padding: 1.25rem;
-                margin: 1rem 0;
-                border-left: 5px solid #28a745;
-            }
-            
-            .risk-mitigation {
-                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-                border: 1px solid #ffeaa7;
-                border-radius: 10px;
-                padding: 1.25rem;
-                margin: 1rem 0;
-                border-left: 5px solid #ffc107;
-            }
-        </style>
-        """, unsafe_allow_html=True)
+        }
+        
+        /* Enhanced conclusion page styling */
+        .conclusion-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            border-top: 3px solid #232F3E;
+        }
+        
+        .decision-banner {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .phase-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            border-left: 4px solid #17a2b8;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+            border: 1px solid #e9ecef;
+        }
+        
+        /* Success criteria styling */
+        .success-criteria {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-left: 4px solid #28a745;
+        }
+        
+        .risk-mitigation {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-left: 4px solid #ffc107;
+        }
+        
+        /* Professional sidebar styling */
+        .sidebar .sidebar-content {
+            background: #f8f9fa;
+        }
+        
+        /* Enterprise-grade form elements */
+        .stSelectbox > div > div {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+        }
+        
+        .stNumberInput > div > div > input {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+        }
+        
+        .stTextInput > div > div > input {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+        }
+        
+        /* Professional metrics styling */
+        [data-testid="metric-container"] {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid #e9ecef;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid #FF9900;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        [data-testid="metric-container"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+    """, unsafe_allow_html=True)
     
     def safe_dataframe_display(self, df, use_container_width=True, hide_index=True, **kwargs):
         """Safely display a DataFrame by ensuring all values are strings to prevent type mixing"""
@@ -1803,42 +2711,43 @@ class MigrationPlatform:
         return href
     
     def render_header(self):
-        """Render the enhanced main header"""
+        """Render the compact professional main header"""
         st.markdown("""
         <div class="main-header">
             <h1>🏢 Enterprise AWS Migration Strategy Platform</h1>
-            <p style="font-size: 1.1rem; margin-top: 0.5rem;">AI-Powered Migration Planning • Security-First • Compliance-Ready • Enterprise-Scale</p>
-            <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.9;">Comprehensive Analysis • Real-time Optimization • Professional Reporting</p>
+            <p>AI-Powered Migration Planning • Security-First • Compliance-Ready • Enterprise-Scale</p>
         </div>
         """, unsafe_allow_html=True)
     
     def render_navigation(self):
-        """Render enhanced navigation bar with consistent styling"""
+        """Render enhanced navigation bar with professional tab styling"""
         st.markdown('<div class="tab-container">', unsafe_allow_html=True)
         
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 2, 2, 2, 2, 2, 2])
+        # Create navigation columns with better spacing
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2])
         
         with col1:
-            if st.button("🏠 Dashboard", key="nav_dashboard"):
+            if st.button("🏠 Dashboard", key="nav_dashboard", use_container_width=True):
                 st.session_state.active_tab = "dashboard"
         with col2:
-            if st.button("🌐 Network Analysis", key="nav_network"):
+            if st.button("🌐 Network Analysis", key="nav_network", use_container_width=True):
                 st.session_state.active_tab = "network"
         with col3:
-            if st.button("📊 Migration Planner", key="nav_planner"):
+            if st.button("📊 Migration Planner", key="nav_planner", use_container_width=True):
                 st.session_state.active_tab = "planner"
         with col4:
-            if st.button("⚡ Performance", key="nav_performance"):
+            if st.button("⚡ Performance", key="nav_performance", use_container_width=True):
                 st.session_state.active_tab = "performance"
         with col5:
-            if st.button("🔒 Security", key="nav_security"):
+            if st.button("🔒 Security", key="nav_security", use_container_width=True):
                 st.session_state.active_tab = "security"
         with col6:
-            if st.button("📈 Analytics", key="nav_analytics"):
+            if st.button("📈 Analytics", key="nav_analytics", use_container_width=True):
                 st.session_state.active_tab = "analytics"
         with col7:
-            if st.button("🎯 Conclusion", key="nav_conclusion"):
+            if st.button("🎯 Conclusion", key="nav_conclusion", use_container_width=True):
                 st.session_state.active_tab = "conclusion"
+    
         
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -3428,7 +4337,8 @@ region = "us-west-2"  # Your preferred compute region
     
     def render_analytics_tab(self, config, metrics):
         """Render the analytics and reporting tab with enhanced styling"""
-        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)        
+        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📈 Analytics & Reporting</div>', unsafe_allow_html=True)
         
         # WITH THIS NEW CODE ↓
         # Performance trends (realistic modeling)
