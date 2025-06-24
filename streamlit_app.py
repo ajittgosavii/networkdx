@@ -1890,6 +1890,205 @@ class MigrationPlatform:
                     """, unsafe_allow_html=True)
     
     
+    # INSERT THIS CODE AFTER LINE 1857 (after render_corrected_datasync_optimization method)
+    
+    def simulate_recommended_configuration(self, config, recommendations):
+        """Simulate what metrics would look like with AI recommendations applied"""
+        
+        # Create a copy of current config with AI recommendations applied
+        optimized_config = config.copy()
+        
+        # Apply AI recommendations
+        instance_rec = recommendations["recommended_instance"]
+        agent_rec = recommendations["recommended_agents"]
+        
+        if instance_rec["upgrade_needed"]:
+            optimized_config['datasync_instance_type'] = instance_rec["recommended_instance"]
+        
+        if agent_rec["change_needed"] != 0:
+            optimized_config['num_datasync_agents'] = agent_rec["recommended_agents"]
+        
+        # Calculate what the metrics would be with optimized configuration
+        optimized_metrics = self.calculate_migration_metrics(optimized_config)
+        
+        return optimized_config, optimized_metrics
+
+    def render_dynamic_optimization_preview(self, config, metrics, datasync_recommendations):
+        """Render dynamic before/after optimization preview"""
+        
+        st.markdown("### 🔮 Dynamic AI Optimization Preview")
+        
+        # Calculate what configuration would look like after AI recommendations
+        optimized_config, optimized_metrics = self.simulate_recommended_configuration(config, datasync_recommendations)
+        
+        # Create before/after comparison
+        col1, col2, col3 = st.columns([1, 0.2, 1])
+        
+        with col1:
+            st.markdown("**📊 CURRENT Configuration**")
+            
+            current_analysis = datasync_recommendations["current_analysis"]
+            efficiency = current_analysis['current_efficiency']
+            
+            # Current status (likely red/poor)
+            if efficiency >= 80:
+                status_color = "#28a745"
+                status_icon = "🟢"
+                status_text = "Excellent"
+            elif efficiency >= 60:
+                status_color = "#ffc107"
+                status_icon = "🟡"
+                status_text = "Good"
+            else:
+                status_color = "#dc3545"
+                status_icon = "🔴"
+                status_text = "Needs Optimization"
+            
+            st.markdown(f"""
+            <div style="background: {status_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {status_color};">
+                <h4>{status_icon} Current Status: {status_text}</h4>
+                <strong>Setup:</strong> {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
+                <strong>Efficiency:</strong> {efficiency:.1f}%<br>
+                <strong>Throughput:</strong> {metrics['optimized_throughput']:.0f} Mbps<br>
+                <strong>Duration:</strong> {metrics['transfer_days']:.1f} days<br>
+                <strong>Cost:</strong> ${metrics['cost_breakdown']['total']:,.0f}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            # Arrow pointing to optimization
+            st.markdown("""
+            <div style="text-align: center; padding-top: 50px;">
+                <h2 style="color: #007bff;">➡️</h2>
+                <p style="color: #007bff; font-weight: bold;">AI Optimized</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("**✨ OPTIMIZED Configuration (AI Recommended)**")
+            
+            # Calculate optimized efficiency (this should be much better)
+            optimized_throughput = optimized_metrics['optimized_throughput']
+            theoretical_max = config['dx_bandwidth_mbps'] * 0.8
+            optimized_efficiency = (optimized_throughput / theoretical_max) * 100 if theoretical_max > 0 else 85
+            
+            # Optimized status (should be green/excellent)
+            if optimized_efficiency >= 80:
+                opt_status_color = "#28a745"
+                opt_status_icon = "🟢"
+                opt_status_text = "Excellent"
+            elif optimized_efficiency >= 60:
+                opt_status_color = "#ffc107"
+                opt_status_icon = "🟡"
+                opt_status_text = "Good"
+            else:
+                opt_status_color = "#17a2b8"
+                opt_status_icon = "🔵"
+                opt_status_text = "Improved"
+            
+            # Calculate improvements
+            throughput_improvement = ((optimized_throughput - metrics['optimized_throughput']) / metrics['optimized_throughput']) * 100
+            time_improvement = ((metrics['transfer_days'] - optimized_metrics['transfer_days']) / metrics['transfer_days']) * 100
+            efficiency_improvement = optimized_efficiency - efficiency
+            
+            st.markdown(f"""
+            <div style="background: {opt_status_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {opt_status_color};">
+                <h4>{opt_status_icon} Optimized Status: {opt_status_text}</h4>
+                <strong>Setup:</strong> {optimized_config['num_datasync_agents']}x {optimized_config['datasync_instance_type']}<br>
+                <strong>Efficiency:</strong> {optimized_efficiency:.1f}% (+{efficiency_improvement:.1f}%)<br>
+                <strong>Throughput:</strong> {optimized_throughput:.0f} Mbps (+{throughput_improvement:.1f}%)<br>
+                <strong>Duration:</strong> {optimized_metrics['transfer_days']:.1f} days (-{time_improvement:.1f}%)<br>
+                <strong>Cost:</strong> ${optimized_metrics['cost_breakdown']['total']:,.0f}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Show specific improvements
+        st.markdown("### 📈 Improvement Summary")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "Efficiency Improvement", 
+                f"+{efficiency_improvement:.1f}%",
+                delta=f"{efficiency:.1f}% → {optimized_efficiency:.1f}%"
+            )
+        
+        with col2:
+            st.metric(
+                "Throughput Boost",
+                f"+{throughput_improvement:.1f}%",
+                delta=f"{metrics['optimized_throughput']:.0f} → {optimized_throughput:.0f} Mbps"
+            )
+        
+        with col3:
+            st.metric(
+                "Time Reduction",
+                f"-{time_improvement:.1f}%",
+                delta=f"{metrics['transfer_days']:.1f} → {optimized_metrics['transfer_days']:.1f} days"
+            )
+        
+        with col4:
+            cost_change = ((optimized_metrics['cost_breakdown']['total'] - metrics['cost_breakdown']['total']) / metrics['cost_breakdown']['total']) * 100
+            st.metric(
+                "Cost Impact",
+                f"{cost_change:+.1f}%",
+                delta=f"${metrics['cost_breakdown']['total']:,.0f} → ${optimized_metrics['cost_breakdown']['total']:,.0f}"
+            )
+        
+        # Implementation guide
+        if optimized_efficiency >= 80:
+            st.success("🎯 **Achieving Green Status**: Following AI recommendations will bring your configuration to excellent (green) status!")
+            
+            st.markdown("### 🛠️ Implementation Steps to Achieve Green Status")
+            implementation_steps = []
+            
+            if datasync_recommendations["recommended_instance"]["upgrade_needed"]:
+                old_instance = config['datasync_instance_type']
+                new_instance = datasync_recommendations["recommended_instance"]["recommended_instance"]
+                implementation_steps.append(f"1. **Upgrade Instance**: Change from {old_instance} to {new_instance}")
+            
+            if datasync_recommendations["recommended_agents"]["change_needed"] != 0:
+                old_agents = config['num_datasync_agents']
+                new_agents = datasync_recommendations["recommended_agents"]["recommended_agents"]
+                if new_agents > old_agents:
+                    implementation_steps.append(f"2. **Scale Up Agents**: Increase from {old_agents} to {new_agents} DataSync agents")
+                else:
+                    implementation_steps.append(f"2. **Scale Down Agents**: Reduce from {old_agents} to {new_agents} DataSync agents")
+            
+            implementation_steps.append("3. **Network Optimization**: Enable TCP window scaling, jumbo frames, and WAN optimization")
+            implementation_steps.append("4. **Monitor Performance**: Validate that efficiency reaches 80%+ (green status)")
+            implementation_steps.append("5. **Fine-tune**: Adjust parallel streams and other settings as needed")
+            
+            for step in implementation_steps:
+                st.write(step)
+        
+        else:
+            st.warning("⚠️ Additional optimizations may be needed to reach green status. Consider network infrastructure improvements.")
+        
+        return optimized_config, optimized_metrics
+
+    def render_quick_apply_recommendations(self, datasync_recommendations):
+        """Render quick apply buttons for AI recommendations"""
+        
+        st.markdown("### ⚡ Quick Apply AI Recommendations")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            instance_rec = datasync_recommendations["recommended_instance"]
+            if instance_rec["upgrade_needed"]:
+                if st.button(f"⬆️ Upgrade to {instance_rec['recommended_instance']}", type="secondary"):
+                    st.session_state.auto_apply_instance = instance_rec["recommended_instance"]
+                    st.rerun()
+        
+        with col2:
+            agent_rec = datasync_recommendations["recommended_agents"]
+            if agent_rec["change_needed"] != 0:
+                if st.button(f"🔄 Set {agent_rec['recommended_agents']} Agents", type="secondary"):
+                    st.session_state.auto_apply_agents = agent_rec["recommended_agents"]
+                    st.rerun()
+    
     
     def calculate_migration_metrics(self, config):
         """Calculate all migration metrics with error handling"""
@@ -2436,11 +2635,33 @@ class MigrationPlatform:
         business_hours_restriction = st.sidebar.checkbox("Restrict to Off-Business Hours", value=True)
         
         # Transfer configuration section
+        # REPLACE the DataSync controls section (around line 814) with this enhanced version:
+        
+        # Transfer configuration section
         st.sidebar.subheader("🚀 Transfer Configuration")
-        num_datasync_agents = st.sidebar.number_input("DataSync Agents", min_value=1, max_value=50, value=5)
-        datasync_instance_type = st.sidebar.selectbox("DataSync Instance Type",
-            ["m5.large", "m5.xlarge", "m5.2xlarge", "m5.4xlarge", "m5.8xlarge", 
-             "c5.2xlarge", "c5.4xlarge", "c5.9xlarge", "r5.2xlarge", "r5.4xlarge"])
+        
+        # Auto-apply recommendations if they exist in session state
+        if hasattr(st.session_state, 'auto_apply_agents'):
+            num_datasync_agents = st.session_state.auto_apply_agents
+            del st.session_state.auto_apply_agents
+            st.sidebar.success(f"✅ Applied AI recommendation: {num_datasync_agents} agents")
+        else:
+            num_datasync_agents = st.sidebar.number_input("DataSync Agents", min_value=1, max_value=50, value=5)
+        
+        if hasattr(st.session_state, 'auto_apply_instance'):
+            datasync_instance_type = st.session_state.auto_apply_instance
+            del st.session_state.auto_apply_instance
+            st.sidebar.success(f"✅ Applied AI recommendation: {datasync_instance_type}")
+        else:
+            datasync_instance_type = st.sidebar.selectbox("DataSync Instance Type",
+                ["m5.large", "m5.xlarge", "m5.2xlarge", "m5.4xlarge", "m5.8xlarge", 
+                 "c5.2xlarge", "c5.4xlarge", "c5.9xlarge", "r5.2xlarge", "r5.4xlarge"])
+        
+        # Add indicator if AI recommendations are available
+        if hasattr(st.session_state, 'auto_apply_agents') or hasattr(st.session_state, 'auto_apply_instance'):
+            st.sidebar.info("🤖 AI recommendations applied! Check the dashboard for updated metrics.")
+        
+        # Rest of your existing configuration controls stay the same...
         
         # Real-world performance modeling
         st.sidebar.subheader("📊 Performance Modeling")
@@ -2930,7 +3151,7 @@ region = "us-west-2"  # Your preferred compute region
             </div>
             """, unsafe_allow_html=True)
         
-        # CORRECTED DataSync Optimization Section
+        # ENHANCED DataSync Optimization Section with Dynamic Preview
         st.markdown('<div class="section-header">🚀 Real-time DataSync Optimization Analysis</div>', unsafe_allow_html=True)
 
         try:
@@ -2940,7 +3161,14 @@ region = "us-west-2"  # Your preferred compute region
             # Use the corrected rendering method
             self.render_corrected_datasync_optimization(datasync_recommendations, config, metrics)
             
-            # Extract variables for optimization suggestions
+            # NEW: Add dynamic optimization preview
+            st.markdown("---")  # Separator
+            self.render_dynamic_optimization_preview(config, metrics, datasync_recommendations)
+            
+            # NEW: Add quick apply buttons
+            self.render_quick_apply_recommendations(datasync_recommendations)
+            
+            # Extract variables for optimization suggestions (keep existing code)
             instance_rec = datasync_recommendations["recommended_instance"]
             agent_rec = datasync_recommendations["recommended_agents"]
             current_analysis = datasync_recommendations["current_analysis"]
