@@ -4642,7 +4642,7 @@ region = "us-west-2"  # Your preferred compute region
             }
 
     # ADD THIS NEW METHOD TO MigrationPlatform CLASS
-def render_corrected_datasync_optimization(self, datasync_recommendations, config, metrics):
+    def render_corrected_datasync_optimization(self, datasync_recommendations, config, metrics):
         """Render corrected DataSync optimization with clear messaging"""
         
         col1, col2, col3 = st.columns([1, 1, 1])
