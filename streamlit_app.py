@@ -4783,25 +4783,25 @@ region = "us-west-2"  # Your preferred compute region
                 </div>
                 """, unsafe_allow_html=True)
         
-            # CORRECTED: Alternative Configurations
-            alternatives = datasync_recommendations["alternative_configurations"]
-            if alternatives:
-                st.markdown("### 🔀 Alternative DataSync Configurations")
-                
-                alt_cols = st.columns(len(alternatives))
-                for idx, alt in enumerate(alternatives):
-                    with alt_cols[idx]:
-                        # Highlight the AI recommended option
-                        border_color = "#007bff" if "AI Recommended" in alt['name'] else "#dee2e6"
-                        bg_color = "#f8f9fa" if "AI Recommended" in alt['name'] else "#ffffff"
-                        
-                        st.markdown(f"""
-                        <div style="background: {bg_color}; padding: 10px; border-radius: 8px; border: 2px solid {border_color};">
-                            <strong>{alt['name']}</strong><br>
-                            <strong>Config:</strong> {alt['agents']}x {alt['instance']}<br>
-                            <em>{alt['description']}</em>
-                        </div>
-                        """, unsafe_allow_html=True)
+        # CORRECTED: Alternative Configurations
+        alternatives = datasync_recommendations["alternative_configurations"]
+        if alternatives:
+            st.markdown("### 🔀 Alternative DataSync Configurations")
+            
+            alt_cols = st.columns(len(alternatives))
+            for idx, alt in enumerate(alternatives):
+                with alt_cols[idx]:
+                    # Highlight the AI recommended option
+                    border_color = "#007bff" if "AI Recommended" in alt['name'] else "#dee2e6"
+                    bg_color = "#f8f9fa" if "AI Recommended" in alt['name'] else "#ffffff"
+                    
+                    st.markdown(f"""
+                    <div style="background: {bg_color}; padding: 10px; border-radius: 8px; border: 2px solid {border_color};">
+                        <strong>{alt['name']}</strong><br>
+                        <strong>Config:</strong> {alt['agents']}x {alt['instance']}<br>
+                        <em>{alt['description']}</em>
+                    </div>
+                    """, unsafe_allow_html=True)
     
         
          
