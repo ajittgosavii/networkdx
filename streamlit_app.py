@@ -4092,6 +4092,405 @@ region = "us-west-2"  # Your preferred compute region
             st.info(recommendations['ai_analysis'])
         
         st.success("🎯 **Migration analysis complete!** Use the recommendations above to proceed with your AWS migration strategy.")
+    
+    def get_intelligent_datasync_recommendations(self, config, metrics):
+        """Get intelligent, dynamic DataSync optimization recommendations with corrected messaging"""
+        
+        try:
+            # Verify initialization
+            self.verify_initialization()
+            
+            current_instance = config['datasync_instance_type']
+            current_agents = config['num_datasync_agents']
+            data_size_gb = config['data_size_gb']
+            data_size_tb = data_size_gb / 1024
+            
+            # Current efficiency analysis
+            if 'theoretical_throughput' in metrics and metrics['theoretical_throughput'] > 0:
+                current_efficiency = (metrics['optimized_throughput'] / metrics['theoretical_throughput']) * 100
+            else:
+                current_efficiency = metrics['network_efficiency'] * 100
+            
+            # Performance rating
+            if current_efficiency >= 80:
+                performance_rating = "Excellent"
+            elif current_efficiency >= 60:
+                performance_rating = "Good"
+            elif current_efficiency >= 40:
+                performance_rating = "Fair"
+            else:
+                performance_rating = "Poor"
+            
+            # CORRECTED: Improved scaling effectiveness analysis
+            optimal_agent_count = max(1, min(8, int(data_size_tb / 15) + 1))  # More conservative scaling
+            
+            if current_agents == optimal_agent_count:
+                scaling_rating = "Optimal"
+                scaling_efficiency = 0.95
+            elif abs(current_agents - optimal_agent_count) <= 1:
+                scaling_rating = "Well-scaled"
+                scaling_efficiency = 0.85
+            elif current_agents < optimal_agent_count:
+                scaling_rating = "Under-scaled"
+                scaling_efficiency = 0.7
+            else:
+                scaling_rating = "Over-scaled"
+                scaling_efficiency = 0.75
+            
+            # CORRECTED: Instance recommendation logic
+            current_instance_info = self.instance_performance[current_instance]
+            recommended_instance = current_instance
+            upgrade_needed = False
+            
+            # More intelligent instance recommendations
+            cpu_requirement = data_size_tb * 0.5  # CPU cores needed per TB
+            memory_requirement = data_size_tb * 2  # GB memory needed per TB
+            
+            current_cpu = current_instance_info["cpu"]
+            current_memory = current_instance_info["memory"]
+            
+            if current_cpu < cpu_requirement or current_memory < memory_requirement:
+                if data_size_tb > 100:
+                    recommended_instance = "c5.4xlarge"
+                    expected_gain = 35
+                    cost_impact = 77  # c5.4xlarge vs current
+                elif data_size_tb > 50:
+                    recommended_instance = "m5.2xlarge"
+                    expected_gain = 25
+                    cost_impact = 100  # 2xlarge vs current
+                elif data_size_tb > 20 and current_instance == "m5.large":
+                    recommended_instance = "m5.xlarge"
+                    expected_gain = 15
+                    cost_impact = 100  # xlarge vs large
+                else:
+                    expected_gain = 0
+                    cost_impact = 0
+                
+                if recommended_instance != current_instance:
+                    upgrade_needed = True
+                    reason = f"Dataset size ({data_size_tb:.1f}TB) requires more compute resources for optimal performance"
+                else:
+                    reason = "Current instance type is appropriate for workload"
+            else:
+                reason = "Current instance type has sufficient resources"
+                expected_gain = 0
+                cost_impact = 0
+            
+            # CORRECTED: Agent recommendation logic with better scaling
+            optimal_agent_count = max(1, min(6, int(data_size_tb / 20) + 1))  # More conservative: 1 agent per 20TB
+            
+            # For smaller datasets, don't over-scale
+            if data_size_tb < 10:
+                optimal_agent_count = min(2, optimal_agent_count)
+            elif data_size_tb < 50:
+                optimal_agent_count = min(4, optimal_agent_count)
+            
+            # Consider current performance - if efficiency is very low, might need fewer agents
+            if current_efficiency < 30:
+                optimal_agent_count = max(1, min(optimal_agent_count, current_agents - 1))
+            
+            if current_agents < optimal_agent_count:
+                agent_change = optimal_agent_count - current_agents
+                agent_reasoning = f"Scale up to {optimal_agent_count} agents for better parallel processing"
+                # Positive change = performance improvement
+                performance_change = agent_change * 15  # 15% improvement per additional agent
+                cost_change = agent_change * 100  # 100% cost increase per agent
+                change_type = "scale_up"
+            elif current_agents > optimal_agent_count:
+                agent_change = current_agents - optimal_agent_count  # Keep positive for clarity
+                agent_reasoning = f"Scale down to {optimal_agent_count} agents for cost optimization"
+                # Scaling down: performance loss but cost savings
+                performance_change = agent_change * 12  # 12% performance reduction per removed agent
+                cost_change = agent_change * 100  # 100% cost reduction per removed agent
+                change_type = "scale_down"
+            else:
+                agent_change = 0
+                agent_reasoning = f"Current {current_agents} agents is optimal for this workload"
+                performance_change = 0
+                cost_change = 0
+                change_type = "optimal"
+            
+            # CORRECTED: Bottleneck analysis
+            bottlenecks = []
+            recommendations_list = []
+            
+            # More specific bottleneck detection
+            throughput_utilization = metrics['optimized_throughput'] / config['dx_bandwidth_mbps']
+            
+            if current_efficiency < 50:
+                bottlenecks.append("Low overall efficiency indicates multiple performance constraints")
+                recommendations_list.append("Comprehensive configuration review recommended")
+            
+            if throughput_utilization < 0.3:
+                bottlenecks.append("Network bandwidth underutilization")
+                recommendations_list.append("Consider scaling up agents or optimizing transfer settings")
+            
+            if current_instance == "m5.large" and data_size_tb > 20:
+                bottlenecks.append("Instance compute resources may be limiting large dataset processing")
+                recommendations_list.append("Upgrade to m5.xlarge or c5.2xlarge for better performance")
+            
+            if config.get('network_latency', 25) > 50:
+                bottlenecks.append("High network latency affecting transfer efficiency")
+                recommendations_list.append("Consider regional optimization or network path improvements")
+            
+            if len(bottlenecks) == 0:
+                recommendations_list.append("Configuration is well-optimized with no major bottlenecks detected")
+            
+            # CORRECTED: Cost-performance analysis
+            hourly_cost = current_instance_info["cost_hour"] * current_agents
+            cost_per_mbps = hourly_cost / max(1, metrics['optimized_throughput'])
+            
+            # More realistic efficiency ranking
+            if cost_per_mbps < 0.001:
+                efficiency_ranking = 1
+            elif cost_per_mbps < 0.003:
+                efficiency_ranking = 5
+            elif cost_per_mbps < 0.007:
+                efficiency_ranking = 10
+            elif cost_per_mbps < 0.015:
+                efficiency_ranking = 15
+            else:
+                efficiency_ranking = 20
+            
+            # CORRECTED: Alternative configurations
+            alternatives = []
+            
+            # Cost-optimized: Fewer, smaller instances
+            if data_size_tb < 50:
+                cost_opt_instance = "m5.large"
+                cost_opt_agents = max(1, optimal_agent_count - 1)
+            else:
+                cost_opt_instance = "m5.xlarge"
+                cost_opt_agents = max(2, optimal_agent_count - 1)
+            
+            alternatives.append({
+                "name": "Cost-Optimized",
+                "instance": cost_opt_instance,
+                "agents": cost_opt_agents,
+                "description": f"Reduced cost with {cost_opt_agents}x {cost_opt_instance} - good for budget-conscious migrations"
+            })
+            
+            # Performance-optimized: More powerful instances
+            if data_size_tb > 100:
+                perf_opt_instance = "c5.4xlarge"
+                perf_opt_agents = min(6, optimal_agent_count + 1)
+            elif data_size_tb > 50:
+                perf_opt_instance = "c5.2xlarge"
+                perf_opt_agents = min(5, optimal_agent_count + 1)
+            else:
+                perf_opt_instance = "m5.2xlarge"
+                perf_opt_agents = min(4, optimal_agent_count + 1)
+            
+            alternatives.append({
+                "name": "Performance-Optimized", 
+                "instance": perf_opt_instance,
+                "agents": perf_opt_agents,
+                "description": f"Maximum speed with {perf_opt_agents}x {perf_opt_instance} - fastest completion time"
+            })
+            
+            # Balanced: Optimal configuration
+            balanced_instance = "m5.xlarge" if data_size_tb < 100 else "m5.2xlarge"
+            balanced_agents = optimal_agent_count
+            
+            alternatives.append({
+                "name": "Balanced (AI Recommended)",
+                "instance": balanced_instance,
+                "agents": balanced_agents,
+                "description": f"Optimal balance with {balanced_agents}x {balanced_instance} - best cost/performance ratio"
+            })
+            
+            return {
+                "current_analysis": {
+                    "current_efficiency": current_efficiency,
+                    "performance_rating": performance_rating,
+                    "scaling_effectiveness": {
+                        "scaling_rating": scaling_rating,
+                        "efficiency": scaling_efficiency
+                    }
+                },
+                "recommended_instance": {
+                    "recommended_instance": recommended_instance,
+                    "upgrade_needed": upgrade_needed,
+                    "reason": reason,
+                    "expected_performance_gain": expected_gain,
+                    "cost_impact_percent": cost_impact
+                },
+                "recommended_agents": {
+                    "recommended_agents": optimal_agent_count,
+                    "change_needed": agent_change,
+                    "change_type": change_type,
+                    "reasoning": agent_reasoning,
+                    "performance_change_percent": performance_change,
+                    "cost_change_percent": cost_change
+                },
+                "bottleneck_analysis": (bottlenecks, recommendations_list),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": cost_per_mbps,
+                    "efficiency_ranking": efficiency_ranking
+                },
+                "alternative_configurations": alternatives
+            }
+            
+        except Exception as e:
+            # Return safe fallback
+            return {
+                "current_analysis": {
+                    "current_efficiency": 75,
+                    "performance_rating": "Unable to analyze",
+                    "scaling_effectiveness": {"scaling_rating": "Unknown", "efficiency": 0.75}
+                },
+                "recommended_instance": {
+                    "recommended_instance": config.get('datasync_instance_type', 'm5.large'),
+                    "upgrade_needed": False,
+                    "reason": f"Analysis error: {str(e)}",
+                    "expected_performance_gain": 0,
+                    "cost_impact_percent": 0
+                },
+                "recommended_agents": {
+                    "recommended_agents": config.get('num_datasync_agents', 1),
+                    "change_needed": 0,
+                    "change_type": "optimal",
+                    "reasoning": "Unable to analyze due to error",
+                    "performance_change_percent": 0,
+                    "cost_change_percent": 0
+                },
+                "bottleneck_analysis": ([], [f"Analysis error: {str(e)}"]),
+                "cost_performance_analysis": {
+                    "current_cost_efficiency": 0.1,
+                    "efficiency_ranking": 10
+                },
+                "alternative_configurations": []
+            }
+
+
+    # ADD THIS NEW METHOD TO MigrationPlatform CLASS
+    def render_corrected_datasync_optimization(self, datasync_recommendations, config, metrics):
+        """Render corrected DataSync optimization with clear messaging"""
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            st.markdown("**🔍 Current Configuration Analysis**")
+            current_analysis = datasync_recommendations["current_analysis"]
+            
+            # Dynamic status indicators based on efficiency
+            efficiency = current_analysis['current_efficiency']
+            if efficiency >= 80:
+                efficiency_status = "🟢 Excellent"
+                efficiency_color = "#28a745"
+            elif efficiency >= 60:
+                efficiency_status = "🟡 Good"
+                efficiency_color = "#ffc107"
+            else:
+                efficiency_status = "🔴 Needs Optimization"
+                efficiency_color = "#dc3545"
+            
+            st.markdown(f"""
+            <div style="background: {efficiency_color}20; padding: 10px; border-radius: 8px; border-left: 4px solid {efficiency_color};">
+                <strong>Current Setup:</strong> {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
+                <strong>Efficiency:</strong> {efficiency:.1f}% - {efficiency_status}<br>
+                <strong>Performance Rating:</strong> {current_analysis['performance_rating']}<br>
+                <strong>Scaling:</strong> {current_analysis['scaling_effectiveness']['scaling_rating']}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("**🎯 AI Optimization Recommendations**")
+            instance_rec = datasync_recommendations["recommended_instance"]
+            agent_rec = datasync_recommendations["recommended_agents"]
+            
+            # CORRECTED: Better messaging for recommendations
+            if instance_rec["upgrade_needed"] or agent_rec["change_needed"] != 0:
+                rec_color = "#007bff"
+                rec_status = "🔧 Optimization Available"
+                
+                changes = []
+                if instance_rec["upgrade_needed"]:
+                    changes.append(f"Instance: {config['datasync_instance_type']} → {instance_rec['recommended_instance']}")
+                
+                if agent_rec["change_needed"] != 0:
+                    if agent_rec.get("change_type") == "scale_up":
+                        changes.append(f"Scale Up: {config['num_datasync_agents']} → {agent_rec['recommended_agents']} agents")
+                        perf_text = f"+{abs(agent_rec['performance_change_percent']):.1f}% performance"
+                        cost_text = f"+{abs(agent_rec['cost_change_percent']):.1f}% cost"
+                    elif agent_rec.get("change_type") == "scale_down":
+                        changes.append(f"Scale Down: {config['num_datasync_agents']} → {agent_rec['recommended_agents']} agents")
+                        perf_text = f"{abs(agent_rec['performance_change_percent']):.1f}% performance reduction"
+                        cost_text = f"{abs(agent_rec['cost_change_percent']):.1f}% cost savings"
+                    else:
+                        changes.append(f"Agents: {config['num_datasync_agents']} → {agent_rec['recommended_agents']}")
+                        perf_text = "Minimal impact"
+                        cost_text = "Cost neutral"
+                else:
+                    perf_text = f"+{instance_rec['expected_performance_gain']:.1f}% performance"
+                    cost_text = f"+{instance_rec['cost_impact_percent']:.1f}% cost"
+                
+                change_text = "<br>".join(changes)
+                
+                st.markdown(f"""
+                <div style="background: {rec_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {rec_color};">
+                    <strong>{rec_status}</strong><br>
+                    {change_text}<br><br>
+                    <strong>Trade-offs:</strong><br>
+                    • Performance: {perf_text}<br>
+                    • Cost: {cost_text}<br><br>
+                    <strong>Reasoning:</strong> {agent_rec['reasoning']}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="background: #28a74520; padding: 10px; border-radius: 8px; border-left: 4px solid #28a745;">
+                    <strong>✅ Already Optimized</strong><br>
+                    Configuration: {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
+                    <strong>Status:</strong> Optimal for workload<br>
+                    <strong>Efficiency:</strong> {efficiency:.1f}%
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("**📊 Cost-Performance Analysis**")
+            cost_perf = datasync_recommendations["cost_performance_analysis"]
+            
+            ranking = cost_perf['efficiency_ranking']
+            if ranking <= 5:
+                rank_status = "🏆 Excellent"
+                rank_color = "#28a745"
+            elif ranking <= 12:
+                rank_status = "⭐ Good"
+                rank_color = "#ffc107"
+            else:
+                rank_status = "📈 Improvement Potential"
+                rank_color = "#dc3545"
+            
+            st.markdown(f"""
+            <div style="background: {rank_color}20; padding: 10px; border-radius: 8px; border-left: 4px solid {rank_color};">
+                <strong>Cost Efficiency:</strong><br>
+                ${cost_perf['current_cost_efficiency']:.3f} per Mbps<br>
+                <strong>Ranking:</strong> #{ranking} - {rank_status}<br>
+                <strong>Status:</strong> {'Excellent efficiency' if ranking <= 5 else 'Room for improvement'}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # CORRECTED: Alternative Configurations
+        alternatives = datasync_recommendations["alternative_configurations"]
+        if alternatives:
+            st.markdown("### 🔀 Alternative DataSync Configurations")
+            
+            alt_cols = st.columns(len(alternatives))
+            for idx, alt in enumerate(alternatives):
+                with alt_cols[idx]:
+                    # Highlight the AI recommended option
+                    border_color = "#007bff" if "AI Recommended" in alt['name'] else "#dee2e6"
+                    bg_color = "#f8f9fa" if "AI Recommended" in alt['name'] else "#ffffff"
+                    
+                    st.markdown(f"""
+                    <div style="background: {bg_color}; padding: 10px; border-radius: 8px; border: 2px solid {border_color};">
+                        <strong>{alt['name']}</strong><br>
+                        <strong>Config:</strong> {alt['agents']}x {alt['instance']}<br>
+                        <em>{alt['description']}</em>
+                    </div>
+                    """, unsafe_allow_html=True)
+    
         
          
     def render_sidebar_status(self, config, metrics):
