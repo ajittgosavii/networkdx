@@ -2575,7 +2575,7 @@ region = "us-west-2"  # Your preferred compute region
      
     
     def render_dashboard_tab(self, config, metrics):
-        """Render the dashboard tab with enhanced styling"""
+        """Render the dashboard tab with enhanced styling and corrected DataSync optimization"""
         st.markdown('<div class="section-header">🏠 Enterprise Migration Dashboard</div>', unsafe_allow_html=True)
         
         # Calculate dynamic executive summary metrics
@@ -2773,17 +2773,24 @@ region = "us-west-2"  # Your preferred compute region
             </div>
             """, unsafe_allow_html=True)
         
-        # Enhanced Real-time DataSync Optimization Section
+        # CORRECTED DataSync Optimization Section
         st.markdown('<div class="section-header">🚀 Real-time DataSync Optimization Analysis</div>', unsafe_allow_html=True)
 
-        # Get intelligent DataSync recommendations
         try:
+            # Get intelligent DataSync recommendations
             datasync_recommendations = self.calculator.get_intelligent_datasync_recommendations(config, metrics)
             
-            # Use the new corrected rendering method
+            # Use the corrected rendering method
             self.render_corrected_datasync_optimization(datasync_recommendations, config, metrics)
             
-            # Bottleneck Analysis (keep this part)
+            # Extract variables for optimization suggestions
+            instance_rec = datasync_recommendations["recommended_instance"]
+            agent_rec = datasync_recommendations["recommended_agents"]
+            current_analysis = datasync_recommendations["current_analysis"]
+            cost_perf = datasync_recommendations["cost_performance_analysis"]
+            efficiency = current_analysis['current_efficiency']
+            
+            # Bottleneck Analysis
             bottlenecks, bottleneck_recs = datasync_recommendations["bottleneck_analysis"]
             if bottlenecks:
                 st.markdown("### ⚠️ Performance Bottlenecks Identified")
@@ -2800,68 +2807,6 @@ region = "us-west-2"  # Your preferred compute region
                     for rec in bottleneck_recs[:3]:  # Show top 3 recommendations
                         st.write(f"• {rec}")
             
-            # Real-time optimization suggestions (keep this part)
-            st.markdown("### 🚀 Real-time Optimization Suggestions")
-            
-            optimization_suggestions = []
-            
-            # Dynamic suggestions based on current vs optimal
-            instance_rec = datasync_recommendations["recommended_instance"]
-            agent_rec = datasync_recommendations["recommended_agents"]
-            
-            if instance_rec["upgrade_needed"]:
-                perf_gain = instance_rec["expected_performance_gain"]
-                optimization_suggestions.append(
-                    f"🔧 **Instance Upgrade**: Switch to {instance_rec['recommended_instance']} for {perf_gain:.0f}% performance boost"
-                )
-            
-            if abs(agent_rec["change_needed"]) > 0:
-                if agent_rec["change_needed"] > 0:
-                    optimization_suggestions.append(
-                        f"📈 **Scale Up**: Add {agent_rec['change_needed']} agents for {agent_rec['performance_change_percent']:.1f}% throughput increase"
-                    )
-                else:
-                    optimization_suggestions.append(
-                        f"💰 **Scale Down**: Reduce {abs(agent_rec['change_needed'])} agents for {abs(agent_rec['cost_change_percent']):.1f}% cost savings"
-                    )
-            
-            if not optimization_suggestions:
-                optimization_suggestions.append("✅ **Optimal**: Your current configuration is well-optimized for your workload")
-            
-            # Display suggestions
-            for suggestion in optimization_suggestions:
-                st.write(suggestion)
-
-        except Exception as e:
-            st.error(f"Error generating DataSync recommendations: {str(e)}")
-            st.write("Falling back to basic analysis...")
-            
-            # Fallback to basic recommendations
-            st.markdown(f"""
-            <div class="ai-insight">
-                <strong>🔍 Basic Configuration Analysis:</strong><br>
-                Current: {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
-                Throughput: {metrics['optimized_throughput']:.0f} Mbps<br>
-                <strong>Note:</strong> Enable advanced DataSync analysis for detailed optimization recommendations.
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Alternative Configurations
-            alternatives = datasync_recommendations["alternative_configurations"]
-            if alternatives:
-                st.markdown("### 🔀 Alternative DataSync Configurations")
-                
-                alt_cols = st.columns(len(alternatives))
-                for idx, alt in enumerate(alternatives):
-                    with alt_cols[idx]:
-                        st.markdown(f"""
-                        <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #dee2e6;">
-                            <strong>{alt['name']}</strong><br>
-                            <strong>Config:</strong> {alt['agents']}x {alt['instance']}<br>
-                            <em>{alt['description']}</em>
-                        </div>
-                        """, unsafe_allow_html=True)
-            
             # Real-time optimization suggestions
             st.markdown("### 🚀 Real-time Optimization Suggestions")
             
@@ -2875,13 +2820,13 @@ region = "us-west-2"  # Your preferred compute region
                 )
             
             if abs(agent_rec["change_needed"]) > 0:
-                if agent_rec["change_needed"] > 0:
+                if agent_rec.get("change_type") == "scale_up":
                     optimization_suggestions.append(
                         f"📈 **Scale Up**: Add {agent_rec['change_needed']} agents for {agent_rec['performance_change_percent']:.1f}% throughput increase"
                     )
-                else:
+                elif agent_rec.get("change_type") == "scale_down":
                     optimization_suggestions.append(
-                        f"💰 **Scale Down**: Reduce {abs(agent_rec['change_needed'])} agents for {abs(agent_rec['cost_change_percent']):.1f}% cost savings"
+                        f"💰 **Scale Down**: Reduce {agent_rec['change_needed']} agents for {abs(agent_rec['cost_change_percent']):.1f}% cost savings"
                     )
             
             # Performance-based suggestions
@@ -2910,7 +2855,7 @@ region = "us-west-2"  # Your preferred compute region
             if not optimization_suggestions:
                 optimization_suggestions.append("✅ **Optimal**: Your current configuration is well-optimized for your workload")
             
-            # Display suggestions in a nice format
+            # Display suggestions
             for suggestion in optimization_suggestions:
                 st.write(suggestion)
 
