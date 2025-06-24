@@ -2953,355 +2953,282 @@ region = "us-west-2"  # Your preferred compute region
      
     
     def render_dashboard_tab(self, config, metrics):
-            """Render the dashboard tab with enhanced styling and cleaned DataSync optimization"""
-            st.markdown('<div class="section-header">🏠 Enterprise Migration Dashboard</div>', unsafe_allow_html=True)
-            
-            # Calculate dynamic executive summary metrics
-            col1, col2, col3, col4, col5 = st.columns(5)
-            
-            # Dynamic calculation for active projects
-            active_projects = len(st.session_state.migration_projects) + 1  # +1 for current project
-            project_change = "+1" if active_projects > 1 else "New"
-            
-            # Dynamic calculation for total data migrated (sum of all projects + current)
-            total_data_tb = metrics['data_size_tb']
-            for project_data in st.session_state.migration_projects.values():
-                if 'performance_metrics' in project_data:
-                    total_data_tb += project_data.get('data_size_gb', 0) / 1024
-            data_change = f"+{metrics['data_size_tb']:.1f} TB"
-            
-            # Dynamic migration success rate based on project completion and network efficiency
-            base_success_rate = 85  # Base rate
-            network_efficiency_bonus = metrics['network_efficiency'] * 15  # Up to 15% bonus
-            compliance_bonus = len(config['compliance_frameworks']) * 2  # 2% per framework
-            risk_penalty = {"Low": 0, "Medium": -3, "High": -8, "Critical": -15}
-            risk_adjustment = risk_penalty.get(metrics['networking_recommendations']['risk_level'], 0)
-            
-            calculated_success_rate = min(99, base_success_rate + network_efficiency_bonus + compliance_bonus + risk_adjustment)
-            success_change = f"+{calculated_success_rate - 85:.0f}%" if calculated_success_rate > 85 else f"{calculated_success_rate - 85:.0f}%"
-            
-            # Dynamic cost savings calculation
-            on_premises_cost = metrics['data_size_tb'] * 1000 * 12  # $1000/TB/month on-premises
-            aws_annual_cost = metrics['cost_breakdown']['storage'] * 12 + (metrics['cost_breakdown']['total'] * 0.1)
-            annual_savings = max(0, on_premises_cost - aws_annual_cost)
-            
-            # Add optimization savings
-            if config.get('real_world_mode', True):
-                optimization_potential = metrics['optimized_throughput'] / max(1, metrics.get('theoretical_throughput', metrics['optimized_throughput'] * 1.2))
-                efficiency_savings = annual_savings * (1 - optimization_potential) * 0.3  # 30% of inefficiency as potential savings
-                total_savings = annual_savings + efficiency_savings
+        """Render the dashboard tab with enhanced styling and NO DUPLICATION"""
+        st.markdown('<div class="section-header">🏠 Enterprise Migration Dashboard</div>', unsafe_allow_html=True)
+        
+        # Calculate dynamic executive summary metrics
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        # Dynamic calculation for active projects
+        active_projects = len(st.session_state.migration_projects) + 1  # +1 for current project
+        project_change = "+1" if active_projects > 1 else "New"
+        
+        # Dynamic calculation for total data migrated (sum of all projects + current)
+        total_data_tb = metrics['data_size_tb']
+        for project_data in st.session_state.migration_projects.values():
+            if 'performance_metrics' in project_data:
+                total_data_tb += project_data.get('data_size_gb', 0) / 1024
+        data_change = f"+{metrics['data_size_tb']:.1f} TB"
+        
+        # Dynamic migration success rate based on project completion and network efficiency
+        base_success_rate = 85  # Base rate
+        network_efficiency_bonus = metrics['network_efficiency'] * 15  # Up to 15% bonus
+        compliance_bonus = len(config['compliance_frameworks']) * 2  # 2% per framework
+        risk_penalty = {"Low": 0, "Medium": -3, "High": -8, "Critical": -15}
+        risk_adjustment = risk_penalty.get(metrics['networking_recommendations']['risk_level'], 0)
+        
+        calculated_success_rate = min(99, base_success_rate + network_efficiency_bonus + compliance_bonus + risk_adjustment)
+        success_change = f"+{calculated_success_rate - 85:.0f}%" if calculated_success_rate > 85 else f"{calculated_success_rate - 85:.0f}%"
+        
+        # Dynamic cost savings calculation
+        on_premises_cost = metrics['data_size_tb'] * 1000 * 12  # $1000/TB/month on-premises
+        aws_annual_cost = metrics['cost_breakdown']['storage'] * 12 + (metrics['cost_breakdown']['total'] * 0.1)
+        annual_savings = max(0, on_premises_cost - aws_annual_cost)
+        
+        # Add optimization savings
+        if config.get('real_world_mode', True):
+            optimization_potential = metrics['optimized_throughput'] / max(1, metrics.get('theoretical_throughput', metrics['optimized_throughput'] * 1.2))
+            efficiency_savings = annual_savings * (1 - optimization_potential) * 0.3  # 30% of inefficiency as potential savings
+            total_savings = annual_savings + efficiency_savings
+        else:
+            total_savings = annual_savings
+        
+        savings_change = f"+${annual_savings/1000:.0f}K"
+        
+        # Dynamic compliance score
+        max_compliance_points = 100
+        encryption_points = 20 if config['encryption_in_transit'] and config['encryption_at_rest'] else 10
+        framework_points = min(40, len(config['compliance_frameworks']) * 10)
+        classification_points = {"Public": 5, "Internal": 10, "Confidential": 15, "Restricted": 20, "Top Secret": 25}
+        data_class_points = classification_points.get(config['data_classification'], 10)
+        network_security_points = 15 if config['qos_enabled'] and config['dx_redundant'] else 10
+        risk_points = {"Low": 15, "Medium": 10, "High": 5, "Critical": 0}
+        risk_score_points = risk_points.get(metrics['networking_recommendations']['risk_level'], 10)
+        
+        compliance_score = min(max_compliance_points, encryption_points + framework_points + data_class_points + network_security_points + risk_score_points)
+        compliance_change = f"+{compliance_score - 80:.0f}%" if compliance_score > 80 else f"{compliance_score - 80:.0f}%"
+        
+        with col1:
+            st.metric("Active Projects", str(active_projects), project_change)
+        with col2:
+            st.metric("Total Data Volume", f"{total_data_tb:.1f} TB", data_change)
+        with col3:
+            st.metric("Migration Success Rate", f"{calculated_success_rate:.0f}%", success_change)
+        with col4:
+            st.metric("Projected Annual Savings", f"${total_savings/1000:.0f}K", savings_change)
+        with col5:
+            st.metric("Compliance Score", f"{compliance_score:.0f}%", compliance_change)
+        
+        # Current project overview with real-time metrics
+        st.markdown('<div class="section-header">📊 Current Project Overview</div>', unsafe_allow_html=True)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.metric("💾 Data Volume", f"{metrics['data_size_tb']:.1f} TB", f"{config['data_size_gb']:,.0f} GB")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            performance_mode = "Real-world" if config.get('real_world_mode', True) else "Theoretical"
+            if 'theoretical_throughput' in metrics:
+                efficiency_pct = f"{(metrics['optimized_throughput']/metrics['theoretical_throughput'])*100:.0f}%"
+                delta_text = f"{efficiency_pct} of theoretical ({performance_mode})"
             else:
-                total_savings = annual_savings
-            
-            savings_change = f"+${annual_savings/1000:.0f}K"
-            
-            # Dynamic compliance score
-            max_compliance_points = 100
-            encryption_points = 20 if config['encryption_in_transit'] and config['encryption_at_rest'] else 10
-            framework_points = min(40, len(config['compliance_frameworks']) * 10)
-            classification_points = {"Public": 5, "Internal": 10, "Confidential": 15, "Restricted": 20, "Top Secret": 25}
-            data_class_points = classification_points.get(config['data_classification'], 10)
-            network_security_points = 15 if config['qos_enabled'] and config['dx_redundant'] else 10
-            risk_points = {"Low": 15, "Medium": 10, "High": 5, "Critical": 0}
-            risk_score_points = risk_points.get(metrics['networking_recommendations']['risk_level'], 10)
-            
-            compliance_score = min(max_compliance_points, encryption_points + framework_points + data_class_points + network_security_points + risk_score_points)
-            compliance_change = f"+{compliance_score - 80:.0f}%" if compliance_score > 80 else f"{compliance_score - 80:.0f}%"
-            
-            with col1:
-                st.metric("Active Projects", str(active_projects), project_change)
-            with col2:
-                st.metric("Total Data Volume", f"{total_data_tb:.1f} TB", data_change)
-            with col3:
-                st.metric("Migration Success Rate", f"{calculated_success_rate:.0f}%", success_change)
-            with col4:
-                st.metric("Projected Annual Savings", f"${total_savings/1000:.0f}K", savings_change)
-            with col5:
-                st.metric("Compliance Score", f"{compliance_score:.0f}%", compliance_change)
-            
-            # Current project overview with real-time metrics
-            st.markdown('<div class="section-header">📊 Current Project Overview</div>', unsafe_allow_html=True)
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                st.metric("💾 Data Volume", f"{metrics['data_size_tb']:.1f} TB", f"{config['data_size_gb']:,.0f} GB")
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                performance_mode = "Real-world" if config.get('real_world_mode', True) else "Theoretical"
-                if 'theoretical_throughput' in metrics:
-                    efficiency_pct = f"{(metrics['optimized_throughput']/metrics['theoretical_throughput'])*100:.0f}%"
-                    delta_text = f"{efficiency_pct} of theoretical ({performance_mode})"
-                else:
-                    delta_text = f"{metrics['network_efficiency']:.1%} efficiency ({performance_mode})"
-                st.metric("⚡ Throughput", f"{metrics['optimized_throughput']:.0f} Mbps", delta_text)
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col3:
-                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                # Calculate if timeline is on track
-                timeline_status = "On Track" if metrics['transfer_days'] <= config['max_transfer_days'] else "At Risk"
-                timeline_delta = f"{metrics['transfer_days']*24:.0f} hours ({timeline_status})"
-                st.metric("📅 Duration", f"{metrics['transfer_days']:.1f} days", timeline_delta)
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col4:
-                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                # Calculate budget status
-                budget_status = "Under Budget" if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else "Over Budget"
-                budget_delta = f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}/TB ({budget_status})"
-                st.metric("💰 Total Cost", f"${metrics['cost_breakdown']['total']:,.0f}", budget_delta)
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Enhanced Real-time AI-Powered Recommendations Section
-            st.markdown('<div class="section-header">🤖 AI-Powered Recommendations</div>', unsafe_allow_html=True)
-            recommendations = metrics['networking_recommendations']
-            
-            ai_type = "Real-time Claude AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "Built-in AI"
-            
-            # Create three columns for detailed AI analysis
-            col1, col2, col3 = st.columns([2, 1, 1])
-            
-            with col1:
-                # Dynamic performance analysis based on current configuration
-                if config.get('real_world_mode', True):
-                    theoretical_max = metrics.get('theoretical_throughput', metrics['optimized_throughput'] * 1.5)
-                    efficiency_ratio = metrics['optimized_throughput'] / theoretical_max
-                    performance_gap = (1 - efficiency_ratio) * 100
-                    
-                    if efficiency_ratio > 0.8:
-                        performance_analysis = f"🟢 Excellent performance! Your configuration achieves {efficiency_ratio*100:.0f}% of theoretical maximum with only {performance_gap:.0f}% optimization potential remaining."
-                    elif efficiency_ratio > 0.6:
-                        performance_analysis = f"🟡 Good performance with room for improvement. Current efficiency is {efficiency_ratio*100:.0f}% with {performance_gap:.0f}% optimization gap due to storage I/O constraints and DataSync overhead."
-                    else:
-                        performance_analysis = f"🔴 Significant optimization opportunity! Your current {efficiency_ratio*100:.0f}% efficiency suggests {performance_gap:.0f}% performance gap mainly from storage bottlenecks and network constraints."
-                else:
-                    performance_analysis = "🧪 Theoretical mode shows maximum possible performance under perfect laboratory conditions."
+                delta_text = f"{metrics['network_efficiency']:.1%} efficiency ({performance_mode})"
+            st.metric("⚡ Throughput", f"{metrics['optimized_throughput']:.0f} Mbps", delta_text)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            # Calculate if timeline is on track
+            timeline_status = "On Track" if metrics['transfer_days'] <= config['max_transfer_days'] else "At Risk"
+            timeline_delta = f"{metrics['transfer_days']*24:.0f} hours ({timeline_status})"
+            st.metric("📅 Duration", f"{metrics['transfer_days']:.1f} days", timeline_delta)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            # Calculate budget status
+            budget_status = "Under Budget" if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else "Over Budget"
+            budget_delta = f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}/TB ({budget_status})"
+            st.metric("💰 Total Cost", f"${metrics['cost_breakdown']['total']:,.0f}", budget_delta)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Enhanced Real-time AI-Powered Recommendations Section
+        st.markdown('<div class="section-header">🤖 AI-Powered Recommendations</div>', unsafe_allow_html=True)
+        recommendations = metrics['networking_recommendations']
+        
+        ai_type = "Real-time Claude AI" if config.get('enable_real_ai') and config.get('claude_api_key') else "Built-in AI"
+        
+        # Create three columns for detailed AI analysis
+        col1, col2, col3 = st.columns([2, 1, 1])
+        
+        with col1:
+            # Dynamic performance analysis based on current configuration
+            if config.get('real_world_mode', True):
+                theoretical_max = metrics.get('theoretical_throughput', metrics['optimized_throughput'] * 1.5)
+                efficiency_ratio = metrics['optimized_throughput'] / theoretical_max
+                performance_gap = (1 - efficiency_ratio) * 100
                 
-                st.markdown(f"""
-                <div class="ai-insight">
-                    <strong>🧠 {ai_type} Analysis:</strong> {recommendations['rationale']}
-                    <br><br>
-                    <strong>🔍 Real-time Performance Analysis:</strong> {performance_analysis}
-                </div>
-                """, unsafe_allow_html=True)
+                if efficiency_ratio > 0.8:
+                    performance_analysis = f"🟢 Excellent performance! Your configuration achieves {efficiency_ratio*100:.0f}% of theoretical maximum with only {performance_gap:.0f}% optimization potential remaining."
+                elif efficiency_ratio > 0.6:
+                    performance_analysis = f"🟡 Good performance with room for improvement. Current efficiency is {efficiency_ratio*100:.0f}% with {performance_gap:.0f}% optimization gap due to storage I/O constraints and DataSync overhead."
+                else:
+                    performance_analysis = f"🔴 Significant optimization opportunity! Your current {efficiency_ratio*100:.0f}% efficiency suggests {performance_gap:.0f}% performance gap mainly from storage bottlenecks and network constraints."
+            else:
+                performance_analysis = "🧪 Theoretical mode shows maximum possible performance under perfect laboratory conditions."
             
-            with col2:
-                st.markdown("**🎯 AI Recommendations**")
-                st.write(f"**Method:** {recommendations['primary_method']}")
-                st.write(f"**Network:** {recommendations['networking_option']}")
-                st.write(f"**DB Tool:** {recommendations['db_migration_tool']}")
-                st.write(f"**Risk Level:** {recommendations['risk_level']}")
-                st.write(f"**Cost Efficiency:** {recommendations['cost_efficiency']}")
-            
-            with col3:
-                st.markdown("**⚡ AI Expected Performance**")
-                ai_perf = recommendations['estimated_performance']
-                st.write(f"**Throughput:** {ai_perf['throughput_mbps']:.0f} Mbps")
-                st.write(f"**Duration:** {ai_perf['estimated_days']:.1f} days")
-                st.write(f"**Agents:** {ai_perf.get('agents_used', 1)}x {ai_perf.get('instance_type', 'Unknown')}")
-                st.write(f"**Network Eff:** {ai_perf['network_efficiency']:.1%}")
-                
-                # Show optimization factors if available
-                if 'optimization_factors' in ai_perf:
-                    opt_factors = ai_perf['optimization_factors']
-                    total_optimization = opt_factors['tcp_factor'] * opt_factors['mtu_factor'] * opt_factors['congestion_factor'] * opt_factors['wan_factor']
-                    st.write(f"**Optimizations:** {total_optimization:.2f}x multiplier")
-            
-            # Performance comparison table
-            st.markdown('<div class="section-header">📊 Performance Comparison: Theoretical vs Your Config vs AI Recommendation</div>', unsafe_allow_html=True)
-            
-            comparison_data = pd.DataFrame({
-                "Metric": ["Throughput (Mbps)", "Duration (Days)", "Efficiency (%)", "Agents Used", "Instance Type"],
-                "Theoretical": [
-                    f"{metrics.get('theoretical_throughput', 0):.0f}",
-                    f"{(metrics['effective_data_gb'] * 8 * 1000) / (metrics.get('theoretical_throughput', 1) * 24 * 3600):.1f}",
-                    "95%",
-                    str(config['num_datasync_agents']),
-                    str(config['datasync_instance_type'])
-                ],
-                "Your Config": [
-                    f"{metrics['optimized_throughput']:.0f}",
-                    f"{metrics['transfer_days']:.1f}",
-                    f"{(metrics['optimized_throughput']/metrics.get('theoretical_throughput', metrics['optimized_throughput']*1.2))*100:.0f}%",
-                    str(config['num_datasync_agents']),
-                    str(config['datasync_instance_type'])
-                ],
-                "AI Recommendation": [
-                    f"{recommendations['estimated_performance']['throughput_mbps']:.0f}",
-                    f"{recommendations['estimated_performance']['estimated_days']:.1f}",
-                    f"{recommendations['estimated_performance']['network_efficiency']*100:.0f}%",
-                    str(recommendations['estimated_performance'].get('agents_used', 1)),
-                    str(recommendations['estimated_performance'].get('instance_type', 'Unknown'))
-                ]
-            })
-            
-            # Display the dataframe with safe handling
-            self.safe_dataframe_display(comparison_data)
-                        
-            # Show real AI analysis if available
-            if recommendations.get('ai_analysis'):
-                st.markdown(f"""
-                <div class="ai-insight">
-                    <strong>🔮 Advanced Claude AI Insights:</strong><br>
-                    {recommendations['ai_analysis'].replace('\n', '<br>')}
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # STREAMLINED DataSync Optimization Section with Dynamic Preview
-            st.markdown('<div class="section-header">🚀 AI-Powered DataSync Optimization</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="ai-insight">
+                <strong>🧠 {ai_type} Analysis:</strong> {recommendations['rationale']}
+                <br><br>
+                <strong>🔍 Real-time Performance Analysis:</strong> {performance_analysis}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("**🎯 AI Recommendations**")
+            st.write(f"**Method:** {recommendations['primary_method']}")
+            st.write(f"**Network:** {recommendations['networking_option']}")
+            st.write(f"**DB Tool:** {recommendations['db_migration_tool']}")
+            st.write(f"**Risk Level:** {recommendations['risk_level']}")
+            st.write(f"**Cost Efficiency:** {recommendations['cost_efficiency']}")
+        
+        with col3:
+            st.markdown("**⚡ AI Expected Performance**")
+            ai_perf = recommendations['estimated_performance']
+            st.write(f"**Throughput:** {ai_perf['throughput_mbps']:.0f} Mbps")
+            st.write(f"**Duration:** {ai_perf['estimated_days']:.1f} days")
+            st.write(f"**Agents:** {ai_perf.get('agents_used', 1)}x {ai_perf.get('instance_type', 'Unknown')}")
+            st.write(f"**Network Eff:** {ai_perf['network_efficiency']:.1%}")
+        
+        # ===========================================================================
+        # SINGLE UNIFIED OPTIMIZATION SECTION - NO DUPLICATION
+        # ===========================================================================
+        st.markdown('<div class="section-header">🚀 AI-Powered DataSync Optimization</div>', unsafe_allow_html=True)
 
-            try:
-                # Get intelligent DataSync recommendations
-                datasync_recommendations = self.calculator.get_intelligent_datasync_recommendations(config, metrics)
-                current_analysis = datasync_recommendations["current_analysis"]
-                efficiency = current_analysis['current_efficiency']
+        try:
+            # Calculate current efficiency directly (no complex method calls)
+            theoretical_max = config['dx_bandwidth_mbps'] * 0.8
+            current_efficiency = (metrics['optimized_throughput'] / theoretical_max) * 100 if theoretical_max > 0 else 0
+            
+            # Determine status based on efficiency
+            if current_efficiency >= 80:
+                status_color = "#28a745"
+                status_icon = "🟢"
+                status_text = "Excellent"
+            elif current_efficiency >= 60:
+                status_color = "#ffc107"
+                status_icon = "🟡"
+                status_text = "Good"
+            else:
+                status_color = "#dc3545"
+                status_icon = "🔴"
+                status_text = "Needs Optimization"
+            
+            # Show current status
+            st.markdown("### 📊 Current Performance Status")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown(f"""
+                <div style="background: {status_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {status_color};">
+                    <h4>{status_icon} {status_text}</h4>
+                    <strong>Setup:</strong> {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
+                    <strong>Efficiency:</strong> {current_efficiency:.1f}%<br>
+                    <strong>Throughput:</strong> {metrics['optimized_throughput']:.0f} Mbps
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("**🎯 Key Metrics**")
+                network_util = (metrics['optimized_throughput']/config['dx_bandwidth_mbps'])*100
+                st.metric("Network Utilization", f"{network_util:.1f}%")
+                st.metric("Cost per TB", f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}")
+            
+            with col3:
+                st.markdown("**⚡ Optimization Potential**")
+                utilization_gap = theoretical_max - metrics['optimized_throughput']
+                st.metric("Unused Bandwidth", f"{utilization_gap:.0f} Mbps")
+                optimization_potential = (utilization_gap/theoretical_max)*100 if theoretical_max > 0 else 0
+                st.metric("Improvement Potential", f"{optimization_potential:.0f}%")
+            
+            # Only show optimization if there's room for improvement
+            if current_efficiency < 75:
+                st.markdown("### 🔮 Path to Optimization")
                 
-                # Show current status summary
-                st.markdown("### 📊 Current Performance Analysis")
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    if efficiency >= 80:
-                        status_color = "#28a745"
-                        status_icon = "🟢"
-                        status_text = "Excellent"
-                    elif efficiency >= 60:
-                        status_color = "#ffc107"
-                        status_icon = "🟡"
-                        status_text = "Good"
-                    else:
-                        status_color = "#dc3545"
-                        status_icon = "🔴"
-                        status_text = "Needs Optimization"
-                    
-                    st.markdown(f"""
-                    <div style="background: {status_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {status_color};">
-                        <h4>{status_icon} {status_text}</h4>
-                        <strong>Setup:</strong> {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
-                        <strong>Efficiency:</strong> {efficiency:.1f}%<br>
-                        <strong>Throughput:</strong> {metrics['optimized_throughput']:.0f} Mbps
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with col2:
-                    st.markdown("**🎯 Key Metrics**")
-                    st.metric("Network Utilization", f"{(metrics['optimized_throughput']/config['dx_bandwidth_mbps'])*100:.1f}%")
-                    st.metric("Cost per TB", f"${metrics['cost_breakdown']['total']/metrics['data_size_tb']:.0f}")
-                
-                with col3:
-                    st.markdown("**⚡ Performance Potential**")
-                    theoretical_max = config['dx_bandwidth_mbps'] * 0.8
-                    utilization_gap = theoretical_max - metrics['optimized_throughput']
-                    st.metric("Unused Bandwidth", f"{utilization_gap:.0f} Mbps")
-                    st.metric("Optimization Potential", f"{(utilization_gap/theoretical_max)*100:.0f}%")
-                
-                # Enhanced Dynamic Optimization Preview with Fixed Logic
-                st.markdown("### 🔮 AI Optimization Roadmap")
-                
-                # Calculate REALISTIC optimized configuration
+                # Calculate realistic optimized scenario
                 optimized_config = config.copy()
-                instance_rec = datasync_recommendations["recommended_instance"]
-                agent_rec = datasync_recommendations["recommended_agents"]
-                
-                # Apply smarter optimization logic
-                has_meaningful_changes = False
                 optimization_changes = []
                 
-                # Instance optimization
-                if efficiency < 30 and config['datasync_instance_type'] in ['m5.large', 'm5.xlarge']:
-                    # Force upgrade for very poor performance
+                # Smart optimization logic
+                if current_efficiency < 30 and config['datasync_instance_type'] in ['m5.large', 'm5.xlarge']:
                     optimized_config['datasync_instance_type'] = 'c5.2xlarge'
-                    optimization_changes.append("Upgrade to compute-optimized instance")
-                    has_meaningful_changes = True
-                elif efficiency < 50 and config['datasync_instance_type'] == 'm5.large':
+                    optimization_changes.append("Upgrade to compute-optimized c5.2xlarge")
+                elif current_efficiency < 50 and config['datasync_instance_type'] == 'm5.large':
                     optimized_config['datasync_instance_type'] = 'm5.xlarge'
-                    optimization_changes.append("Upgrade instance for better performance")
-                    has_meaningful_changes = True
-                elif instance_rec["upgrade_needed"]:
-                    optimized_config['datasync_instance_type'] = instance_rec["recommended_instance"]
-                    optimization_changes.append(f"Upgrade to {instance_rec['recommended_instance']}")
-                    has_meaningful_changes = True
+                    optimization_changes.append("Upgrade to m5.xlarge for better performance")
                 
-                # Agent optimization
-                if efficiency < 40 and config['num_datasync_agents'] == 1:
+                if current_efficiency < 40 and config['num_datasync_agents'] == 1:
                     optimized_config['num_datasync_agents'] = 3
                     optimization_changes.append("Scale to 3 agents for parallelization")
-                    has_meaningful_changes = True
-                elif agent_rec["change_needed"] != 0 and efficiency > 50:
-                    optimized_config['num_datasync_agents'] = agent_rec["recommended_agents"]
-                    optimization_changes.append(f"Optimize agent count to {agent_rec['recommended_agents']}")
-                    has_meaningful_changes = True
+                elif current_efficiency < 60 and config['num_datasync_agents'] < 3:
+                    optimized_config['num_datasync_agents'] = min(5, config['num_datasync_agents'] + 2)
+                    optimization_changes.append(f"Scale to {optimized_config['num_datasync_agents']} agents")
                 
-                # Network optimizations (simulated impact)
-                network_optimizations = []
+                # Network optimizations
+                network_multiplier = 1.0
                 if config['tcp_window_size'] == "Default":
-                    network_optimizations.append("Enable TCP window scaling (+25%)")
+                    network_multiplier *= 1.25
+                    optimization_changes.append("Enable TCP window scaling (+25%)")
                 if config['mtu_size'] == "1500 (Standard)":
-                    network_optimizations.append("Configure jumbo frames (+15%)")
+                    network_multiplier *= 1.15
+                    optimization_changes.append("Configure jumbo frames (+15%)")
                 if not config['wan_optimization']:
-                    network_optimizations.append("Enable WAN optimization (+30%)")
+                    network_multiplier *= 1.30
+                    optimization_changes.append("Enable WAN optimization (+30%)")
                 
-                if network_optimizations:
-                    optimization_changes.extend(network_optimizations)
-                    has_meaningful_changes = True
-                
-                if has_meaningful_changes:
-                    # Calculate optimized metrics with realistic improvements
+                if optimization_changes:
+                    # Calculate improved metrics
                     optimized_metrics = self.calculate_migration_metrics(optimized_config)
-                    
-                    # Apply network optimization multipliers
-                    network_multiplier = 1.0
-                    if config['tcp_window_size'] == "Default":
-                        network_multiplier *= 1.25
-                    if config['mtu_size'] == "1500 (Standard)":
-                        network_multiplier *= 1.15
-                    if not config['wan_optimization']:
-                        network_multiplier *= 1.30
-                    
-                    # Ensure realistic bounds
                     optimized_throughput = min(
                         optimized_metrics['optimized_throughput'] * network_multiplier,
-                        config['dx_bandwidth_mbps'] * 0.85  # Max 85% utilization
+                        config['dx_bandwidth_mbps'] * 0.85
                     )
+                    optimized_efficiency = (optimized_throughput / theoretical_max) * 100
+                    optimized_efficiency = min(optimized_efficiency, 85)
                     
-                    # Recalculate efficiency
-                    optimized_efficiency = (optimized_throughput / (config['dx_bandwidth_mbps'] * 0.8)) * 100
-                    optimized_efficiency = min(optimized_efficiency, 85)  # Cap at realistic maximum
-                    
-                    # Recalculate duration based on improved throughput
+                    # Calculate time improvement
                     optimized_days = (metrics['effective_data_gb'] * 8 * 1000) / (optimized_throughput * metrics['available_hours_per_day'] * 3600)
                     
-                    # Show before/after comparison
+                    # Show before/after
                     col1, col2, col3 = st.columns([1, 0.2, 1])
                     
                     with col1:
-                        st.markdown("**📊 CURRENT Status**")
+                        st.markdown("**📊 CURRENT**")
                         st.markdown(f"""
                         <div style="background: #dc354520; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">
-                            <h4>🔴 Needs Optimization</h4>
-                            <strong>Setup:</strong> {config['num_datasync_agents']}x {config['datasync_instance_type']}<br>
-                            <strong>Efficiency:</strong> {efficiency:.1f}%<br>
+                            <h4>🔴 Current Status</h4>
+                            <strong>Efficiency:</strong> {current_efficiency:.1f}%<br>
                             <strong>Throughput:</strong> {metrics['optimized_throughput']:.0f} Mbps<br>
-                            <strong>Duration:</strong> {metrics['transfer_days']:.1f} days<br>
-                            <strong>Cost:</strong> ${metrics['cost_breakdown']['total']:,.0f}
+                            <strong>Duration:</strong> {metrics['transfer_days']:.1f} days
                         </div>
                         """, unsafe_allow_html=True)
                     
                     with col2:
                         st.markdown("""
-                        <div style="text-align: center; padding-top: 60px;">
+                        <div style="text-align: center; padding-top: 50px;">
                             <h2 style="color: #007bff;">🚀</h2>
-                            <p style="color: #007bff; font-weight: bold;">AI Optimized</p>
+                            <p style="color: #007bff; font-weight: bold;">Optimized</p>
                         </div>
                         """, unsafe_allow_html=True)
                     
                     with col3:
-                        st.markdown("**✨ OPTIMIZED Status**")
+                        st.markdown("**✨ OPTIMIZED**")
                         
                         if optimized_efficiency >= 80:
                             opt_color = "#28a745"
@@ -3319,70 +3246,41 @@ region = "us-west-2"  # Your preferred compute region
                         # Calculate improvements
                         throughput_improvement = ((optimized_throughput - metrics['optimized_throughput']) / metrics['optimized_throughput']) * 100
                         time_improvement = ((metrics['transfer_days'] - optimized_days) / metrics['transfer_days']) * 100
-                        efficiency_improvement = optimized_efficiency - efficiency
+                        efficiency_improvement = optimized_efficiency - current_efficiency
                         
                         st.markdown(f"""
                         <div style="background: {opt_color}20; padding: 15px; border-radius: 8px; border-left: 4px solid {opt_color};">
                             <h4>{opt_icon} {opt_text}</h4>
-                            <strong>Setup:</strong> {optimized_config['num_datasync_agents']}x {optimized_config['datasync_instance_type']}<br>
                             <strong>Efficiency:</strong> {optimized_efficiency:.1f}% (+{efficiency_improvement:.1f}%)<br>
                             <strong>Throughput:</strong> {optimized_throughput:.0f} Mbps (+{throughput_improvement:.1f}%)<br>
-                            <strong>Duration:</strong> {optimized_days:.1f} days (-{time_improvement:.1f}%)<br>
-                            <strong>Status:</strong> {opt_text} Performance
+                            <strong>Duration:</strong> {optimized_days:.1f} days (-{time_improvement:.1f}%)
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    # Show improvement summary
-                    st.markdown("### 📈 Optimization Impact")
+                    # Show improvements
+                    st.markdown("### 📈 Expected Improvements")
                     
-                    col1, col2, col3, col4 = st.columns(4)
+                    col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        st.metric(
-                            "Efficiency Gain", 
-                            f"+{efficiency_improvement:.1f}%",
-                            delta=f"{efficiency:.1f}% → {optimized_efficiency:.1f}%"
-                        )
+                        st.metric("Efficiency Gain", f"+{efficiency_improvement:.1f}%", delta=f"{current_efficiency:.1f}% → {optimized_efficiency:.1f}%")
                     
                     with col2:
-                        st.metric(
-                            "Throughput Boost",
-                            f"+{throughput_improvement:.1f}%",
-                            delta=f"{metrics['optimized_throughput']:.0f} → {optimized_throughput:.0f} Mbps"
-                        )
+                        st.metric("Throughput Boost", f"+{throughput_improvement:.1f}%", delta=f"{metrics['optimized_throughput']:.0f} → {optimized_throughput:.0f} Mbps")
                     
                     with col3:
-                        st.metric(
-                            "Time Reduction",
-                            f"-{time_improvement:.1f}%",
-                            delta=f"{metrics['transfer_days']:.1f} → {optimized_days:.1f} days"
-                        )
+                        st.metric("Time Reduction", f"-{time_improvement:.1f}%", delta=f"{metrics['transfer_days']:.1f} → {optimized_days:.1f} days")
                     
-                    with col4:
-                        if optimized_efficiency >= 80:
-                            status_improvement = "🟢 Excellent"
-                        elif optimized_efficiency >= 60:
-                            status_improvement = "🟡 Good"
-                        else:
-                            status_improvement = "🔵 Improved"
+                    # Implementation guide
+                    if optimized_efficiency >= 60:
+                        st.success("🎯 **These optimizations will significantly improve your performance!**")
                         
-                        st.metric(
-                            "Final Status",
-                            status_improvement,
-                            delta=f"From 🔴 Poor"
-                        )
-                    
-                    # Implementation roadmap
-                    if optimized_efficiency >= 60:  # If optimization leads to good/excellent status
-                        st.success("🎯 **Path to Green Status**: Following these optimizations will significantly improve your performance!")
-                        
-                        st.markdown("### 🛠️ Implementation Roadmap")
-                        
+                        st.markdown("### 🛠️ Implementation Steps")
                         for i, change in enumerate(optimization_changes, 1):
                             st.write(f"{i}. **{change}**")
                         
                         # Quick apply buttons
-                        st.markdown("### ⚡ Quick Apply Optimizations")
+                        st.markdown("### ⚡ Quick Apply")
                         
                         col1, col2 = st.columns(2)
                         
@@ -3399,150 +3297,85 @@ region = "us-west-2"  # Your preferred compute region
                                     st.rerun()
                     
                     else:
-                        st.warning("⚠️ Additional infrastructure improvements may be needed for optimal performance.")
-                        st.info("💡 Consider: Network bandwidth upgrade, storage I/O optimization, or regional placement review.")
+                        st.warning("⚠️ Consider network infrastructure upgrades for optimal performance.")
                 
                 else:
-                    # No major changes recommended
-                    st.info("✅ **Current Configuration**: Your setup is reasonably optimized for the workload.")
-                    st.markdown("### 💡 Minor Optimizations Available")
-                    
-                    minor_optimizations = []
-                    if config['tcp_window_size'] == "Default":
-                        minor_optimizations.append("🔧 Enable TCP window scaling for 25% improvement")
-                    if config['mtu_size'] == "1500 (Standard)":
-                        minor_optimizations.append("📡 Configure jumbo frames for 15% improvement")
-                    if not config['wan_optimization']:
-                        minor_optimizations.append("🚀 Enable WAN optimization for 30% improvement")
-                    
-                    if minor_optimizations:
-                        for opt in minor_optimizations:
-                            st.write(opt)
-                    else:
-                        st.write("🎯 All major optimizations are already in place.")
+                    st.info("💡 Enable network optimizations (TCP scaling, jumbo frames, WAN optimization) for 25-30% improvement.")
+            
+            else:
+                st.success("✅ **Your configuration is well-optimized!**")
+                st.info("💡 Minor network optimizations may still provide 10-15% improvement.")
 
-            except Exception as e:
-                st.error(f"Error in optimization analysis: {str(e)}")
-                
-                # Simple fallback
-                st.markdown("### 🔍 Basic Analysis")
-                st.info(f"""
-                **Current Setup**: {config['num_datasync_agents']}x {config['datasync_instance_type']}
-                **Throughput**: {metrics['optimized_throughput']:.0f} Mbps
-                **Status**: Configuration loaded successfully
-                """)
+        except Exception as e:
+            st.error(f"Error in optimization analysis: {str(e)}")
+            st.info(f"**Current Setup**: {config['num_datasync_agents']}x {config['datasync_instance_type']} | **Throughput**: {metrics['optimized_throughput']:.0f} Mbps")
 
-            # Real-time activities and dynamic alerts
-            col1, col2 = st.columns(2)
+        # Real-time activities and alerts (simplified)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown('<div class="section-header">📋 Real-time Activities</div>', unsafe_allow_html=True)
+            current_time = datetime.now().strftime("%H:%M")
+            activities = [
+                f"🕐 {current_time} - {config['project_name']} configuration updated",
+                f"🤖 AI recommended: {recommendations['primary_method']} for {metrics['data_size_tb']:.1f}TB",
+                f"🌐 Network: {recommendations['networking_option']} ({metrics['optimized_throughput']:.0f} Mbps)",
+                f"💰 Total cost: ${metrics['cost_breakdown']['total']:,.0f}",
+                f"⚡ Performance: {'Real-world modeling' if config.get('real_world_mode') else 'Theoretical'}"
+            ]
+            for activity in activities:
+                st.write(f"• {activity}")
+        
+        with col2:
+            st.markdown('<div class="section-header">⚠️ Status Alerts</div>', unsafe_allow_html=True)
+            alerts = []
             
-            with col1:
-                st.markdown('<div class="section-header">📋 Real-time Activities</div>', unsafe_allow_html=True)
-                
-                # Dynamic activities based on current configuration
-                current_time = datetime.now().strftime("%H:%M")
-                activities = [
-                    f"🕐 {current_time} - {config['project_name']} configuration updated",
-                    f"🤖 AI recommended: {recommendations['primary_method']} for {metrics['data_size_tb']:.1f}TB dataset",
-                    f"🌐 Network analysis: {recommendations['networking_option']} ({metrics['optimized_throughput']:.0f} Mbps)",
-                    f"📊 Business impact: {metrics['business_impact']['level']} priority ({metrics['business_impact']['score']:.2f} score)",
-                    f"🔒 {len(config['compliance_frameworks'])} compliance framework(s) validated",
-                    f"💰 Cost analysis: ${metrics['cost_breakdown']['total']:,.0f} total budget",
-                    f"⚡ Performance mode: {'Real-world modeling' if config.get('real_world_mode') else 'Theoretical maximum'}",
-                    f"🔧 Optimization multiplier: {recommendations['estimated_performance'].get('optimization_factors', {}).get('tcp_factor', 1):.2f}x TCP + {recommendations['estimated_performance'].get('optimization_factors', {}).get('wan_factor', 1):.2f}x WAN"
-                ]
-                
-                for activity in activities:
-                    st.write(f"• {activity}")
+            if metrics['transfer_days'] > config['max_transfer_days']:
+                days_over = metrics['transfer_days'] - config['max_transfer_days']
+                alerts.append(f"🔴 Timeline: {days_over:.1f} days over target")
             
-            with col2:
-                st.markdown('<div class="section-header">⚠️ Real-time Alerts & Status</div>', unsafe_allow_html=True)
-                
-                alerts = []
-                
-                # Dynamic alert generation based on current configuration
-                if metrics['transfer_days'] > config['max_transfer_days']:
-                    days_over = metrics['transfer_days'] - config['max_transfer_days']
-                    alerts.append(f"🔴 Timeline risk: {days_over:.1f} days over {config['max_transfer_days']}-day target")
-                
-                if metrics['cost_breakdown']['total'] > config['budget_allocated']:
-                    over_budget = metrics['cost_breakdown']['total'] - config['budget_allocated']
-                    alerts.append(f"🔴 Budget exceeded by ${over_budget:,.0f}")
-                
-                if metrics['compliance_risks']:
-                    alerts.append(f"🟡 {len(metrics['compliance_risks'])} compliance risk(s) identified")
-                
-                if config['network_latency'] > 100:
-                    alerts.append(f"🟡 High latency ({config['network_latency']}ms) may impact performance")
-                
-                if recommendations['risk_level'] in ["High", "Critical"]:
-                    alerts.append(f"🟡 {recommendations['risk_level']} risk migration - review recommendations")
-                
-                # Performance-specific alerts
-                if config.get('real_world_mode', True) and 'theoretical_throughput' in metrics:
-                    efficiency = metrics['optimized_throughput'] / metrics['theoretical_throughput']
-                    if efficiency < 0.5:
-                        alerts.append("🟡 Low performance efficiency - consider instance upgrade")
-                    elif efficiency > 0.8:
-                        alerts.append("🟢 Excellent performance efficiency achieved")
-                
-                # Network utilization alerts
-                utilization = (metrics['optimized_throughput'] / config['dx_bandwidth_mbps']) * 100
-                if utilization > 80:
-                    alerts.append(f"🟡 High network utilization ({utilization:.0f}%) - monitor closely")
-                elif utilization < 30:
-                    alerts.append(f"🟢 Low network utilization ({utilization:.0f}%) - good headroom")
-                
-                # AI vs Your Config comparison alerts
-                ai_throughput = recommendations['estimated_performance']['throughput_mbps']
-                your_throughput = metrics['optimized_throughput']
-                if ai_throughput > your_throughput * 1.2:
-                    improvement_pct = ((ai_throughput - your_throughput) / your_throughput) * 100
-                    alerts.append(f"🟡 AI suggests {improvement_pct:.0f}% throughput improvement possible")
-                
-                # Compliance alerts based on data classification
-                if config['data_classification'] in ["Restricted", "Top Secret"] and not config['encryption_at_rest']:
-                    alerts.append("🔴 Critical: Encryption at rest required for classified data")
-                
-                # AI-specific alerts
-                if config.get('enable_real_ai') and not config.get('claude_api_key'):
-                    alerts.append("🟡 Real AI enabled but no API key provided")
-                
-                if not alerts:
-                    alerts.append("🟢 All systems optimal - no issues detected")
-                
-                for alert in alerts:
-                    st.write(alert)
+            if metrics['cost_breakdown']['total'] > config['budget_allocated']:
+                over_budget = metrics['cost_breakdown']['total'] - config['budget_allocated']
+                alerts.append(f"🔴 Budget: ${over_budget:,.0f} over allocation")
             
-            # Real-time project health dashboard
-            st.markdown('<div class="section-header">🏥 Project Health Dashboard</div>', unsafe_allow_html=True)
+            if current_efficiency < 30:
+                alerts.append("🔴 Performance: Critical optimization needed")
+            elif current_efficiency < 60:
+                alerts.append("🟡 Performance: Optimization recommended")
+            else:
+                alerts.append("🟢 Performance: Good efficiency")
             
-            # Calculate overall project health score
-            health_factors = {
-                "Timeline": 100 if metrics['transfer_days'] <= config['max_transfer_days'] else max(0, 100 - (metrics['transfer_days'] - config['max_transfer_days']) * 10),
-                "Budget": 100 if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else max(0, 100 - ((metrics['cost_breakdown']['total'] - config['budget_allocated']) / config['budget_allocated']) * 100),
-                "Performance": metrics['network_efficiency'] * 100,
-                "Security": compliance_score,
-                "Risk": {"Low": 95, "Medium": 75, "High": 50, "Critical": 25}.get(recommendations['risk_level'], 75)
-            }
+            if not alerts:
+                alerts.append("🟢 All systems optimal")
             
-            # Display health metrics
-            health_cols = st.columns(len(health_factors))
-            for idx, (factor, score) in enumerate(health_factors.items()):
-                with health_cols[idx]:
-                    color = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
-                    st.metric(f"{color} {factor}", f"{score:.0f}%")
-            
-            # Overall health score
-            overall_health = sum(health_factors.values()) / len(health_factors)
-            health_status = "Excellent" if overall_health >= 90 else "Good" if overall_health >= 75 else "Fair" if overall_health >= 60 else "Needs Attention"
-            
-            st.markdown(f"""
-            <div class="recommendation-box">
-                <h4>📊 Overall Project Health: {overall_health:.0f}% ({health_status})</h4>
-                <p><strong>Real-time Assessment:</strong> Based on current configuration, your migration project shows {health_status.lower()} health indicators with primary optimization opportunities in {min(health_factors, key=health_factors.get).lower()} management.</p>
-                <p><strong>AI vs Your Config Performance:</strong> AI recommendations show {recommendations['estimated_performance']['throughput_mbps']:.0f} Mbps vs your {metrics['optimized_throughput']:.0f} Mbps ({((recommendations['estimated_performance']['throughput_mbps'] - metrics['optimized_throughput'])/metrics['optimized_throughput']*100):+.0f}% difference)</p>
-            </div>
-            """, unsafe_allow_html=True)
+            for alert in alerts:
+                st.write(alert)
+        
+        # Project health summary
+        st.markdown('<div class="section-header">🏥 Project Health Summary</div>', unsafe_allow_html=True)
+        
+        health_factors = {
+            "Timeline": 100 if metrics['transfer_days'] <= config['max_transfer_days'] else max(0, 100 - (metrics['transfer_days'] - config['max_transfer_days']) * 10),
+            "Budget": 100 if metrics['cost_breakdown']['total'] <= config['budget_allocated'] else max(0, 100 - ((metrics['cost_breakdown']['total'] - config['budget_allocated']) / config['budget_allocated']) * 100),
+            "Performance": current_efficiency,
+            "Security": compliance_score
+        }
+        
+        health_cols = st.columns(len(health_factors))
+        for idx, (factor, score) in enumerate(health_factors.items()):
+            with health_cols[idx]:
+                color = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
+                st.metric(f"{color} {factor}", f"{score:.0f}%")
+        
+        overall_health = sum(health_factors.values()) / len(health_factors)
+        health_status = "Excellent" if overall_health >= 90 else "Good" if overall_health >= 75 else "Fair" if overall_health >= 60 else "Needs Attention"
+        
+        st.markdown(f"""
+        <div class="recommendation-box">
+            <h4>📊 Overall Project Health: {overall_health:.0f}% ({health_status})</h4>
+            <p><strong>Assessment:</strong> Your migration project shows {health_status.lower()} health with optimization opportunities in performance management.</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     def render_networking_architecture_diagram(self, recommendations, config):
         """Render network architecture diagram"""
