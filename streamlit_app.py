@@ -4701,17 +4701,29 @@ region = "us-west-2"  # Your preferred compute region
                     else:
                         changes.append(f"Agents: {config['num_datasync_agents']} → {agent_rec['recommended_agents']}")
                 
-                # If no specific changes recommended but efficiency is poor, show bottleneck guidance
+                # If no specific changes recommended but efficiency is poor, show specific bottleneck guidance
                 if not changes:
                     bottlenecks, bottleneck_recs = datasync_recommendations["bottleneck_analysis"]
-                    if bottlenecks:
+                    if bottlenecks and bottleneck_recs:
+                        # Show specific bottleneck and action
                         primary_bottleneck = bottlenecks[0] if bottlenecks else "Performance constraints detected"
+                        primary_action = bottleneck_recs[0] if bottleneck_recs else "Review configuration settings"
                         changes.append(f"Issue: {primary_bottleneck}")
-                        if bottleneck_recs:
-                            changes.append(f"Action: {bottleneck_recs[0]}")
+                        changes.append(f"Action: {primary_action}")
                     else:
-                        changes.append("Issue: Low efficiency suggests network or infrastructure bottlenecks")
-                        changes.append("Action: Review network latency, storage I/O, and configuration")
+                        # Provide specific default guidance based on efficiency level
+                        if efficiency < 20:
+                            changes.append("Issue: Critical performance bottleneck detected")
+                            changes.append("Action: Upgrade instance immediately and check storage I/O")
+                        elif efficiency < 30:
+                            changes.append("Issue: Severe performance constraints")
+                            changes.append("Action: Upgrade to larger instance type and optimize network settings")
+                        elif efficiency < 40:
+                            changes.append("Issue: Poor performance efficiency")
+                            changes.append("Action: Enable TCP optimization, increase parallel streams, check MTU settings")
+                        else:
+                            changes.append("Issue: Moderate performance constraints")
+                            changes.append("Action: Fine-tune DataSync settings and enable WAN optimization")
                 
                 change_text = "<br>".join(changes)
                 
