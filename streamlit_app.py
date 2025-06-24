@@ -811,7 +811,7 @@ class EnterpriseCalculator:
                 
                 # Calculate timing
                 available_hours_per_day = 16 if config.get('business_hours_restriction', True) else 24
-                estimated_days = (data_size_gb * 0.85 * 8) / (optimized_throughput * available_hours_per_day * 3600) / 1000
+                estimated_days = (data_size_gb * 0.85 * 8 * 1000) / (optimized_throughput * available_hours_per_day * 3600)
                 estimated_days = max(0.1, estimated_days)
                 
                 recommendations["estimated_performance"] = {
@@ -835,7 +835,7 @@ class EnterpriseCalculator:
             base_throughput = min(dx_bandwidth_mbps * 0.6, 1000)
             recommendations["estimated_performance"] = {
                 "throughput_mbps": base_throughput,
-                "estimated_days": (data_size_gb * 8) / (base_throughput * 86400) / 1000,
+                "estimated_days": (data_size_gb * 8 * 1000) / (base_throughput * 86400),
                 "network_efficiency": network_score / 10,
                 "agents_used": 1,
                 "instance_type": "m5.large"
@@ -1278,7 +1278,7 @@ class PDFReportGenerator:
         doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
         
         # Calculate recommendation scores
-        performance_score = min(100, (metrics['optimized_throughput'] / 1000) * 50)
+        performance_score = min(100, (metrics['optimized_throughput'] / 100) * 50)
         cost_score = min(50, max(0, 50 - (metrics['cost_breakdown']['total'] / config['budget_allocated'] - 1) * 100))
         timeline_score = min(30, max(0, 30 - (metrics['transfer_days'] / config['max_transfer_days'] - 1) * 100))
         risk_score = {"Low": 20, "Medium": 15, "High": 10, "Critical": 5}.get(recommendations['risk_level'], 15)
@@ -1623,7 +1623,7 @@ class MigrationPlatform:
             
             # Calculate timing
             available_hours_per_day = 16 if config['business_hours_restriction'] else 24
-            transfer_days = (effective_data_gb * 8) / (optimized_throughput * available_hours_per_day * 3600) / 1000
+            transfer_days = (effective_data_gb * 8 * 1000) / (optimized_throughput * available_hours_per_day * 3600)
             transfer_days = max(0.1, transfer_days)  # Ensure minimum transfer time
             
             # Calculate costs
@@ -2565,7 +2565,7 @@ region = "us-west-2"  # Your preferred compute region
             "Metric": ["Throughput (Mbps)", "Duration (Days)", "Efficiency (%)", "Agents Used", "Instance Type"],
             "Theoretical": [
                 f"{metrics.get('theoretical_throughput', 0):.0f}",
-                f"{(metrics['effective_data_gb'] * 8) / (metrics.get('theoretical_throughput', 1) * 24 * 3600) / 1000:.1f}",
+                f"{(metrics['effective_data_gb'] * 8 * 1000) / (metrics.get('theoretical_throughput', 1) * 24 * 3600):.1f}",
                 "95%",
                 str(config['num_datasync_agents']),
                 str(config['datasync_instance_type'])
@@ -3178,7 +3178,7 @@ region = "us-west-2"  # Your preferred compute region
         
         # Storage Gateway
         sg_throughput = min(config['dx_bandwidth_mbps'] * 0.6, 2000)
-        sg_days = (metrics['effective_data_gb'] * 8) / (sg_throughput * metrics['available_hours_per_day'] * 3600) / 1000
+        sg_days = (metrics['effective_data_gb'] * 8 * 1000) / (sg_throughput * metrics['available_hours_per_day'] * 3600)
         sg_cost = metrics['cost_breakdown']['total'] * 1.3
         
         migration_methods.append({
@@ -3694,7 +3694,7 @@ region = "us-west-2"  # Your preferred compute region
         recommendations = metrics['networking_recommendations']
         
         # Calculate overall recommendation score
-        performance_score = min(100, (metrics['optimized_throughput'] / 1000) * 50)
+        performance_score = min(100, (metrics['optimized_throughput'] / 10))
         cost_score = min(50, max(0, 50 - (metrics['cost_breakdown']['total'] / config['budget_allocated'] - 1) * 100))
         timeline_score = min(30, max(0, 30 - (metrics['transfer_days'] / config['max_transfer_days'] - 1) * 100))
         risk_score = {"Low": 20, "Medium": 15, "High": 10, "Critical": 5}.get(recommendations['risk_level'], 15)
