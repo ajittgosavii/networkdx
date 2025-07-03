@@ -742,6 +742,35 @@ class APIStatus:
 class AnthropicAIManager:
     """Enhanced Anthropic AI manager with improved error handling and connection"""
     
+    def __init__(self):
+        self.client = None
+        self.connected = False
+        self.error_message = None
+        self._initialize_connection()
+    
+    def _initialize_connection(self):
+        """Initialize connection to Anthropic API"""
+        try:
+            # Try to get API key from Streamlit secrets
+            if hasattr(st, 'secrets') and 'ANTHROPIC_API_KEY' in st.secrets:
+                api_key = st.secrets['ANTHROPIC_API_KEY']
+            else:
+                # Try environment variable
+                import os
+                api_key = os.getenv('ANTHROPIC_API_KEY')
+            
+            if api_key:
+                self.client = anthropic.Anthropic(api_key=api_key)
+                self.connected = True
+                self.error_message = None
+            else:
+                self.connected = False
+                self.error_message = "API key not found in secrets or environment"
+                
+        except Exception as e:
+            self.connected = False
+            self.error_message = str(e)
+    
     
     async def analyze_migration_workload(self, config: Dict, performance_data: Dict) -> Dict:
         """Enhanced AI-powered workload analysis with detailed insights"""
@@ -830,6 +859,224 @@ class AnthropicAIManager:
             logger.error(f"AI analysis failed: {e}")
             st.error(f"AI Analysis Error: {str(e)}")
             return self._fallback_workload_analysis(config, performance_data)
+    
+    def _calculate_optimal_agents(self, config: Dict) -> int:
+        """Calculate optimal number of agents based on database size and requirements"""
+        database_size = config['database_size_gb']
+        
+        if database_size < 1000:
+            return 1
+        elif database_size < 5000:
+            return 2
+        elif database_size < 20000:
+            return 3
+        elif database_size < 50000:
+            return 4
+        else:
+            return 5
+    
+    def _calculate_storage_performance_impact(self, storage_type: str) -> Dict:
+        """Calculate performance impact for different storage destinations"""
+        storage_profiles = {
+            'S3': {
+                'throughput_multiplier': 1.0,
+                'latency_impact': 1.0,
+                'iops_capability': 'Standard',
+                'performance_rating': 'Good'
+            },
+            'FSx_Windows': {
+                'throughput_multiplier': 1.3,
+                'latency_impact': 0.7,
+                'iops_capability': 'High',
+                'performance_rating': 'Very Good'
+            },
+            'FSx_Lustre': {
+                'throughput_multiplier': 2.0,
+                'latency_impact': 0.4,
+                'iops_capability': 'Very High',
+                'performance_rating': 'Excellent'
+            }
+        }
+        return storage_profiles.get(storage_type, storage_profiles['S3'])
+    
+    def _calculate_storage_cost_impact(self, storage_type: str) -> Dict:
+        """Calculate cost impact for different storage destinations"""
+        cost_profiles = {
+            'S3': {
+                'base_cost_multiplier': 1.0,
+                'operational_cost': 'Low',
+                'setup_cost': 'Minimal',
+                'long_term_value': 'Excellent'
+            },
+            'FSx_Windows': {
+                'base_cost_multiplier': 2.5,
+                'operational_cost': 'Medium',
+                'setup_cost': 'Medium',
+                'long_term_value': 'Good'
+            },
+            'FSx_Lustre': {
+                'base_cost_multiplier': 4.0,
+                'operational_cost': 'High',
+                'setup_cost': 'High',
+                'long_term_value': 'Good for HPC'
+            }
+        }
+        return cost_profiles.get(storage_type, cost_profiles['S3'])
+    
+    def _get_storage_complexity_factor(self, storage_type: str) -> float:
+        """Get complexity factor for storage type"""
+        complexity_factors = {
+            'S3': 1.0,
+            'FSx_Windows': 1.8,
+            'FSx_Lustre': 2.2
+        }
+        return complexity_factors.get(storage_type, 1.0)
+    
+    def _get_storage_recommendations(self, storage_type: str, config: Dict) -> List[str]:
+        """Get recommendations for storage type"""
+        recommendations = {
+            'S3': [
+                "Cost-effective for most workloads",
+                "Excellent durability and availability",
+                "Simple integration with migration tools",
+                "Automatic scaling and management"
+            ],
+            'FSx_Windows': [
+                "Ideal for Windows-based applications",
+                "Native Windows file system features",
+                "Active Directory integration",
+                "Better performance for file-based workloads"
+            ],
+            'FSx_Lustre': [
+                "Best for high-performance computing",
+                "Extremely high throughput and IOPS",
+                "Optimized for parallel processing",
+                "Ideal for analytics and ML workloads"
+            ]
+        }
+        return recommendations.get(storage_type, recommendations['S3'])
+    
+    def _generate_mitigation_strategies(self, risk_factors: List[str], config: Dict) -> List[str]:
+        """Generate specific mitigation strategies"""
+        strategies = []
+        
+        if any('schema' in risk.lower() for risk in risk_factors):
+            strategies.append("Conduct comprehensive schema conversion testing with AWS SCT")
+        
+        if any('database size' in risk.lower() for risk in risk_factors):
+            strategies.append("Implement parallel data transfer using multiple DMS tasks")
+        
+        if any('downtime' in risk.lower() for risk in risk_factors):
+            strategies.append("Implement read replica for near-zero downtime migration")
+        
+        if any('performance' in risk.lower() for risk in risk_factors):
+            strategies.append("Conduct pre-migration performance tuning")
+        
+        return strategies
+    
+    def _generate_cost_optimization(self, config: Dict, complexity_score: int) -> List[str]:
+        """Generate cost optimization strategies"""
+        optimizations = []
+        
+        if config['database_size_gb'] < 1000:
+            optimizations.append("Consider Reserved Instances for 20-30% cost savings")
+        
+        if config['environment'] == 'non-production':
+            optimizations.append("Use Spot Instances for development/testing")
+        
+        optimizations.append("Implement automated scaling policies")
+        
+        return optimizations
+    
+    def _generate_best_practices(self, config: Dict, complexity_score: int) -> List[str]:
+        """Generate specific best practices"""
+        practices = [
+            "Implement comprehensive backup strategy",
+            "Use AWS Migration Hub for tracking",
+            "Establish detailed communication plan"
+        ]
+        
+        if complexity_score > 7:
+            practices.append("Engage AWS Professional Services")
+        
+        return practices
+    
+    def _generate_testing_strategy(self, config: Dict, complexity_score: int) -> List[str]:
+        """Generate comprehensive testing strategy"""
+        strategy = [
+            "Unit Testing: Validate migration components",
+            "Integration Testing: End-to-end workflow",
+            "Performance Testing: AWS environment validation"
+        ]
+        
+        if config['source_database_engine'] != config['database_engine']:
+            strategy.append("Schema Conversion Testing")
+        
+        return strategy
+    
+    def _generate_rollback_procedures(self, config: Dict) -> List[str]:
+        """Generate rollback procedures"""
+        procedures = [
+            "Maintain synchronized read replica",
+            "Create point-in-time recovery snapshot",
+            "Prepare DNS switching procedures",
+            "Test rollback procedures in staging"
+        ]
+        
+        return procedures
+    
+    def _generate_monitoring_recommendations(self, config: Dict) -> List[str]:
+        """Generate post-migration monitoring recommendations"""
+        monitoring = [
+            "Implement CloudWatch detailed monitoring",
+            "Set up automated alerts",
+            "Monitor application response times",
+            "Track database connection patterns"
+        ]
+        
+        return monitoring
+    
+    def _identify_critical_success_factors(self, config: Dict, complexity_score: int) -> List[str]:
+        """Identify critical success factors"""
+        factors = [
+            "Stakeholder alignment on timeline",
+            "Comprehensive testing in staging",
+            "Skilled migration team"
+        ]
+        
+        if complexity_score > 7:
+            factors.append("Dedicated AWS solutions architect")
+        
+        return factors
+    
+    def _fallback_workload_analysis(self, config: Dict, performance_data: Dict) -> Dict:
+        """Enhanced fallback analysis when AI is not available"""
+        
+        complexity_score = 5
+        if config['source_database_engine'] != config['database_engine']:
+            complexity_score += 2
+        if config['database_size_gb'] > 5000:
+            complexity_score += 1
+        
+        return {
+            'ai_complexity_score': min(10, complexity_score),
+            'risk_factors': [
+                "Migration complexity varies with database differences",
+                "Large database sizes increase duration"
+            ],
+            'mitigation_strategies': [
+                "Conduct thorough testing",
+                "Plan adequate migration windows"
+            ],
+            'performance_recommendations': [
+                "Optimize database before migration",
+                "Monitor performance throughout"
+            ],
+            'confidence_level': 'medium',
+            'raw_ai_response': 'AI analysis not available - using fallback'
+        }
+    
+    
     
     def _parse_detailed_ai_response(self, ai_response: str, config: Dict, performance_data: Dict) -> Dict:
         """Enhanced parsing for detailed AI analysis"""
