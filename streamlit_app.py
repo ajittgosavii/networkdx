@@ -5678,7 +5678,7 @@ def render_enhanced_sidebar_controls():
         help="AI determines migration complexity based on source engine"
     )
     
-    # FIXED: Target Database Selection with SQL Server Logic
+    # ENHANCED: Target Database Selection with SQL Server Standalone/Always ON Logic
     if source_database_engine == "sqlserver":
         # Force SQL Server to EC2 due to licensing and compatibility
         st.sidebar.warning("🚨 **SQL Server Auto-Configuration**")
@@ -5692,34 +5692,132 @@ def render_enhanced_sidebar_controls():
         • Better performance optimization options
         """)
         
-        database_engine = st.sidebar.selectbox(
-            "Target SQL Server on EC2",
-            [
-                "ec2_r6i_large", "ec2_r6i_xlarge", "ec2_r6i_2xlarge", "ec2_r6i_4xlarge",
-                "ec2_m5_large", "ec2_m5_xlarge", "ec2_m5_2xlarge", "ec2_m5_4xlarge",
-                "ec2_c5_xlarge", "ec2_c5_2xlarge", "ec2_c5_4xlarge"
-            ],
-            index=1,  # Default to r6i.xlarge
+        # NEW: SQL Server Deployment Type Selection
+        st.sidebar.subheader("🗄️ SQL Server Deployment Type")
+        sql_deployment_type = st.sidebar.selectbox(
+            "SQL Server Configuration",
+            ["standalone", "always_on"],
             format_func=lambda x: {
-                'ec2_r6i_large': '🧠 EC2 r6i.large (2 vCPU, 16GB) - Memory Optimized',
-                'ec2_r6i_xlarge': '🧠 EC2 r6i.xlarge (4 vCPU, 32GB) - Memory Optimized ⭐',
-                'ec2_r6i_2xlarge': '🧠 EC2 r6i.2xlarge (8 vCPU, 64GB) - Memory Optimized',
-                'ec2_r6i_4xlarge': '🧠 EC2 r6i.4xlarge (16 vCPU, 128GB) - Memory Optimized',
-                'ec2_m5_large': '🔵 EC2 m5.large (2 vCPU, 8GB) - General Purpose',
-                'ec2_m5_xlarge': '🔵 EC2 m5.xlarge (4 vCPU, 16GB) - General Purpose',
-                'ec2_m5_2xlarge': '🔵 EC2 m5.2xlarge (8 vCPU, 32GB) - General Purpose',
-                'ec2_m5_4xlarge': '🔵 EC2 m5.4xlarge (16 vCPU, 64GB) - General Purpose',
-                'ec2_c5_xlarge': '⚡ EC2 c5.xlarge (4 vCPU, 8GB) - Compute Optimized',
-                'ec2_c5_2xlarge': '⚡ EC2 c5.2xlarge (8 vCPU, 16GB) - Compute Optimized',
-                'ec2_c5_4xlarge': '⚡ EC2 c5.4xlarge (16 vCPU, 32GB) - Compute Optimized'
+                'standalone': '🔹 Standalone SQL Server',
+                'always_on': '🔶 SQL Server Always ON Availability Groups'
             }[x],
-            help="SQL Server on EC2 for optimal licensing and performance control"
+            help="Choose between standalone or high-availability Always ON deployment"
         )
+        
+        # Show deployment insights
+        with st.sidebar.expander("💡 Deployment Type Insights"):
+            if sql_deployment_type == "standalone":
+                st.markdown("""
+                **Standalone SQL Server:**
+                • Single instance deployment
+                • Lower cost and complexity
+                • Suitable for non-critical workloads
+                • Standard backup/restore procedures
+                """)
+            else:
+                st.markdown("""
+                **Always ON Availability Groups:**
+                • Multi-instance high availability
+                • Automatic failover capabilities
+                • Read-scale with secondary replicas
+                • Higher cost but better SLA
+                """)
+        
+        # Instance selection based on deployment type
+        if sql_deployment_type == "standalone":
+            database_engine = st.sidebar.selectbox(
+                "Standalone SQL Server Instance",
+                [
+                    "ec2_r6i_large", "ec2_r6i_xlarge", "ec2_r6i_2xlarge", "ec2_r6i_4xlarge",
+                    "ec2_m5_large", "ec2_m5_xlarge", "ec2_m5_2xlarge", "ec2_m5_4xlarge",
+                    "ec2_c5_xlarge", "ec2_c5_2xlarge", "ec2_c5_4xlarge"
+                ],
+                index=1,  # Default to r6i.xlarge
+                format_func=lambda x: {
+                    'ec2_r6i_large': '🧠 EC2 r6i.large (2 vCPU, 16GB) - Memory Optimized',
+                    'ec2_r6i_xlarge': '🧠 EC2 r6i.xlarge (4 vCPU, 32GB) - Memory Optimized ⭐',
+                    'ec2_r6i_2xlarge': '🧠 EC2 r6i.2xlarge (8 vCPU, 64GB) - Memory Optimized',
+                    'ec2_r6i_4xlarge': '🧠 EC2 r6i.4xlarge (16 vCPU, 128GB) - Memory Optimized',
+                    'ec2_m5_large': '🔵 EC2 m5.large (2 vCPU, 8GB) - General Purpose',
+                    'ec2_m5_xlarge': '🔵 EC2 m5.xlarge (4 vCPU, 16GB) - General Purpose',
+                    'ec2_m5_2xlarge': '🔵 EC2 m5.2xlarge (8 vCPU, 32GB) - General Purpose',
+                    'ec2_m5_4xlarge': '🔵 EC2 m5.4xlarge (16 vCPU, 64GB) - General Purpose',
+                    'ec2_c5_xlarge': '⚡ EC2 c5.xlarge (4 vCPU, 8GB) - Compute Optimized',
+                    'ec2_c5_2xlarge': '⚡ EC2 c5.2xlarge (8 vCPU, 16GB) - Compute Optimized',
+                    'ec2_c5_4xlarge': '⚡ EC2 c5.4xlarge (16 vCPU, 32GB) - Compute Optimized'
+                }[x],
+                help="Single instance SQL Server deployment"
+            )
+        else:  # always_on
+            # Always ON requires minimum sizing and multiple instances
+            database_engine = st.sidebar.selectbox(
+                "Always ON Primary Instance",
+                [
+                    "ec2_r6i_xlarge", "ec2_r6i_2xlarge", "ec2_r6i_4xlarge", "ec2_r6i_8xlarge",
+                    "ec2_m5_xlarge", "ec2_m5_2xlarge", "ec2_m5_4xlarge", "ec2_m5_8xlarge"
+                ],
+                index=1,  # Default to r6i.2xlarge for Always ON
+                format_func=lambda x: {
+                    'ec2_r6i_xlarge': '🧠 EC2 r6i.xlarge (4 vCPU, 32GB) - Memory Optimized',
+                    'ec2_r6i_2xlarge': '🧠 EC2 r6i.2xlarge (8 vCPU, 64GB) - Memory Optimized ⭐',
+                    'ec2_r6i_4xlarge': '🧠 EC2 r6i.4xlarge (16 vCPU, 128GB) - Memory Optimized',
+                    'ec2_r6i_8xlarge': '🧠 EC2 r6i.8xlarge (32 vCPU, 256GB) - Memory Optimized',
+                    'ec2_m5_xlarge': '🔵 EC2 m5.xlarge (4 vCPU, 16GB) - General Purpose',
+                    'ec2_m5_2xlarge': '🔵 EC2 m5.2xlarge (8 vCPU, 32GB) - General Purpose',
+                    'ec2_m5_4xlarge': '🔵 EC2 m5.4xlarge (16 vCPU, 64GB) - General Purpose',
+                    'ec2_m5_8xlarge': '🔵 EC2 m5.8xlarge (32 vCPU, 128GB) - General Purpose'
+                }[x],
+                help="Primary instance for Always ON Availability Group (minimum xlarge)"
+            )
+            
+            # Always ON Configuration
+            st.sidebar.subheader("🔶 Always ON Configuration")
+            
+            always_on_replicas = st.sidebar.selectbox(
+                "Number of Replicas",
+                [2, 3, 4, 5],
+                index=0,  # Default to 2 replicas
+                help="Total replicas including primary (minimum 2 for Always ON)"
+            )
+            
+            always_on_sync_mode = st.sidebar.selectbox(
+                "Synchronization Mode",
+                ["synchronous", "asynchronous", "mixed"],
+                format_func=lambda x: {
+                    'synchronous': '🔄 Synchronous (Zero data loss)',
+                    'asynchronous': '⚡ Asynchronous (Performance optimized)',
+                    'mixed': '🔀 Mixed (Sync + Async replicas)'
+                }[x],
+                help="Data synchronization mode between replicas"
+            )
+            
+            always_on_readable_secondary = st.sidebar.checkbox(
+                "Readable Secondary Replicas",
+                value=True,
+                help="Enable read-only access to secondary replicas"
+            )
         
         # Set the database engine for migration logic
         ec2_database_engine = "sqlserver"
-        deployment_type = "ec2_mandatory"
+        deployment_type = f"ec2_sqlserver_{sql_deployment_type}"
         
+        # Show enhanced configuration summary
+        if sql_deployment_type == "standalone":
+            st.sidebar.success("🎯 **Standalone SQL Server Configuration**")
+            st.sidebar.info("✅ Single instance\n✅ Standard licensing\n✅ Simple management")
+        else:
+            st.sidebar.success("🎯 **Always ON Availability Groups Configuration**")
+            st.sidebar.info(f"""
+            ✅ {always_on_replicas} replicas total
+            ✅ {always_on_sync_mode.title()} sync mode
+            ✅ {'Readable secondaries' if always_on_readable_secondary else 'Primary only read'}
+            ✅ High availability (99.95%+ SLA)
+            """)
+            
+            # Cost impact warning for Always ON
+            replica_cost_multiplier = always_on_replicas
+            st.sidebar.warning(f"💰 **Cost Impact:** ~{replica_cost_multiplier}x instance costs")
+    
     else:
         # Regular database selection for non-SQL Server
         database_engine = st.sidebar.selectbox(
@@ -5765,7 +5863,11 @@ def render_enhanced_sidebar_controls():
         
         ec2_database_engine = source_database_engine  # Use source engine for EC2 deployments
         deployment_type = "flexible"
-    
+        sql_deployment_type = None
+        always_on_replicas = None
+        always_on_sync_mode = None
+        always_on_readable_secondary = None
+        
     # Show deployment and migration type indicators
     if source_database_engine == "sqlserver":
         st.sidebar.success("🎯 **SQL Server → EC2 (Optimized Path)**")
@@ -6069,6 +6171,10 @@ def render_enhanced_sidebar_controls():
         'use_realtime_pricing': use_realtime_pricing,
         'current_storage_gb': current_storage_gb,
         'peak_iops': peak_iops,
+        'sql_deployment_type': sql_deployment_type,
+        'always_on_replicas': always_on_replicas,
+        'always_on_sync_mode': always_on_sync_mode,
+        'always_on_readable_secondary': always_on_readable_secondary,
         'max_throughput_mbps': max_throughput_mbps,
         'anticipated_max_memory_gb': anticipated_max_memory_gb,
         'anticipated_max_cpu_cores': anticipated_max_cpu_cores,
@@ -6380,7 +6486,714 @@ def render_enhanced_sidebar_controls():
         'anticipated_max_cpu_cores': anticipated_max_cpu_cores
     }
 
+
+def calculate_sql_server_ec2_sizing_with_always_on(config: Dict):
+    """Enhanced EC2 sizing for SQL Server with Always ON support"""
+    
+    selected_instance = config['database_engine']
+    instance_type = selected_instance.replace('ec2_', '')
+    sql_deployment_type = config.get('sql_deployment_type', 'standalone')
+    
+    # Get base instance specifications
+    ec2_specs = {
+        't3.medium': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.0416, 'category': 'burstable'},
+        't3.large': {'vcpu': 2, 'memory': 8, 'cost_per_hour': 0.0832, 'category': 'burstable'},
+        't3.xlarge': {'vcpu': 4, 'memory': 16, 'cost_per_hour': 0.1664, 'category': 'burstable'},
+        't3.2xlarge': {'vcpu': 8, 'memory': 32, 'cost_per_hour': 0.3328, 'category': 'burstable'},
+        
+        'r6i.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.252, 'category': 'memory_optimized'},
+        'r6i.xlarge': {'vcpu': 4, 'memory': 32, 'cost_per_hour': 0.504, 'category': 'memory_optimized'},
+        'r6i.2xlarge': {'vcpu': 8, 'memory': 64, 'cost_per_hour': 1.008, 'category': 'memory_optimized'},
+        'r6i.4xlarge': {'vcpu': 16, 'memory': 128, 'cost_per_hour': 2.016, 'category': 'memory_optimized'},
+        'r6i.8xlarge': {'vcpu': 32, 'memory': 256, 'cost_per_hour': 4.032, 'category': 'memory_optimized'},
+        
+        'm5.large': {'vcpu': 2, 'memory': 8, 'cost_per_hour': 0.096, 'category': 'general_purpose'},
+        'm5.xlarge': {'vcpu': 4, 'memory': 16, 'cost_per_hour': 0.192, 'category': 'general_purpose'},
+        'm5.2xlarge': {'vcpu': 8, 'memory': 32, 'cost_per_hour': 0.384, 'category': 'general_purpose'},
+        'm5.4xlarge': {'vcpu': 16, 'memory': 64, 'cost_per_hour': 0.768, 'category': 'general_purpose'},
+        'm5.8xlarge': {'vcpu': 32, 'memory': 128, 'cost_per_hour': 1.536, 'category': 'general_purpose'},
+        
+        'c5.xlarge': {'vcpu': 4, 'memory': 8, 'cost_per_hour': 0.17, 'category': 'compute_optimized'},
+        'c5.2xlarge': {'vcpu': 8, 'memory': 16, 'cost_per_hour': 0.34, 'category': 'compute_optimized'},
+        'c5.4xlarge': {'vcpu': 16, 'memory': 32, 'cost_per_hour': 0.68, 'category': 'compute_optimized'}
+    }
+    
+    base_instance_spec = ec2_specs.get(instance_type, ec2_specs['r6i.xlarge'])
+    
+    # Calculate instances needed based on deployment type
+    if sql_deployment_type == "always_on":
+        num_replicas = config.get('always_on_replicas', 2)
+        sync_mode = config.get('always_on_sync_mode', 'synchronous')
+        readable_secondary = config.get('always_on_readable_secondary', True)
+        
+        # Always ON requires multiple instances
+        total_instances = num_replicas
+        primary_instances = 1
+        secondary_instances = num_replicas - 1
+        
+        # Always ON complexity increases storage requirements
+        storage_multiplier = 2.5  # Higher multiplier for Always ON
+        
+        # Calculate total costs
+        total_instance_cost = base_instance_spec['cost_per_hour'] * total_instances
+        
+        # Additional Always ON considerations
+        always_on_features = {
+            'high_availability': True,
+            'automatic_failover': True,
+            'readable_secondaries': readable_secondary,
+            'synchronization_mode': sync_mode,
+            'backup_strategy': 'availability_group_backups',
+            'complexity_factor': 2.5,  # Higher complexity
+            'rpo_minutes': 0 if sync_mode == 'synchronous' else 5,
+            'rto_minutes': 2 if sync_mode == 'synchronous' else 5
+        }
+        
+    else:  # standalone
+        total_instances = 1
+        primary_instances = 1
+        secondary_instances = 0
+        storage_multiplier = 2.0  # Standard multiplier
+        total_instance_cost = base_instance_spec['cost_per_hour']
+        
+        always_on_features = {
+            'high_availability': False,
+            'automatic_failover': False,
+            'readable_secondaries': False,
+            'synchronization_mode': 'none',
+            'backup_strategy': 'standard_sql_backups',
+            'complexity_factor': 1.0,
+            'rpo_minutes': 15,  # Based on backup frequency
+            'rto_minutes': 30   # Manual recovery time
+        }
+    
+    # Calculate storage requirements
+    database_size_gb = config['database_size_gb']
+    storage_size_gb = max(database_size_gb * storage_multiplier, 100)
+    
+    # Storage type recommendation based on deployment
+    if sql_deployment_type == "always_on":
+        storage_type = 'io2'  # Always ON needs consistent performance
+    else:
+        storage_type = 'gp3'  # Standalone can use GP3
+    
+    # Calculate costs
+    monthly_instance_cost = total_instance_cost * 24 * 30
+    storage_cost_per_instance = storage_size_gb * (0.125 if storage_type == 'io2' else 0.08)
+    total_storage_cost = storage_cost_per_instance * total_instances
+    
+    # SQL Server licensing costs (estimated)
+    sql_license_cost_per_core = 50  # Estimated monthly cost per core
+    total_cores = base_instance_spec['vcpu'] * total_instances
+    sql_licensing_cost = total_cores * sql_license_cost_per_core
+    
+    return {
+        'deployment_type': 'ec2_sqlserver',
+        'sql_deployment_type': sql_deployment_type,
+        'selected_instance': instance_type,
+        'instance_specs': base_instance_spec,
+        'total_instances': total_instances,
+        'primary_instances': primary_instances,
+        'secondary_instances': secondary_instances,
+        'storage_type': storage_type,
+        'storage_size_gb_per_instance': storage_size_gb,
+        'total_storage_gb': storage_size_gb * total_instances,
+        'monthly_instance_cost': monthly_instance_cost,
+        'monthly_storage_cost': total_storage_cost,
+        'monthly_sql_licensing_cost': sql_licensing_cost,
+        'total_monthly_cost': monthly_instance_cost + total_storage_cost + sql_licensing_cost,
+        'instance_category': base_instance_spec['category'],
+        'always_on_features': always_on_features,
+        'management_complexity': 'very_high' if sql_deployment_type == 'always_on' else 'high',
+        'scaling_capability': 'availability_group_scaling' if sql_deployment_type == 'always_on' else 'manual',
+        'backup_strategy': always_on_features['backup_strategy'],
+        'monitoring_setup': 'always_on_dashboard' if sql_deployment_type == 'always_on' else 'standard_sql_monitoring',
+        'os_licensing_required': True,
+        'database_software_licensing': 'sql_server_license_required',
+        'estimated_availability': '99.95%' if sql_deployment_type == 'always_on' else '99.9%'
+    }
+
+def render_sql_server_configuration_display(config: Dict):
+    """Display enhanced SQL Server configuration information"""
+    
+    sql_deployment_type = config.get('sql_deployment_type')
+    
+    if config.get('source_database_engine') == 'sqlserver':
+        if sql_deployment_type == 'always_on':
+            st.success("🌟 **SQL Server Always ON Availability Groups**")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.write("✅ **High Availability Features:**")
+                st.write("• Automatic failover")
+                st.write("• Zero data loss (sync mode)")
+                st.write("• Read-scale capabilities")
+                st.write("• Cross-AZ deployment")
+            
+            with col2:
+                st.write("⚙️ **Configuration:**")
+                st.write(f"• Replicas: {config.get('always_on_replicas', 2)}")
+                st.write(f"• Sync Mode: {config.get('always_on_sync_mode', 'synchronous').title()}")
+                st.write(f"• Readable Secondary: {'Yes' if config.get('always_on_readable_secondary') else 'No'}")
+                st.write(f"• Instance: {config.get('database_engine', '').replace('ec2_', '')}")
+            
+            with col3:
+                st.write("💰 **Cost Considerations:**")
+                replica_count = config.get('always_on_replicas', 2)
+                st.write(f"• {replica_count}x instance costs")
+                st.write(f"• {replica_count}x storage costs")
+                st.write(f"• Enhanced monitoring")
+                st.write(f"• Cross-AZ data transfer")
+            
+            st.info("""
+            📋 **Always ON Migration Approach:**
+            1. Set up Always ON Availability Group in AWS
+            2. Add AWS instances as replicas to existing AG
+            3. Synchronize data across replicas
+            4. Fail over to AWS primary
+            5. Remove on-premises replicas
+            """)
+            
+        else:  # standalone
+            st.warning("🔧 **SQL Server Standalone Configuration**")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("✅ **Standalone Features:**")
+                st.write("• Single instance deployment")
+                st.write("• Standard SQL Server features")
+                st.write("• Traditional backup/restore")
+                st.write("• Cost-effective approach")
+            
+            with col2:
+                st.write("⚠️ **Considerations:**")
+                st.write("• Manual failover required")
+                st.write("• Higher RTO/RPO")
+                st.write("• Single point of failure")
+                st.write("• Suitable for non-critical workloads")
+            
+            st.info("""
+            📋 **Standalone Migration Approach:**
+            1. Backup SQL Server database
+            2. Transfer backup to AWS storage
+            3. Restore on EC2 SQL Server instance
+            4. Update connection strings
+            5. Validate and cutover
+            """)
+
+def calculate_sql_server_migration_complexity(config: Dict) -> Dict:
+    """Calculate migration complexity for SQL Server deployments"""
+    
+    base_complexity = 6  # Base SQL Server complexity
+    sql_deployment_type = config.get('sql_deployment_type', 'standalone')
+    
+    # Deployment type complexity
+    if sql_deployment_type == 'always_on':
+        base_complexity += 3  # Always ON is significantly more complex
+        complexity_factors = [
+            'Always ON Availability Group setup',
+            'Multi-replica coordination',
+            'Cross-AZ network configuration',
+            'AG failover testing required'
+        ]
+    else:
+        base_complexity += 1  # Standalone is moderately complex
+        complexity_factors = [
+            'SQL Server standalone deployment',
+            'Traditional backup/restore process'
+        ]
+    
+    # Additional factors
+    database_size_gb = config.get('database_size_gb', 0)
+    if database_size_gb > 1000:
+        base_complexity += 1
+        complexity_factors.append(f'Large database size ({database_size_gb:,} GB)')
+    
+    # Environment complexity
+    if config.get('environment') == 'production':
+        base_complexity += 1
+        complexity_factors.append('Production environment requirements')
+    
+    # Always ON specific factors
+    if sql_deployment_type == 'always_on':
+        sync_mode = config.get('always_on_sync_mode', 'synchronous')
+        if sync_mode == 'mixed':
+            base_complexity += 0.5
+            complexity_factors.append('Mixed synchronization mode complexity')
+        
+        replica_count = config.get('always_on_replicas', 2)
+        if replica_count > 3:
+            base_complexity += 0.5
+            complexity_factors.append(f'{replica_count} replicas coordination')
+    
+    final_complexity = min(10, base_complexity)
+    
+    return {
+        'complexity_score': final_complexity,
+        'complexity_factors': complexity_factors,
+        'migration_approach': 'availability_group_migration' if sql_deployment_type == 'always_on' else 'backup_restore',
+        'estimated_duration_hours': 48 if sql_deployment_type == 'always_on' else 24,
+        'risk_level': 'high' if sql_deployment_type == 'always_on' else 'medium',
+        'recommended_team_size': 5 if sql_deployment_type == 'always_on' else 3,
+        'sql_server_specialists_required': 2 if sql_deployment_type == 'always_on' else 1
+    }
+
+
+
 # Enhanced AWS sizing function to handle EC2 instance selections
+# Additional updates for SQL Server Always ON support
+
+def enhanced_aws_sizing_with_sql_server_support(config: Dict):
+    """Enhanced AWS sizing that properly handles SQL Server standalone and Always ON"""
+    
+    database_engine = config['database_engine']
+    source_engine = config.get('source_database_engine', '')
+    
+    if source_engine == 'sqlserver':
+        # Use enhanced SQL Server sizing
+        return calculate_sql_server_ec2_sizing_with_always_on(config)
+    elif database_engine.startswith('rds_'):
+        # Use existing RDS sizing logic
+        return calculate_rds_sizing(config)
+    elif database_engine.startswith('ec2_'):
+        # Enhanced EC2 sizing for other databases
+        return calculate_ec2_sizing_with_instance_type(config)
+    else:
+        # Fallback to general EC2 sizing
+        return calculate_general_ec2_sizing(config)
+
+def render_enhanced_sql_server_cost_analysis(analysis: Dict, config: Dict):
+    """Enhanced cost analysis for SQL Server deployments"""
+    
+    if config.get('source_database_engine') != 'sqlserver':
+        return  # Only for SQL Server migrations
+    
+    sql_deployment_type = config.get('sql_deployment_type', 'standalone')
+    sql_sizing = analysis.get('aws_sizing_recommendations', {})
+    
+    st.markdown("**💰 SQL Server Deployment Cost Analysis:**")
+    
+    if sql_deployment_type == 'always_on':
+        st.markdown("### 🔶 Always ON Availability Groups Cost Breakdown")
+        
+        replica_count = config.get('always_on_replicas', 2)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            instance_cost = sql_sizing.get('monthly_instance_cost', 0)
+            st.metric(
+                "🖥️ Instance Costs",
+                f"${instance_cost:,.0f}/mo",
+                delta=f"{replica_count} replicas"
+            )
+        
+        with col2:
+            storage_cost = sql_sizing.get('monthly_storage_cost', 0)
+            st.metric(
+                "💾 Storage Costs",
+                f"${storage_cost:,.0f}/mo",
+                delta=f"{replica_count}x IO2 volumes"
+            )
+        
+        with col3:
+            licensing_cost = sql_sizing.get('monthly_sql_licensing_cost', 0)
+            st.metric(
+                "📄 SQL Licensing",
+                f"${licensing_cost:,.0f}/mo",
+                delta="Per-core licensing"
+            )
+        
+        with col4:
+            total_cost = sql_sizing.get('total_monthly_cost', 0)
+            st.metric(
+                "💰 Total Monthly",
+                f"${total_cost:,.0f}",
+                delta=f"${total_cost * 12:,.0f}/year"
+            )
+        
+        # Always ON specific costs
+        st.markdown("**🔶 Always ON Specific Cost Components:**")
+        
+        always_on_costs = {
+            "Service": [
+                "Primary Replica (EC2)",
+                "Secondary Replicas (EC2)",
+                "Cross-AZ Data Transfer",
+                "Enhanced Monitoring",
+                "Load Balancer (ALB)",
+                "Additional Backup Storage"
+            ],
+            "Monthly Cost": [
+                f"${instance_cost / replica_count:,.0f}",
+                f"${instance_cost * (replica_count - 1) / replica_count:,.0f}",
+                "$150",
+                "$100",
+                "$50",
+                f"${storage_cost * 0.2:,.0f}"
+            ],
+            "Description": [
+                f"{config.get('database_engine', '').replace('ec2_', '')} primary instance",
+                f"{replica_count - 1} secondary replica instances",
+                "Data sync between AZs",
+                "Always ON dashboard and alerts",
+                "Application load balancer for failover",
+                "AG backup storage (20% additional)"
+            ]
+        }
+        
+        df_always_on_costs = pd.DataFrame(always_on_costs)
+        st.dataframe(df_always_on_costs, use_container_width=True)
+        
+        # Cost comparison with standalone
+        standalone_estimated_cost = instance_cost / replica_count + storage_cost / replica_count + licensing_cost / replica_count
+        cost_premium = ((total_cost - standalone_estimated_cost) / standalone_estimated_cost) * 100
+        
+        st.warning(f"""
+        💡 **Always ON Cost Analysis:**
+        • **Cost Premium:** {cost_premium:.0f}% higher than standalone
+        • **Availability Gain:** 99.95% vs 99.9% (0.05% improvement)
+        • **RTO Improvement:** 2 minutes vs 30 minutes
+        • **RPO Improvement:** 0 minutes vs 15 minutes
+        • **Read Scale:** Additional read capacity from secondaries
+        """)
+        
+    else:  # standalone
+        st.markdown("### 🔹 Standalone SQL Server Cost Breakdown")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            instance_cost = sql_sizing.get('monthly_instance_cost', 0)
+            st.metric(
+                "🖥️ Instance Cost",
+                f"${instance_cost:,.0f}/mo",
+                delta="Single instance"
+            )
+        
+        with col2:
+            storage_cost = sql_sizing.get('monthly_storage_cost', 0)
+            st.metric(
+                "💾 Storage Cost",
+                f"${storage_cost:,.0f}/mo",
+                delta="GP3 volume"
+            )
+        
+        with col3:
+            licensing_cost = sql_sizing.get('monthly_sql_licensing_cost', 0)
+            st.metric(
+                "📄 SQL Licensing",
+                f"${licensing_cost:,.0f}/mo",
+                delta="Single instance"
+            )
+        
+        with col4:
+            total_cost = sql_sizing.get('total_monthly_cost', 0)
+            st.metric(
+                "💰 Total Monthly",
+                f"${total_cost:,.0f}",
+                delta=f"${total_cost * 12:,.0f}/year"
+            )
+        
+        st.info("""
+        💡 **Standalone Benefits:**
+        • Lower total cost of ownership
+        • Simpler management and deployment
+        • Suitable for non-critical workloads
+        • Standard SQL Server backup/restore
+        """)
+
+def render_sql_server_migration_complexity_analysis(analysis: Dict, config: Dict):
+    """Render SQL Server migration complexity analysis"""
+    
+    if config.get('source_database_engine') != 'sqlserver':
+        return
+    
+    complexity_analysis = calculate_sql_server_migration_complexity(config)
+    sql_deployment_type = config.get('sql_deployment_type', 'standalone')
+    
+    st.markdown(f"**🎯 SQL Server {sql_deployment_type.title()} Migration Complexity:**")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        complexity_score = complexity_analysis['complexity_score']
+        st.metric(
+            "🎯 Complexity Score",
+            f"{complexity_score:.1f}/10",
+            delta=complexity_analysis['risk_level'].title()
+        )
+    
+    with col2:
+        duration = complexity_analysis['estimated_duration_hours']
+        st.metric(
+            "⏱️ Est. Duration",
+            f"{duration} hours",
+            delta=complexity_analysis['migration_approach'].replace('_', ' ').title()
+        )
+    
+    with col3:
+        team_size = complexity_analysis['recommended_team_size']
+        st.metric(
+            "👥 Team Size",
+            f"{team_size} people",
+            delta=f"{complexity_analysis['sql_server_specialists_required']} SQL experts"
+        )
+    
+    with col4:
+        if sql_deployment_type == 'always_on':
+            availability = "99.95%"
+            delta = "High Availability"
+        else:
+            availability = "99.9%"
+            delta = "Standard"
+        
+        st.metric(
+            "📈 Target SLA",
+            availability,
+            delta=delta
+        )
+    
+    # Complexity factors breakdown
+    st.markdown("**📋 Migration Complexity Factors:**")
+    
+    for i, factor in enumerate(complexity_analysis['complexity_factors'], 1):
+        impact = "High" if i <= 2 else "Medium" if i <= 4 else "Low"
+        
+        if impact == "High":
+            st.error(f"🔴 **High Impact:** {factor}")
+        elif impact == "Medium":
+            st.warning(f"🟡 **Medium Impact:** {factor}")
+        else:
+            st.info(f"🟢 **Low Impact:** {factor}")
+
+def render_sql_server_migration_approach_tab(analysis: Dict, config: Dict):
+    """Render SQL Server specific migration approach"""
+    
+    if config.get('source_database_engine') != 'sqlserver':
+        return
+    
+    sql_deployment_type = config.get('sql_deployment_type', 'standalone')
+    
+    st.subheader(f"🔄 SQL Server {sql_deployment_type.title()} Migration Approach")
+    
+    if sql_deployment_type == 'always_on':
+        st.markdown("### 🔶 Always ON Availability Group Migration Strategy")
+        
+        # Migration phases for Always ON
+        phases = [
+            {
+                "Phase": "1. AWS Environment Setup",
+                "Duration": "1-2 weeks",
+                "Activities": [
+                    "Deploy EC2 instances across multiple AZs",
+                    "Configure Windows clustering",
+                    "Install SQL Server on all replicas",
+                    "Set up networking and security groups"
+                ],
+                "Complexity": "High"
+            },
+            {
+                "Phase": "2. Availability Group Preparation",
+                "Duration": "3-5 days",
+                "Activities": [
+                    "Create Windows failover cluster",
+                    "Configure Always ON feature",
+                    "Set up AG endpoints and listeners",
+                    "Configure backup strategy"
+                ],
+                "Complexity": "Very High"
+            },
+            {
+                "Phase": "3. Data Synchronization",
+                "Duration": "1-3 days",
+                "Activities": [
+                    "Add AWS instances to existing AG",
+                    "Initial data sync (seed)",
+                    "Monitor synchronization lag",
+                    "Validate data consistency"
+                ],
+                "Complexity": "High"
+            },
+            {
+                "Phase": "4. Testing & Validation",
+                "Duration": "1 week",
+                "Activities": [
+                    "Failover testing",
+                    "Application connectivity testing",
+                    "Performance validation",
+                    "Disaster recovery testing"
+                ],
+                "Complexity": "Medium"
+            },
+            {
+                "Phase": "5. Production Cutover",
+                "Duration": "4-8 hours",
+                "Activities": [
+                    "Planned failover to AWS primary",
+                    "Update connection strings",
+                    "Remove on-premises replicas",
+                    "Monitor post-migration"
+                ],
+                "Complexity": "High"
+            }
+        ]
+        
+        for phase in phases:
+            with st.expander(f"{phase['Phase']} - {phase['Duration']}", expanded=False):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    complexity_color = {
+                        "Low": "🟢",
+                        "Medium": "🟡", 
+                        "High": "🔴",
+                        "Very High": "🟣"
+                    }
+                    
+                    st.write(f"**Complexity:** {complexity_color[phase['Complexity']]} {phase['Complexity']}")
+                    st.write(f"**Duration:** {phase['Duration']}")
+                    st.write("**Activities:**")
+                    
+                with col2:
+                    for activity in phase['Activities']:
+                        st.write(f"• {activity}")
+        
+        # Always ON migration benefits and considerations
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.success("✅ **Always ON Migration Benefits**")
+            st.write("• Minimal downtime (planned failover)")
+            st.write("• Zero data loss (synchronous mode)")
+            st.write("• Ability to test before cutover")
+            st.write("• Easy rollback capability")
+            st.write("• Read-scale during migration")
+            
+        with col2:
+            st.warning("⚠️ **Always ON Considerations**")
+            st.write("• Higher complexity and cost")
+            st.write("• Requires Windows clustering expertise")
+            st.write("• Network latency impact on performance")
+            st.write("• Licensing costs for all replicas")
+            st.write("• Cross-AZ data transfer costs")
+    
+    else:  # standalone
+        st.markdown("### 🔹 Standalone SQL Server Migration Strategy")
+        
+        phases = [
+            {
+                "Phase": "1. AWS Environment Setup",
+                "Duration": "3-5 days",
+                "Activities": [
+                    "Deploy EC2 instance",
+                    "Install and configure SQL Server",
+                    "Set up backup/restore infrastructure",
+                    "Configure networking and security"
+                ],
+                "Complexity": "Medium"
+            },
+            {
+                "Phase": "2. Backup and Transfer",
+                "Duration": "1-2 days",
+                "Activities": [
+                    "Full database backup",
+                    "Transfer backup to AWS S3",
+                    "Validate backup integrity",
+                    "Prepare for restore"
+                ],
+                "Complexity": "Low"
+            },
+            {
+                "Phase": "3. Restore and Validation",
+                "Duration": "4-8 hours",
+                "Activities": [
+                    "Restore database on AWS",
+                    "Update database configurations",
+                    "Test application connectivity",
+                    "Validate data integrity"
+                ],
+                "Complexity": "Medium"
+            },
+            {
+                "Phase": "4. Cutover",
+                "Duration": "2-4 hours",
+                "Activities": [
+                    "Final incremental backup/restore",
+                    "Update connection strings",
+                    "Redirect traffic to AWS",
+                    "Monitor and validate"
+                ],
+                "Complexity": "Medium"
+            }
+        ]
+        
+        for phase in phases:
+            with st.expander(f"{phase['Phase']} - {phase['Duration']}", expanded=False):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    complexity_color = {
+                        "Low": "🟢",
+                        "Medium": "🟡", 
+                        "High": "🔴"
+                    }
+                    
+                    st.write(f"**Complexity:** {complexity_color[phase['Complexity']]} {phase['Complexity']}")
+                    st.write(f"**Duration:** {phase['Duration']}")
+                    st.write("**Activities:**")
+                    
+                with col2:
+                    for activity in phase['Activities']:
+                        st.write(f"• {activity}")
+        
+        # Standalone migration benefits and considerations
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.success("✅ **Standalone Migration Benefits**")
+            st.write("• Simpler migration process")
+            st.write("• Lower cost and complexity")
+            st.write("• Faster initial setup")
+            st.write("• Standard backup/restore tools")
+            st.write("• Single instance management")
+            
+        with col2:
+            st.warning("⚠️ **Standalone Considerations**")
+            st.write("• Higher downtime window required")
+            st.write("• Single point of failure")
+            st.write("• Manual failover procedures")
+            st.write("• Limited high availability")
+            st.write("• Recovery depends on backups")
+
+# Update the main configuration return to include SQL Server deployment details
+def update_main_config_return(config_dict: Dict) -> Dict:
+    """Update the main configuration dictionary with SQL Server details"""
+    
+    if config_dict.get('source_database_engine') == 'sqlserver':
+        # Add SQL Server specific deployment info
+        config_dict['is_sql_server'] = True
+        config_dict['deployment_complexity'] = 'very_high' if config_dict.get('sql_deployment_type') == 'always_on' else 'high'
+        
+        if config_dict.get('sql_deployment_type') == 'always_on':
+            config_dict['high_availability'] = True
+            config_dict['estimated_availability'] = '99.95%'
+            config_dict['failover_time_minutes'] = 2
+            config_dict['rpo_minutes'] = 0 if config_dict.get('always_on_sync_mode') == 'synchronous' else 5
+        else:
+            config_dict['high_availability'] = False
+            config_dict['estimated_availability'] = '99.9%'
+            config_dict['failover_time_minutes'] = 30
+            config_dict['rpo_minutes'] = 15
+    else:
+        config_dict['is_sql_server'] = False
+        config_dict['high_availability'] = False
+    
+    return config_dict
+
+
 def enhanced_aws_sizing_with_ec2_support(config: Dict):
     """Enhanced AWS sizing that properly handles both RDS and specific EC2 instance selections"""
     
@@ -7285,6 +8098,312 @@ async def main():
     
     with tab10:
         render_pdf_reports_tab(analysis, config)
+
+# Main Application Integration for SQL Server Always ON Support
+
+# Update the main function to handle SQL Server configurations
+async def main_with_sql_server_support():
+    """Enhanced main function with SQL Server standalone and Always ON support"""
+    render_enhanced_header()
+    
+    # Get enhanced configuration including SQL Server deployment type
+    config = render_enhanced_sidebar_controls()
+    
+    # Update config with SQL Server specific details
+    config = update_main_config_return(config)
+    
+    # Initialize enhanced analyzer
+    analyzer = EnhancedMigrationAnalyzer()
+    
+    # Run analysis with SQL Server support
+    analysis_placeholder = st.empty()
+    
+    with analysis_placeholder.container():
+        if config['enable_ai_analysis']:
+            with st.spinner("🧠 Running comprehensive AI-powered migration analysis with SQL Server support..."):
+                try:
+                    analysis = await analyzer.comprehensive_ai_migration_analysis_with_sql_server(config)
+                except Exception as e:
+                    st.error(f"Analysis error: {str(e)}")
+                    analysis = create_fallback_analysis_with_sql_server_support(config)
+        else:
+            with st.spinner("🔬 Running standard migration analysis with SQL Server support..."):
+                analysis = create_fallback_analysis_with_sql_server_support(config)
+    
+    analysis_placeholder.empty()
+    
+    # Display SQL Server configuration if applicable
+    if config.get('is_sql_server'):
+        render_sql_server_configuration_display(config)
+    
+    # Enhanced tabs with SQL Server specific analysis
+    tab_names = [
+        "🧠 AI Insights & Analysis", 
+        "🤖 Agent Scaling Analysis",
+        "🏢 Agent Positioning",
+        "🗄️ FSx Destination Comparison",
+        "🌐 Network Intelligence",
+        "💰 Comprehensive Costs",
+        "💻 OS Performance Analysis",
+        "📊 Migration Dashboard",
+        "🎯 AWS Sizing & Configuration"
+    ]
+    
+    # Add SQL Server specific tab if it's a SQL Server migration
+    if config.get('is_sql_server'):
+        tab_names.append("🟪 SQL Server Migration")
+    
+    tab_names.append("📄 Executive PDF Reports")
+    
+    tabs = st.tabs(tab_names)
+    
+    tab_index = 0
+    
+    with tabs[tab_index]:
+        if config['enable_ai_analysis']:
+            render_ai_insights_tab_enhanced(analysis, config)
+        else:
+            st.info("🤖 Enable AI Analysis in the sidebar for comprehensive migration insights")
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        render_agent_scaling_tab(analysis, config)
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        render_agent_positioning_tab(analysis, config)
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        render_fsx_destination_comparison_tab(analysis, config)
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        render_network_intelligence_tab(analysis, config)
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        # Enhanced cost analysis with SQL Server support
+        render_comprehensive_cost_pricing_tab(analysis, config)
+        if config.get('is_sql_server'):
+            st.markdown("---")
+            render_enhanced_sql_server_cost_analysis(analysis, config)
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        render_os_performance_tab(analysis, config)
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        render_migration_dashboard_tab(analysis, config)
+        if config.get('is_sql_server'):
+            st.markdown("---")
+            render_sql_server_migration_complexity_analysis(analysis, config)
+    tab_index += 1
+    
+    with tabs[tab_index]:
+        render_aws_sizing_tab(analysis, config)
+    tab_index += 1
+    
+    # SQL Server specific tab (only if SQL Server migration)
+    if config.get('is_sql_server'):
+        with tabs[tab_index]:
+            render_sql_server_migration_approach_tab(analysis, config)
+        tab_index += 1
+    
+    with tabs[tab_index]:
+        render_pdf_reports_tab(analysis, config)
+
+# Enhanced analyzer class method for SQL Server support
+class EnhancedMigrationAnalyzer:
+    """Enhanced migration analyzer with SQL Server Always ON support"""
+    
+    async def comprehensive_ai_migration_analysis_with_sql_server(self, config: Dict) -> Dict:
+        """Comprehensive AI-powered migration analysis with SQL Server support"""
+        
+        # Get base analysis
+        analysis = await self.comprehensive_ai_migration_analysis(config)
+        
+        # Add SQL Server specific analysis if applicable
+        if config.get('is_sql_server'):
+            sql_analysis = self._analyze_sql_server_deployment(config)
+            analysis['sql_server_analysis'] = sql_analysis
+            
+            # Update AWS sizing for SQL Server
+            analysis['aws_sizing_recommendations'] = enhanced_aws_sizing_with_sql_server_support(config)
+            
+            # Update cost analysis for SQL Server
+            analysis['cost_analysis'] = self._calculate_sql_server_enhanced_costs(config, analysis)
+            
+            # Update complexity and time estimates
+            analysis['sql_migration_complexity'] = calculate_sql_server_migration_complexity(config)
+            analysis['estimated_migration_time_hours'] = self._calculate_sql_server_migration_time(config, analysis)
+        
+        return analysis
+    
+    def _analyze_sql_server_deployment(self, config: Dict) -> Dict:
+        """Analyze SQL Server deployment specifics"""
+        
+        sql_deployment_type = config.get('sql_deployment_type', 'standalone')
+        
+        if sql_deployment_type == 'always_on':
+            return {
+                'deployment_type': 'always_on',
+                'replicas': config.get('always_on_replicas', 2),
+                'sync_mode': config.get('always_on_sync_mode', 'synchronous'),
+                'readable_secondary': config.get('always_on_readable_secondary', True),
+                'high_availability': True,
+                'estimated_availability': '99.95%',
+                'rpo_minutes': 0 if config.get('always_on_sync_mode') == 'synchronous' else 5,
+                'rto_minutes': 2,
+                'scaling_capability': 'read_scale_available',
+                'backup_strategy': 'availability_group_backups',
+                'failover_type': 'automatic',
+                'cross_az_deployment': True,
+                'licensing_multiplier': config.get('always_on_replicas', 2),
+                'complexity_factor': 2.5,
+                'migration_approach': 'ag_replica_addition',
+                'recommended_migration_window_hours': 8
+            }
+        else:
+            return {
+                'deployment_type': 'standalone',
+                'replicas': 1,
+                'sync_mode': 'none',
+                'readable_secondary': False,
+                'high_availability': False,
+                'estimated_availability': '99.9%',
+                'rpo_minutes': 15,
+                'rto_minutes': 30,
+                'scaling_capability': 'manual_scaling_only',
+                'backup_strategy': 'standard_sql_backups',
+                'failover_type': 'manual',
+                'cross_az_deployment': False,
+                'licensing_multiplier': 1,
+                'complexity_factor': 1.0,
+                'migration_approach': 'backup_restore',
+                'recommended_migration_window_hours': 4
+            }
+    
+    def _calculate_sql_server_enhanced_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate enhanced costs for SQL Server deployments"""
+        
+        base_cost_analysis = analysis.get('cost_analysis', {})
+        sql_analysis = analysis.get('sql_server_analysis', {})
+        
+        # Get SQL Server sizing
+        sql_sizing = calculate_sql_server_ec2_sizing_with_always_on(config)
+        
+        # Update costs with SQL Server specifics
+        enhanced_costs = base_cost_analysis.copy()
+        
+        # Replace compute costs with SQL Server costs
+        enhanced_costs['aws_compute_cost'] = sql_sizing['monthly_instance_cost']
+        enhanced_costs['aws_storage_cost'] = sql_sizing['monthly_storage_cost']
+        enhanced_costs['sql_licensing_cost'] = sql_sizing['monthly_sql_licensing_cost']
+        
+        # Add SQL Server specific costs
+        if config.get('sql_deployment_type') == 'always_on':
+            enhanced_costs['always_on_additional_costs'] = {
+                'cross_az_data_transfer': 150,
+                'enhanced_monitoring': 100,
+                'load_balancer': 50,
+                'cluster_management': 75
+            }
+            enhanced_costs['always_on_total_additional'] = sum(enhanced_costs['always_on_additional_costs'].values())
+        else:
+            enhanced_costs['always_on_additional_costs'] = {}
+            enhanced_costs['always_on_total_additional'] = 0
+        
+        # Recalculate total monthly cost
+        enhanced_costs['total_monthly_cost'] = (
+            enhanced_costs['aws_compute_cost'] +
+            enhanced_costs['aws_storage_cost'] +
+            enhanced_costs['sql_licensing_cost'] +
+            enhanced_costs.get('always_on_total_additional', 0) +
+            enhanced_costs.get('agent_cost', 0) +
+            enhanced_costs.get('network_cost', 0) +
+            enhanced_costs.get('management_cost', 0)
+        )
+        
+        # Update one-time costs for SQL Server complexity
+        complexity_multiplier = sql_analysis.get('complexity_factor', 1.0)
+        enhanced_costs['one_time_migration_cost'] = base_cost_analysis.get('one_time_migration_cost', 0) * complexity_multiplier
+        
+        # Add SQL Server specific one-time costs
+        if config.get('sql_deployment_type') == 'always_on':
+            enhanced_costs['sql_server_setup_costs'] = {
+                'always_on_configuration': 5000,
+                'clustering_setup': 3000,
+                'ag_testing': 2000,
+                'professional_services_premium': 8000
+            }
+            enhanced_costs['sql_server_setup_total'] = sum(enhanced_costs['sql_server_setup_costs'].values())
+        else:
+            enhanced_costs['sql_server_setup_costs'] = {
+                'standard_sql_setup': 2000,
+                'backup_configuration': 1000,
+                'professional_services': 3000
+            }
+            enhanced_costs['sql_server_setup_total'] = sum(enhanced_costs['sql_server_setup_costs'].values())
+        
+        enhanced_costs['one_time_migration_cost'] += enhanced_costs['sql_server_setup_total']
+        
+        return enhanced_costs
+    
+    def _calculate_sql_server_migration_time(self, config: Dict, analysis: Dict) -> float:
+        """Calculate migration time for SQL Server deployments"""
+        
+        base_time = analysis.get('estimated_migration_time_hours', 24)
+        sql_analysis = analysis.get('sql_server_analysis', {})
+        
+        if config.get('sql_deployment_type') == 'always_on':
+            # Always ON has different time characteristics
+            # Setup time is longer, but actual cutover is faster
+            setup_time = 48  # Always ON setup takes longer
+            sync_time = config.get('database_size_gb', 0) / 1000 * 2  # 2 hours per TB for initial sync
+            cutover_time = 2  # Very fast cutover with Always ON
+            
+            total_time = setup_time + sync_time + cutover_time
+        else:
+            # Standalone uses backup/restore approach
+            backup_time = config.get('database_size_gb', 0) / 1000 * 4  # 4 hours per TB for backup
+            transfer_time = config.get('database_size_gb', 0) / 1000 * 2  # 2 hours per TB for transfer
+            restore_time = config.get('database_size_gb', 0) / 1000 * 3  # 3 hours per TB for restore
+            
+            total_time = backup_time + transfer_time + restore_time
+        
+        return max(total_time, base_time)
+
+def create_fallback_analysis_with_sql_server_support(config: Dict):
+    """Create fallback analysis with SQL Server support"""
+    
+    # Get base fallback analysis
+    base_analysis = create_fallback_analysis_with_proper_readers_writers(config)
+    
+    # Add SQL Server specific analysis if applicable
+    if config.get('is_sql_server'):
+        # Add SQL Server analysis
+        sql_analyzer = EnhancedMigrationAnalyzer()
+        base_analysis['sql_server_analysis'] = sql_analyzer._analyze_sql_server_deployment(config)
+        
+        # Update AWS sizing for SQL Server
+        base_analysis['aws_sizing_recommendations'] = enhanced_aws_sizing_with_sql_server_support(config)
+        
+        # Update migration complexity
+        base_analysis['sql_migration_complexity'] = calculate_sql_server_migration_complexity(config)
+        
+        # Update estimated migration time
+        base_analysis['estimated_migration_time_hours'] = sql_analyzer._calculate_sql_server_migration_time(config, base_analysis)
+    
+    return base_analysis
+
+# Example usage in the main application
+if __name__ == "__main__":
+    import asyncio
+    # Use the enhanced main function
+    asyncio.run(main_with_sql_server_support())
+
     
 def render_pdf_reports_tab(analysis: Dict, config: Dict):
     """Render PDF reports generation tab with FSx destination support"""
