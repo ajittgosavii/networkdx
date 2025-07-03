@@ -215,7 +215,7 @@ def render_bandwidth_waterfall_analysis(analysis, config):
                 font=dict(size=10)
             )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="bandwidth_waterfall_analysis")
     
     # Enhanced Analysis Summary
     total_loss = user_nic_speed - final_throughput
@@ -6602,7 +6602,7 @@ def render_fsx_destination_comparison_tab(analysis: Dict, config: Dict):
         colors = ['red' if dest == current_destination else 'lightblue' for dest in destinations]
         fig_time.update_traces(marker_color=colors)
         
-        st.plotly_chart(fig_time, use_container_width=True)
+        st.plotly_chart(fig_time, use_container_width=True, key="fsx_migration_time_comparison")
     
     with col2:
         # Cost Comparison
@@ -6622,7 +6622,7 @@ def render_fsx_destination_comparison_tab(analysis: Dict, config: Dict):
         colors = ['red' if dest == current_destination else 'lightgreen' for dest in destinations]
         fig_cost.update_traces(marker_color=colors)
         
-        st.plotly_chart(fig_cost, use_container_width=True)
+        st.plotly_chart(fig_cost, use_container_width=True, key="fsx_cost_comparison")
     
     # Detailed Analysis per Destination using tabs
     st.markdown("**🔍 Detailed Destination Analysis:**")
@@ -6888,7 +6888,7 @@ def render_agent_scaling_tab(analysis, config):
         color_discrete_map={'Base': '#95a5a6', 'Enhanced': '#3498db', 'Aggregate': '#2ecc71', 'Network': '#e74c3c', 'Effective': '#9b59b6'}
     )
     
-    st.plotly_chart(fig_throughput, use_container_width=True)
+    st.plotly_chart(fig_throughput, use_container_width=True, key="agent_throughput_analysis")
     
     # Scaling Efficiency Analysis using native components
     col1, col2, col3 = st.columns(3)
@@ -8564,7 +8564,7 @@ def render_network_intelligence_tab(analysis: Dict, config: Dict):
         # Create network path diagram
         try:
             network_diagram = create_network_path_diagram(network_perf)
-            st.plotly_chart(network_diagram, use_container_width=True)
+            st.plotly_chart(network_diagram, use_container_width=True, key="network_path_diagram")
         except Exception as e:
             st.warning(f"Network diagram could not be rendered: {str(e)}")
             
@@ -8996,7 +8996,7 @@ def render_os_performance_tab(analysis: Dict, config: Dict):
             title="OS Performance Profile"
         )
         
-        st.plotly_chart(fig_radar, use_container_width=True)
+        st.plotly_chart(fig_radar, use_container_width=True, key="os_performance_radar")
     
     with col2:
         st.markdown("**🤖 AI OS Insights:**")
@@ -9198,7 +9198,7 @@ def render_migration_dashboard_tab(analysis: Dict, config: Dict):
             title="Current vs AWS Target Performance",
             barmode='group'
         )
-        st.plotly_chart(fig_perf, use_container_width=True)
+        st.plotly_chart(fig_perf, use_container_width=True, key="dashboard_performance_comparison")
     
     with col2:
         st.markdown("**🔄 Migration Timeline:**")
@@ -9224,7 +9224,7 @@ def render_migration_dashboard_tab(analysis: Dict, config: Dict):
             color='Duration (Weeks)',
             color_continuous_scale='viridis'
         )
-        st.plotly_chart(fig_timeline, use_container_width=True)
+        st.plotly_chart(fig_timeline, use_container_width=True, key="dashboard_timeline_breakdown")
     
     # Agent and Network Analysis
     col1, col2 = st.columns(2)
@@ -9253,7 +9253,7 @@ def render_migration_dashboard_tab(analysis: Dict, config: Dict):
             color='Throughput (Mbps)',
             color_continuous_scale='blues'
         )
-        st.plotly_chart(fig_agent, use_container_width=True)
+        st.plotly_chart(fig_agent, use_container_width=True, key="dashboard_agent_analysis")
     
     with col2:
         st.markdown("**🌐 Network Performance Analysis:**")
@@ -9279,7 +9279,7 @@ def render_migration_dashboard_tab(analysis: Dict, config: Dict):
             color='Score/Percentage',
             color_continuous_scale='greens'
         )
-        st.plotly_chart(fig_network, use_container_width=True)
+        st.plotly_chart(fig_network, use_container_width=True, key="dashboard_network_analysis")
     
     # Cost and ROI Analysis
     col1, col2 = st.columns(2)
@@ -9303,7 +9303,7 @@ def render_migration_dashboard_tab(analysis: Dict, config: Dict):
             names=list(cost_categories.keys()),
             title="Monthly Cost Distribution"
         )
-        st.plotly_chart(fig_cost, use_container_width=True)
+        st.plotly_chart(fig_cost, use_container_width=True, key="dashboard_cost_breakdown")
     
     with col2:
         st.markdown("**📈 ROI Projection:**")
@@ -9334,7 +9334,7 @@ def render_migration_dashboard_tab(analysis: Dict, config: Dict):
             markers=True
         )
         fig_roi.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Break-even")
-        st.plotly_chart(fig_roi, use_container_width=True)
+        st.plotly_chart(fig_roi, use_container_width=True, key="dashboard_roi_projection")
     
     # Risk and Readiness Assessment
     st.markdown("**⚠️ Risk and Readiness Assessment:**")
@@ -9412,7 +9412,7 @@ def render_migration_dashboard_tab(analysis: Dict, config: Dict):
     # Add benchmark line at 80%
     fig_health.add_hline(y=80, line_dash="dash", line_color="blue", annotation_text="Target: 80%")
     
-    st.plotly_chart(fig_health, use_container_width=True)
+    st.plotly_chart(fig_health, use_container_width=True, key="dashboard_health_score")
 
 def render_aws_sizing_tab(analysis: Dict, config: Dict):
     """Render AWS sizing and configuration recommendations tab using native components"""
@@ -9553,7 +9553,7 @@ def render_aws_sizing_tab(analysis: Dict, config: Dict):
             title="RDS vs EC2 Scoring Breakdown",
             barmode='group'
         )
-        st.plotly_chart(fig_comparison, use_container_width=True)
+        st.plotly_chart(fig_comparison, use_container_width=True, key="aws_sizing_rds_ec2_comparison")
     
     with comparison_col2:
         st.markdown("**📊 Deployment Decision Factors:**")
@@ -9976,7 +9976,7 @@ def render_comprehensive_cost_pricing_tab(analysis: Dict, config: Dict):
                 names=list(category_costs.keys()),
                 title="Monthly Cost by Service Category"
             )
-            st.plotly_chart(fig_category, use_container_width=True)
+            st.plotly_chart(fig_category, use_container_width=True, key="cost_category_breakdown")
     
     with col2:
         st.markdown("**💡 Cost Optimization Recommendations:**")
