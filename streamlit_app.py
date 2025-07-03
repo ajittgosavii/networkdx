@@ -5668,7 +5668,6 @@ def render_enhanced_sidebar_controls():
     # Migration Configuration with AI analysis
     st.sidebar.subheader("🔄 Migration Setup (AI-Optimized)")
     
-    # Source Database
     source_database_engine = st.sidebar.selectbox(
         "Source Database",
         ["mysql", "postgresql", "oracle", "sqlserver", "mongodb"],
@@ -5679,82 +5678,110 @@ def render_enhanced_sidebar_controls():
         help="AI determines migration complexity based on source engine"
     )
     
-    # Enhanced Target Database Selection with EC2 Options
-    database_engine = st.sidebar.selectbox(
-        "Target Database (AWS)",
-        [
-            # RDS Managed Services
-            "rds_mysql", "rds_postgresql", "rds_oracle", "rds_sqlserver", "rds_mongodb",
-            
-            # EC2 Instance Types for Self-Managed Databases
-            "ec2_t3_medium", "ec2_t3_large", "ec2_t3_xlarge", "ec2_t3_2xlarge",
-            "ec2_c5_large", "ec2_c5_xlarge", "ec2_c5_2xlarge", "ec2_c5_4xlarge",
-            "ec2_r6i_large", "ec2_r6i_xlarge", "ec2_r6i_2xlarge", "ec2_r6i_4xlarge", "ec2_r6i_8xlarge",
-            "ec2_m5_large", "ec2_m5_xlarge", "ec2_m5_2xlarge", "ec2_m5_4xlarge",
-            "ec2_x1e_xlarge", "ec2_x1e_2xlarge", "ec2_x1e_4xlarge",  # Memory optimized
-            "ec2_i3_large", "ec2_i3_xlarge", "ec2_i3_2xlarge"  # Storage optimized
-        ],
-        index=0,  # Default to RDS MySQL
-        format_func=lambda x: {
-            # RDS Managed Services
-            'rds_mysql': '☁️ RDS MySQL (Managed)',
-            'rds_postgresql': '☁️ RDS PostgreSQL (Managed)', 
-            'rds_oracle': '☁️ RDS Oracle (Managed)',
-            'rds_sqlserver': '☁️ RDS SQL Server (Managed)', 
-            'rds_mongodb': '☁️ DocumentDB (Managed)',
-            
-            # EC2 General Purpose
-            'ec2_t3_medium': '🖥️ EC2 t3.medium (2 vCPU, 4GB) - Burstable',
-            'ec2_t3_large': '🖥️ EC2 t3.large (2 vCPU, 8GB) - Burstable',
-            'ec2_t3_xlarge': '🖥️ EC2 t3.xlarge (4 vCPU, 16GB) - Burstable',
-            'ec2_t3_2xlarge': '🖥️ EC2 t3.2xlarge (8 vCPU, 32GB) - Burstable',
-            
-            # EC2 Compute Optimized
-            'ec2_c5_large': '⚡ EC2 c5.large (2 vCPU, 4GB) - Compute Optimized',
-            'ec2_c5_xlarge': '⚡ EC2 c5.xlarge (4 vCPU, 8GB) - Compute Optimized',
-            'ec2_c5_2xlarge': '⚡ EC2 c5.2xlarge (8 vCPU, 16GB) - Compute Optimized',
-            'ec2_c5_4xlarge': '⚡ EC2 c5.4xlarge (16 vCPU, 32GB) - Compute Optimized',
-            
-            # EC2 Memory Optimized
-            'ec2_r6i_large': '🧠 EC2 r6i.large (2 vCPU, 16GB) - Memory Optimized',
-            'ec2_r6i_xlarge': '🧠 EC2 r6i.xlarge (4 vCPU, 32GB) - Memory Optimized',
-            'ec2_r6i_2xlarge': '🧠 EC2 r6i.2xlarge (8 vCPU, 64GB) - Memory Optimized',
-            'ec2_r6i_4xlarge': '🧠 EC2 r6i.4xlarge (16 vCPU, 128GB) - Memory Optimized',
-            'ec2_r6i_8xlarge': '🧠 EC2 r6i.8xlarge (32 vCPU, 256GB) - Memory Optimized',
-            
-            # EC2 General Purpose (M5)
-            'ec2_m5_large': '🔵 EC2 m5.large (2 vCPU, 8GB) - General Purpose',
-            'ec2_m5_xlarge': '🔵 EC2 m5.xlarge (4 vCPU, 16GB) - General Purpose',
-            'ec2_m5_2xlarge': '🔵 EC2 m5.2xlarge (8 vCPU, 32GB) - General Purpose',
-            'ec2_m5_4xlarge': '🔵 EC2 m5.4xlarge (16 vCPU, 64GB) - General Purpose',
-            
-            # EC2 High Memory
-            'ec2_x1e_xlarge': '🔥 EC2 x1e.xlarge (4 vCPU, 122GB) - High Memory',
-            'ec2_x1e_2xlarge': '🔥 EC2 x1e.2xlarge (8 vCPU, 244GB) - High Memory',
-            'ec2_x1e_4xlarge': '🔥 EC2 x1e.4xlarge (16 vCPU, 488GB) - High Memory',
-            
-            # EC2 Storage Optimized
-            'ec2_i3_large': '💾 EC2 i3.large (2 vCPU, 15.25GB) + NVMe SSD',
-            'ec2_i3_xlarge': '💾 EC2 i3.xlarge (4 vCPU, 30.5GB) + NVMe SSD',
-            'ec2_i3_2xlarge': '💾 EC2 i3.2xlarge (8 vCPU, 61GB) + NVMe SSD'
-        }[x],
-        help="Select target AWS service: RDS (managed) or EC2 instance type (self-managed)"
-    )
-    
-    # Show deployment type indicator with enhanced logic
-    if database_engine.startswith('rds_'):
-        deployment_type = "🟢 Managed Service (RDS/DocumentDB)"
-        engine_name = database_engine.replace('rds_', '').upper()
-        management_complexity = "Low"
+    # FIXED: Target Database Selection with SQL Server Logic
+    if source_database_engine == "sqlserver":
+        # Force SQL Server to EC2 due to licensing and compatibility
+        st.sidebar.warning("🚨 **SQL Server Auto-Configuration**")
+        st.sidebar.info("""
+        **SQL Server → EC2 (Self-Managed)**
+        
+        ✅ **Why EC2 for SQL Server:**
+        • Better licensing control (BYOL)
+        • Advanced SQL Server features support
+        • Custom configuration capabilities
+        • Better performance optimization options
+        """)
+        
+        database_engine = st.sidebar.selectbox(
+            "Target SQL Server on EC2",
+            [
+                "ec2_r6i_large", "ec2_r6i_xlarge", "ec2_r6i_2xlarge", "ec2_r6i_4xlarge",
+                "ec2_m5_large", "ec2_m5_xlarge", "ec2_m5_2xlarge", "ec2_m5_4xlarge",
+                "ec2_c5_xlarge", "ec2_c5_2xlarge", "ec2_c5_4xlarge"
+            ],
+            index=1,  # Default to r6i.xlarge
+            format_func=lambda x: {
+                'ec2_r6i_large': '🧠 EC2 r6i.large (2 vCPU, 16GB) - Memory Optimized',
+                'ec2_r6i_xlarge': '🧠 EC2 r6i.xlarge (4 vCPU, 32GB) - Memory Optimized ⭐',
+                'ec2_r6i_2xlarge': '🧠 EC2 r6i.2xlarge (8 vCPU, 64GB) - Memory Optimized',
+                'ec2_r6i_4xlarge': '🧠 EC2 r6i.4xlarge (16 vCPU, 128GB) - Memory Optimized',
+                'ec2_m5_large': '🔵 EC2 m5.large (2 vCPU, 8GB) - General Purpose',
+                'ec2_m5_xlarge': '🔵 EC2 m5.xlarge (4 vCPU, 16GB) - General Purpose',
+                'ec2_m5_2xlarge': '🔵 EC2 m5.2xlarge (8 vCPU, 32GB) - General Purpose',
+                'ec2_m5_4xlarge': '🔵 EC2 m5.4xlarge (16 vCPU, 64GB) - General Purpose',
+                'ec2_c5_xlarge': '⚡ EC2 c5.xlarge (4 vCPU, 8GB) - Compute Optimized',
+                'ec2_c5_2xlarge': '⚡ EC2 c5.2xlarge (8 vCPU, 16GB) - Compute Optimized',
+                'ec2_c5_4xlarge': '⚡ EC2 c5.4xlarge (16 vCPU, 32GB) - Compute Optimized'
+            }[x],
+            help="SQL Server on EC2 for optimal licensing and performance control"
+        )
+        
+        # Set the database engine for migration logic
+        ec2_database_engine = "sqlserver"
+        deployment_type = "ec2_mandatory"
+        
     else:
-        deployment_type = "🟡 Self-Managed (EC2)"
-        engine_name = database_engine.replace('ec2_', '').upper()
-        management_complexity = "High"
+        # Regular database selection for non-SQL Server
+        database_engine = st.sidebar.selectbox(
+            "Target Database (AWS)",
+            [
+                # RDS Managed Services
+                "rds_mysql", "rds_postgresql", "rds_oracle", "rds_mongodb",
+                
+                # EC2 Instance Types for Self-Managed Databases
+                "ec2_t3_medium", "ec2_t3_large", "ec2_t3_xlarge", "ec2_t3_2xlarge",
+                "ec2_c5_large", "ec2_c5_xlarge", "ec2_c5_2xlarge", "ec2_c5_4xlarge",
+                "ec2_r6i_large", "ec2_r6i_xlarge", "ec2_r6i_2xlarge", "ec2_r6i_4xlarge", 
+                "ec2_m5_large", "ec2_m5_xlarge", "ec2_m5_2xlarge", "ec2_m5_4xlarge"
+            ],
+            index=0,  # Default to RDS MySQL
+            format_func=lambda x: {
+                # RDS Managed Services (NO SQL Server in RDS options)
+                'rds_mysql': '☁️ RDS MySQL (Managed)',
+                'rds_postgresql': '☁️ RDS PostgreSQL (Managed)', 
+                'rds_oracle': '☁️ RDS Oracle (Managed)',
+                'rds_mongodb': '☁️ DocumentDB (Managed)',
+                
+                # EC2 options
+                'ec2_t3_medium': '🖥️ EC2 t3.medium (2 vCPU, 4GB) - Burstable',
+                'ec2_t3_large': '🖥️ EC2 t3.large (2 vCPU, 8GB) - Burstable',
+                'ec2_t3_xlarge': '🖥️ EC2 t3.xlarge (4 vCPU, 16GB) - Burstable',
+                'ec2_t3_2xlarge': '🖥️ EC2 t3.2xlarge (8 vCPU, 32GB) - Burstable',
+                'ec2_c5_large': '⚡ EC2 c5.large (2 vCPU, 4GB) - Compute Optimized',
+                'ec2_c5_xlarge': '⚡ EC2 c5.xlarge (4 vCPU, 8GB) - Compute Optimized',
+                'ec2_c5_2xlarge': '⚡ EC2 c5.2xlarge (8 vCPU, 16GB) - Compute Optimized',
+                'ec2_c5_4xlarge': '⚡ EC2 c5.4xlarge (16 vCPU, 32GB) - Compute Optimized',
+                'ec2_r6i_large': '🧠 EC2 r6i.large (2 vCPU, 16GB) - Memory Optimized',
+                'ec2_r6i_xlarge': '🧠 EC2 r6i.xlarge (4 vCPU, 32GB) - Memory Optimized',
+                'ec2_r6i_2xlarge': '🧠 EC2 r6i.2xlarge (8 vCPU, 64GB) - Memory Optimized',
+                'ec2_r6i_4xlarge': '🧠 EC2 r6i.4xlarge (16 vCPU, 128GB) - Memory Optimized',
+                'ec2_m5_large': '🔵 EC2 m5.large (2 vCPU, 8GB) - General Purpose',
+                'ec2_m5_xlarge': '🔵 EC2 m5.xlarge (4 vCPU, 16GB) - General Purpose',
+                'ec2_m5_2xlarge': '🔵 EC2 m5.2xlarge (8 vCPU, 32GB) - General Purpose',
+                'ec2_m5_4xlarge': '🔵 EC2 m5.4xlarge (16 vCPU, 64GB) - General Purpose'
+            }[x],
+            help="Select target AWS service: RDS (managed) or EC2 instance type (self-managed)"
+        )
+        
+        ec2_database_engine = source_database_engine  # Use source engine for EC2 deployments
+        deployment_type = "flexible"
     
-    st.sidebar.info(f"**Deployment:** {deployment_type}")
-    st.sidebar.info(f"**Instance:** {engine_name}")
-    st.sidebar.info(f"**Management:** {management_complexity}")
-    
+    # Show deployment and migration type indicators
+    if source_database_engine == "sqlserver":
+        st.sidebar.success("🎯 **SQL Server → EC2 (Optimized Path)**")
+        st.sidebar.info("✅ Licensing control\n✅ Advanced features\n✅ Custom optimization")
+    else:
+        # Regular deployment type indicator
+        if database_engine.startswith('rds_'):
+            deployment_type_display = "🟢 Managed Service (RDS/DocumentDB)"
+            management_complexity = "Low"
+        else:
+            deployment_type_display = "🟡 Self-Managed (EC2)"
+            management_complexity = "High"
+        
+        st.sidebar.info(f"**Deployment:** {deployment_type_display}")
+        st.sidebar.info(f"**Management:** {management_complexity}")
+            
     # Show migration type with enhanced logic (FIXED - using variables instead of config)
     target_db_type = database_engine.split('_')[1] if '_' in database_engine else database_engine
     
@@ -6028,6 +6055,7 @@ def render_enhanced_sidebar_controls():
         'nic_speed': nic_speed,
         'source_database_engine': source_database_engine,
         'database_engine': database_engine,
+        'ec2_database_engine': ec2_database_engine,  # NEW: Separate EC2 engine tracking
         'database_size_gb': database_size_gb,
         'downtime_tolerance_minutes': downtime_tolerance_minutes,
         'performance_requirements': performance_requirements,
@@ -6044,10 +6072,8 @@ def render_enhanced_sidebar_controls():
         'max_throughput_mbps': max_throughput_mbps,
         'anticipated_max_memory_gb': anticipated_max_memory_gb,
         'anticipated_max_cpu_cores': anticipated_max_cpu_cores,
-        'deployment_type': 'managed' if database_engine.startswith('rds_') else 'self_managed',
-        'instance_type': database_engine if database_engine.startswith('ec2_') else None,
-        'migration_complexity_score': migration_complexity,
-        'is_homogeneous': is_homogeneous
+        'deployment_type': deployment_type,
+        'is_sql_server': source_database_engine == "sqlserver"  # NEW: SQL Server flag
     }
     
     # Render API status
@@ -6963,10 +6989,10 @@ def render_agent_scaling_tab(analysis, config):
 
 
 async def main():
-    """Enhanced main function with professional UI, detailed agent scaling analysis, and FSx destination support"""
+    """Enhanced main function with agent positioning tab and comprehensive costs"""
     render_enhanced_header()
     
-    # Get configuration
+    # Get enhanced configuration
     config = render_enhanced_sidebar_controls()
     
     # Initialize enhanced analyzer
@@ -6977,27 +7003,26 @@ async def main():
     
     with analysis_placeholder.container():
         if config['enable_ai_analysis']:
-            with st.spinner("🧠 Running comprehensive AI-powered migration analysis with agent scaling optimization and FSx destination analysis..."):
+            with st.spinner("🧠 Running comprehensive AI-powered migration analysis..."):
                 try:
                     analysis = await analyzer.comprehensive_ai_migration_analysis(config)
                 except Exception as e:
                     st.error(f"Analysis error: {str(e)}")
-                    # Use the updated fallback function
                     analysis = create_fallback_analysis_with_proper_readers_writers(config)
         else:
-            with st.spinner("🔬 Running standard migration analysis with agent scaling and FSx destination analysis..."):
-                # Use the updated fallback function
+            with st.spinner("🔬 Running standard migration analysis..."):
                 analysis = create_fallback_analysis_with_proper_readers_writers(config)
     
     analysis_placeholder.empty()
     
-    # Enhanced tabs with FSx destination comparison - FIXED: Added 9th tab
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    # Enhanced tabs with agent positioning and comprehensive costs
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "🧠 AI Insights & Analysis", 
         "🤖 Agent Scaling Analysis",
+        "🏢 Agent Positioning",  # NEW TAB
         "🗄️ FSx Destination Comparison",
         "🌐 Network Intelligence",
-        "💰 Cost & Pricing Analysis",
+        "💰 Comprehensive Costs",  # ENHANCED TAB
         "💻 OS Performance Analysis",
         "📊 Migration Dashboard",
         "🎯 AWS Sizing & Configuration",
@@ -7013,25 +7038,28 @@ async def main():
     with tab2:
         render_agent_scaling_tab(analysis, config)
     
-    with tab3:
-        render_fsx_destination_comparison_tab(analysis, config)
+    with tab3:  # NEW: Agent Positioning Tab
+        render_agent_positioning_tab(analysis, config)
     
     with tab4:
-        render_network_intelligence_tab(analysis, config)
+        render_fsx_destination_comparison_tab(analysis, config)
     
     with tab5:
-        render_cost_pricing_tab(analysis, config)
+        render_network_intelligence_tab(analysis, config)
     
-    with tab6:
-        render_os_performance_tab(analysis, config)  # This is now fixed
+    with tab6:  # ENHANCED: Comprehensive Cost Analysis
+        render_comprehensive_cost_pricing_tab(analysis, config)
     
     with tab7:
-        render_migration_dashboard_tab(analysis, config)
+        render_os_performance_tab(analysis, config)
     
     with tab8:
-        render_aws_sizing_tab(analysis, config)
+        render_migration_dashboard_tab(analysis, config)
     
     with tab9:
+        render_aws_sizing_tab(analysis, config)
+    
+    with tab10:
         render_pdf_reports_tab(analysis, config)
     
 def render_pdf_reports_tab(analysis: Dict, config: Dict):
@@ -8406,246 +8434,256 @@ def render_network_intelligence_tab(analysis: Dict, config: Dict):
 
 # Fix for the PyArrow serialization error in render_cost_pricing_tab function
 
-def render_cost_pricing_tab(analysis: Dict, config: Dict):
-    """Render comprehensive cost and pricing analysis tab using native components"""
-    st.subheader("💰 Live AWS Pricing & Cost Analysis")
+def render_agent_positioning_tab(analysis: Dict, config: Dict):
+    """Render agent positioning and data center architecture tab"""
+    st.subheader("🏢 Migration Agent Positioning & Data Center Architecture")
     
-    cost_analysis = analysis.get('cost_analysis', {})
+    # Determine agent positioning based on OS and database type
+    os_type = config.get('operating_system', '')
+    source_engine = config.get('source_database_engine', '')
+    environment = config.get('environment', 'non-production')
     
-    # Cost Overview Dashboard
-    st.markdown("**💸 Cost Overview Dashboard:**")
+    # Agent positioning logic
+    if 'linux' in os_type.lower() or any(linux_os in os_type for linux_os in ['ubuntu', 'rhel']):
+        primary_storage_location = "Linux NAS Server"
+        storage_protocol = "NFS/CIFS"
+        agent_placement = "Near Linux NAS"
+        backup_path = "Database → Linux NAS → Migration Agent → AWS S3"
+    else:  # Windows
+        primary_storage_location = "Windows Shared Drive (SMB)"
+        storage_protocol = "SMB/CIFS"
+        agent_placement = "Near Windows File Server"
+        backup_path = "Database → Windows SMB Share → Migration Agent → AWS S3"
     
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Migration agent details
+    is_homogeneous = config.get('source_database_engine') == config.get('ec2_database_engine', config.get('database_engine', '').replace('rds_', ''))
+    agent_type = "DataSync" if is_homogeneous else "DMS"
+    num_agents = config.get('number_of_agents', 1)
+    
+    # Data Center Overview
+    st.markdown("**🏗️ Data Center Architecture Overview:**")
+    
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        total_monthly = cost_analysis.get('total_monthly_cost', 0)
         st.metric(
-            "💰 Total Monthly Cost",
-            f"${total_monthly:,.0f}",
-            delta=f"Annual: ${total_monthly * 12:,.0f}"
+            "🖥️ Database Server",
+            f"{source_engine.upper()}",
+            delta=f"OS: {os_type.replace('_', ' ').title()}"
         )
     
     with col2:
-        one_time_cost = cost_analysis.get('one_time_migration_cost', 0)
         st.metric(
-            "🔄 Migration Cost",
-            f"${one_time_cost:,.0f}",
-            delta="One-time"
+            "🗄️ Storage Location",
+            primary_storage_location,
+            delta=f"Protocol: {storage_protocol}"
         )
     
     with col3:
-        savings = cost_analysis.get('estimated_monthly_savings', 0)
         st.metric(
-            "📈 Monthly Savings",
-            f"${savings:,.0f}",
-            delta=f"Annual: ${savings * 12:,.0f}"
+            "🤖 Agent Placement",
+            agent_placement,
+            delta=f"{num_agents}x {agent_type} agents"
         )
     
     with col4:
-        roi_months = cost_analysis.get('roi_months', 0)
+        destination = config.get('destination_storage_type', 'S3')
         st.metric(
-            "⏰ ROI Timeline",
-            f"{roi_months} months" if roi_months else "TBD",
-            delta=f"Break-even: Year {roi_months / 12:.1f}" if roi_months else "Calculate needed"
+            "☁️ AWS Destination",
+            f"AWS {destination}",
+            delta=f"Environment: {environment.title()}"
         )
     
-    with col5:
-        agent_cost = cost_analysis.get('agent_cost', 0)
-        num_agents = config.get('number_of_agents', 1)
-        st.metric(
-            "🤖 Agent Costs",
-            f"${agent_cost:,.0f}/mo",
-            delta=f"${agent_cost / num_agents:.0f} per agent" if num_agents > 0 else ""
-        )
+    # Visual Architecture Diagram
+    st.markdown("**🗺️ Migration Architecture Flow:**")
     
-    # Cost Breakdown Analysis
+    # Create architecture flow diagram
+    fig = go.Figure()
+    
+    # Define positions for architecture components
+    components = [
+        {"name": f"{source_engine.upper()}\nDatabase Server", "x": 1, "y": 3, "color": "#e74c3c"},
+        {"name": f"{primary_storage_location}", "x": 2, "y": 3, "color": "#f39c12"},
+        {"name": f"{num_agents}x {agent_type}\nMigration Agents", "x": 3, "y": 3, "color": "#3498db"},
+        {"name": "Data Center\nNetwork", "x": 4, "y": 3, "color": "#9b59b6"},
+        {"name": f"AWS {destination}\nDestination", "x": 5, "y": 3, "color": "#27ae60"}
+    ]
+    
+    # Add components
+    for i, comp in enumerate(components):
+        fig.add_trace(go.Scatter(
+            x=[comp["x"]],
+            y=[comp["y"]],
+            mode='markers+text',
+            marker=dict(size=60, color=comp["color"]),
+            text=[comp["name"]],
+            textposition='middle center',
+            textfont=dict(color='white', size=10),
+            name=comp["name"],
+            showlegend=False
+        ))
+        
+        # Add arrows between components
+        if i < len(components) - 1:
+            fig.add_annotation(
+                x=comp["x"] + 0.4,
+                y=comp["y"],
+                ax=comp["x"] + 0.1,
+                ay=comp["y"],
+                xref="x", yref="y",
+                axref="x", ayref="y",
+                arrowhead=2,
+                arrowsize=1.5,
+                arrowwidth=2,
+                arrowcolor="#2c3e50"
+            )
+    
+    fig.update_layout(
+        title="Migration Data Flow Architecture",
+        xaxis=dict(range=[0.5, 5.5], showgrid=False, showticklabels=False),
+        yaxis=dict(range=[2.5, 3.5], showgrid=False, showticklabels=False),
+        height=300,
+        plot_bgcolor='rgba(248,249,250,0.8)'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Detailed Agent Positioning Analysis
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("**📊 Monthly Cost Breakdown:**")
+        st.markdown("**📍 Agent Positioning Details:**")
         
-        # Create cost breakdown pie chart
-        cost_breakdown = {
-            'Compute': cost_analysis.get('aws_compute_cost', 0),
-            'Storage': cost_analysis.get('aws_storage_cost', 0),
-            'Network': cost_analysis.get('network_cost', 0),
-            'Agents': cost_analysis.get('agent_cost', 0),
-            'Destination Storage': cost_analysis.get('destination_storage_cost', 0),
-            'OS Licensing': cost_analysis.get('os_licensing_cost', 0),
-            'Management': cost_analysis.get('management_cost', 0)
-        }
-        
-        # Filter out zero values
-        cost_breakdown = {k: v for k, v in cost_breakdown.items() if v > 0}
-        
-        if cost_breakdown:
-            fig_pie = px.pie(
-                values=list(cost_breakdown.values()),
-                names=list(cost_breakdown.keys()),
-                title="Monthly Cost Distribution"
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("Cost breakdown data not available")
+        with st.container():
+            st.success("Migration Agent Configuration")
+            st.write(f"**Agent Type:** {agent_type}")
+            st.write(f"**Number of Agents:** {num_agents}")
+            st.write(f"**Placement Strategy:** {agent_placement}")
+            st.write(f"**Storage Access:** {storage_protocol}")
+            st.write(f"**Network Path:** {environment.title()} network")
+            
+            if source_engine == "sqlserver":
+                st.write(f"**SQL Server Specific:** Custom backup to {primary_storage_location}")
+                st.write(f"**Backup Method:** SQL Server native backup + {agent_type}")
+            
+            st.write(f"**Data Flow:** {backup_path}")
     
     with col2:
-        st.markdown("**📈 Cost Projections:**")
+        st.markdown("**🔧 Technical Implementation:**")
         
-        # Create cost projections chart
-        monthly_cost = cost_analysis.get('total_monthly_cost', 0)
-        one_time_cost = cost_analysis.get('one_time_migration_cost', 0)
-        
-        projections = {
-            '6 Months': monthly_cost * 6 + one_time_cost,
-            '1 Year': monthly_cost * 12 + one_time_cost,
-            '2 Years': monthly_cost * 24 + one_time_cost,
-            '3 Years': monthly_cost * 36 + one_time_cost,
-            '5 Years': monthly_cost * 60 + one_time_cost
-        }
-        
-        fig_bar = px.bar(
-            x=list(projections.keys()),
-            y=list(projections.values()),
-            title="Total Cost Projections",
-            labels={'x': 'Timeline', 'y': 'Total Cost ($)'}
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-    
-    # Detailed Cost Analysis using native components
-    st.markdown("**🔍 Detailed Cost Analysis:**")
-    
-    detail_col1, detail_col2, detail_col3 = st.columns(3)
-    
-    with detail_col1:
-        st.success("💻 **Compute Costs**")
-        st.write(f"**AWS Compute:** ${cost_analysis.get('aws_compute_cost', 0):,.0f}/month")
-        st.write(f"**AWS Storage:** ${cost_analysis.get('aws_storage_cost', 0):,.0f}/month")
-        st.write(f"**OS Licensing:** ${cost_analysis.get('os_licensing_cost', 0):,.0f}/month")
-        st.write(f"**Management:** ${cost_analysis.get('management_cost', 0):,.0f}/month")
-        subtotal_compute = (cost_analysis.get('aws_compute_cost', 0) + 
-                           cost_analysis.get('aws_storage_cost', 0) + 
-                           cost_analysis.get('os_licensing_cost', 0) + 
-                           cost_analysis.get('management_cost', 0))
-        st.write(f"**Subtotal:** ${subtotal_compute:,.0f}/month")
-    
-    with detail_col2:
-        st.info("🔄 **Migration & Agent Costs**")
-        st.write(f"**Agent Base Cost:** ${cost_analysis.get('agent_base_cost', 0):,.0f}/month")
-        st.write(f"**Agent Setup:** ${cost_analysis.get('agent_setup_cost', 0):,.0f} (one-time)")
-        st.write(f"**Coordination Cost:** ${cost_analysis.get('agent_coordination_cost', 0):,.0f} (one-time)")
-        st.write(f"**Storage Setup:** ${cost_analysis.get('storage_setup_cost', 0):,.0f} (one-time)")
-        st.write(f"**Total Migration:** ${cost_analysis.get('one_time_migration_cost', 0):,.0f} (one-time)")
-    
-    with detail_col3:
-        st.warning("🗄️ **Storage & Network Costs**")
-        st.write(f"**Destination Storage:** ${cost_analysis.get('destination_storage_cost', 0):,.0f}/month")
-        st.write(f"**Storage Type:** {cost_analysis.get('destination_storage_type', 'S3')}")
-        st.write(f"**Network Costs:** ${cost_analysis.get('network_cost', 0):,.0f}/month")
-        st.write(f"**Data Transfer:** Included in network")
-        subtotal_storage = cost_analysis.get('destination_storage_cost', 0) + cost_analysis.get('network_cost', 0)
-        st.write(f"**Subtotal:** ${subtotal_storage:,.0f}/month")
-    
-    # Cost Optimization Analysis using expandable sections
-    with st.expander("🎯 Cost Optimization Analysis", expanded=True):
-        ai_cost_insights = cost_analysis.get('ai_cost_insights', {})
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.success("💡 **AI Cost Optimization Insights**")
-            st.write(f"**Optimization Factor:** {ai_cost_insights.get('ai_optimization_factor', 0)*100:.1f}%")
-            st.write(f"**Complexity Multiplier:** {ai_cost_insights.get('complexity_multiplier', 1.0):.2f}x")
-            st.write(f"**Management Reduction:** {ai_cost_insights.get('management_reduction', 0)*100:.1f}%")
-            st.write(f"**Agent Efficiency Bonus:** {ai_cost_insights.get('agent_efficiency_bonus', 0)*100:.1f}%")
-            st.write(f"**Storage Efficiency Bonus:** {ai_cost_insights.get('storage_efficiency_bonus', 0)*100:.1f}%")
-            st.write(f"**Additional Savings Potential:** {ai_cost_insights.get('potential_additional_savings', '0%')}")
-        
-        with col2:
-            st.info("📊 **ROI & Financial Analysis**")
-            st.write(f"**Current Monthly Cost (Est.):** ${total_monthly * 1.2:,.0f}")
-            st.write(f"**AWS Monthly Cost:** ${total_monthly:,.0f}")
-            st.write(f"**Monthly Savings:** ${cost_analysis.get('estimated_monthly_savings', 0):,.0f}")
-            st.write(f"**Annual Savings:** ${cost_analysis.get('estimated_monthly_savings', 0) * 12:,.0f}")
-            st.write(f"**Payback Period:** {roi_months} months")
+        with st.container():
+            st.info("Implementation Requirements")
             
-            if roi_months and one_time_cost > 0:
-                three_year_roi = ((cost_analysis.get('estimated_monthly_savings', 0) * 36 - one_time_cost) / one_time_cost * 100)
-                st.write(f"**3-Year ROI:** {three_year_roi:.1f}%")
+            if 'linux' in os_type.lower():
+                st.write("**Linux NAS Configuration:**")
+                st.write("• NFS exports configured for agent access")
+                st.write("• CIFS/SMB shares for Windows compatibility")
+                st.write("• Proper permissions and security")
+                st.write("• Network connectivity to agents")
+            else:
+                st.write("**Windows SMB Share Configuration:**")
+                st.write("• SMB shares accessible to migration agents")
+                st.write("• Proper Active Directory permissions")
+                st.write("• File system permissions for agent service account")
+                st.write("• Network connectivity and firewall rules")
+            
+            st.write(f"**Agent Requirements:**")
+            st.write(f"• {num_agents}x {agent_type} agent(s) deployment")
+            st.write(f"• Network access to {primary_storage_location}")
+            st.write(f"• AWS connectivity for {destination} uploads")
     
-    # Real-time Pricing Data
-    st.markdown("**💲 Real-time AWS Pricing Data:**")
+    # Network Connectivity Analysis
+    st.markdown("**🌐 Network Connectivity Analysis:**")
     
-    pricing_data = analysis.get('aws_sizing_recommendations', {}).get('pricing_data', {})
+    network_perf = analysis.get('network_performance', {})
     
-    if pricing_data.get('data_source') == 'aws_api':
-        st.success("✅ Using real-time AWS pricing data")
-        st.caption(f"Last updated: {pricing_data.get('last_updated', 'Unknown')}")
-    else:
-        st.warning("⚠️ Using fallback pricing data - AWS API not available")
+    # Create network path table
+    connectivity_data = []
     
-    # Create pricing comparison table with FIXED DATA TYPES
-    if pricing_data:
-        tab1, tab2, tab3 = st.tabs(["🖥️ EC2 Instances", "🗄️ RDS Instances", "💾 Storage Types"])
+    # Database to Storage
+    connectivity_data.append({
+        "Connection": f"{source_engine.upper()} → {primary_storage_location}",
+        "Protocol": storage_protocol,
+        "Bandwidth": "Local LAN (1-10 Gbps)",
+        "Latency": "< 1ms",
+        "Reliability": "99.9%",
+        "Security": "Internal network"
+    })
+    
+    # Storage to Agents
+    connectivity_data.append({
+        "Connection": f"{primary_storage_location} → {agent_type} Agents",
+        "Protocol": f"{storage_protocol} access",
+        "Bandwidth": f"Shared with {num_agents} agents",
+        "Latency": "< 2ms",
+        "Reliability": "99.9%",
+        "Security": "Service account authentication"
+    })
+    
+    # Agents to AWS
+    aws_bandwidth = network_perf.get('effective_bandwidth_mbps', 2000)
+    connectivity_data.append({
+        "Connection": f"{agent_type} Agents → AWS {config.get('destination_storage_type', 'S3')}",
+        "Protocol": "HTTPS/TLS",
+        "Bandwidth": f"{aws_bandwidth:,.0f} Mbps",
+        "Latency": f"{network_perf.get('total_latency_ms', 15):.1f}ms",
+        "Reliability": f"{network_perf.get('total_reliability', 0.998)*100:.1f}%",
+        "Security": "AWS IAM + TLS encryption"
+    })
+    
+    df_connectivity = pd.DataFrame(connectivity_data)
+    st.dataframe(df_connectivity, use_container_width=True)
+    
+    # Agent Placement Recommendations
+    st.markdown("**💡 Agent Placement Recommendations:**")
+    
+    rec_col1, rec_col2, rec_col3 = st.columns(3)
+    
+    with rec_col1:
+        st.success("✅ **Optimal Placement**")
+        st.write(f"• Place agents close to {primary_storage_location}")
+        st.write("• Minimize network hops to storage")
+        st.write("• Ensure high-bandwidth connectivity")
+        st.write("• Consider storage I/O capacity")
         
-        with tab1:
-            ec2_instances = pricing_data.get('ec2_instances', {})
-            if ec2_instances:
-                ec2_data = []
-                for instance, specs in ec2_instances.items():
-                    ec2_data.append({
-                        'Instance Type': instance,
-                        'vCPU': str(specs.get('vcpu', 'N/A')),  # Convert to string
-                        'Memory (GB)': str(specs.get('memory', 'N/A')),  # Convert to string
-                        'Cost per Hour': f"${specs.get('cost_per_hour', 0):.4f}",
-                        'Monthly Cost': f"${specs.get('cost_per_hour', 0) * 24 * 30:.0f}"
-                    })
-                
-                df_ec2 = pd.DataFrame(ec2_data)
-                st.dataframe(df_ec2, use_container_width=True)
+    with rec_col2:
+        st.warning("⚠️ **Considerations**")
+        st.write("• Agent compute resources requirements")
+        st.write("• Network bandwidth sharing")
+        st.write("• Storage concurrent access limits")
+        st.write(f"• {num_agents} agents coordination overhead")
         
-        with tab2:
-            rds_instances = pricing_data.get('rds_instances', {})
-            if rds_instances:
-                rds_data = []
-                for instance, specs in rds_instances.items():
-                    rds_data.append({
-                        'Instance Type': instance,
-                        'vCPU': str(specs.get('vcpu', 'N/A')),  # Convert to string
-                        'Memory (GB)': str(specs.get('memory', 'N/A')),  # Convert to string
-                        'Cost per Hour': f"${specs.get('cost_per_hour', 0):.4f}",
-                        'Monthly Cost': f"${specs.get('cost_per_hour', 0) * 24 * 30:.0f}"
-                    })
-                
-                df_rds = pd.DataFrame(rds_data)
-                st.dataframe(df_rds, use_container_width=True)
+    with rec_col3:
+        st.info("📋 **Implementation Steps**")
+        st.write("1. Prepare storage access permissions")
+        st.write(f"2. Deploy {num_agents}x {agent_type} agents")
+        st.write("3. Configure AWS connectivity")
+        st.write("4. Test end-to-end data flow")
+        st.write("5. Monitor performance and optimize")
+    
+    # Special SQL Server Considerations
+    if source_engine == "sqlserver":
+        st.markdown("**🪟 SQL Server Specific Considerations:**")
         
-        with tab3:
-            storage = pricing_data.get('storage', {})
-            if storage:
-                storage_data = []
-                for storage_type, specs in storage.items():
-                    # FIX: Convert all values to strings to ensure consistent data types
-                    iops_included = specs.get('iops_included', 'N/A')
-                    if isinstance(iops_included, (int, float)):
-                        iops_included_str = f"{int(iops_included):,}"
-                    else:
-                        iops_included_str = str(iops_included)
-                    
-                    cost_per_iops = specs.get('cost_per_iops_month', 0)
-                    if cost_per_iops and cost_per_iops > 0:
-                        cost_per_iops_str = f"${cost_per_iops:.3f}"
-                    else:
-                        cost_per_iops_str = "N/A"
-                    
-                    storage_data.append({
-                        'Storage Type': storage_type.upper(),
-                        'Cost per GB/Month': f"${specs.get('cost_per_gb_month', 0):.3f}",
-                        'IOPS Included': iops_included_str,  # Now consistently string
-                        'Cost per IOPS/Month': cost_per_iops_str  # Now consistently string
-                    })
+        with st.expander("SQL Server Migration Architecture", expanded=True):
+            sql_col1, sql_col2 = st.columns(2)
+            
+            with sql_col1:
+                st.warning("**SQL Server Backup Strategy**")
+                st.write("• Full database backup to shared storage")
+                st.write("• Transaction log backups for point-in-time recovery")
+                st.write("• Backup compression to reduce transfer time")
+                st.write("• Backup verification before migration")
+                st.write("• Consider Always On Availability Groups")
                 
-                df_storage = pd.DataFrame(storage_data)
-                st.dataframe(df_storage, use_container_width=True)
+            with sql_col2:
+                st.info("**Migration Process Flow**")
+                st.write("1. SQL Server backup to SMB share")
+                st.write("2. DMS agents access backup files")
+                st.write("3. Schema conversion (if heterogeneous)")
+                st.write("4. Data transfer to AWS")
+                st.write("5. Target SQL Server on EC2 restore")
+                st.write("6. Application cutover and testing")
 
 
 # Fixed render_os_performance_tab function
@@ -9479,6 +9517,339 @@ def render_aws_sizing_tab(analysis: Dict, config: Dict):
                 st.write(f"**Expected Read Performance:** +{expected_improvement}%")
                 st.write(f"**Expected Write Performance:** Consistent")
                 st.write(f"**Availability Improvement:** {'+99.5%' if readers > 0 else 'Standard'}")
+    
+    # ENHANCED: Comprehensive Cost Analysis
+def render_comprehensive_cost_pricing_tab(analysis: Dict, config: Dict):
+    """Render comprehensive cost analysis including ALL AWS services"""
+    st.subheader("💰 Comprehensive AWS Migration Cost Analysis")
+    
+    # Base cost analysis
+    cost_analysis = analysis.get('cost_analysis', {})
+    
+    # Enhanced cost breakdown with ALL AWS services
+    st.markdown("**💸 Complete AWS Service Cost Breakdown:**")
+    
+    # Primary AWS Services Costs
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        compute_cost = cost_analysis.get('aws_compute_cost', 0)
+        st.metric(
+            "🖥️ Compute (RDS/EC2)",
+            f"${compute_cost:,.0f}/mo",
+            delta="Primary database hosting"
+        )
+    
+    with col2:
+        storage_cost = cost_analysis.get('aws_storage_cost', 0) + cost_analysis.get('destination_storage_cost', 0)
+        st.metric(
+            "💾 Storage (EBS/S3/FSx)",
+            f"${storage_cost:,.0f}/mo",
+            delta="Database + destination storage"
+        )
+    
+    with col3:
+        # NEW: DataSync/DMS service costs
+        migration_service_cost = cost_analysis.get('agent_cost', 0)
+        st.metric(
+            "🔄 Migration Services",
+            f"${migration_service_cost:,.0f}/mo",
+            delta=f"DataSync/DMS agents"
+        )
+    
+    with col4:
+        # NEW: Direct Connect costs
+        dx_cost = cost_analysis.get('network_cost', 0)
+        st.metric(
+            "🌐 Direct Connect (DX)",
+            f"${dx_cost:,.0f}/mo",
+            delta="Dedicated network connection"
+        )
+    
+    with col5:
+        # Total monthly cost
+        total_monthly = cost_analysis.get('total_monthly_cost', 0)
+        st.metric(
+            "💰 Total Monthly",
+            f"${total_monthly:,.0f}",
+            delta=f"Annual: ${total_monthly * 12:,.0f}"
+        )
+    
+    # Detailed AWS Service Breakdown
+    st.markdown("**📊 Detailed AWS Service Cost Analysis:**")
+    
+    # Create comprehensive cost breakdown
+    service_costs = []
+    
+    # 1. Compute Services
+    if config.get('is_sql_server') or config.get('database_engine', '').startswith('ec2_'):
+        # EC2 costs for SQL Server or self-managed
+        service_costs.append({
+            "Service Category": "Compute",
+            "AWS Service": "Amazon EC2",
+            "Description": f"SQL Server on {config.get('database_engine', 'EC2')}",
+            "Monthly Cost": f"${cost_analysis.get('aws_compute_cost', 0):,.0f}",
+            "Usage": "Database hosting (self-managed)",
+            "Optimization": "Consider Reserved Instances for 30% savings"
+        })
+    else:
+        # RDS costs
+        service_costs.append({
+            "Service Category": "Compute",
+            "AWS Service": "Amazon RDS",
+            "Description": f"Managed {config.get('database_engine', 'MySQL').replace('rds_', '')}",
+            "Monthly Cost": f"${cost_analysis.get('aws_compute_cost', 0):,.0f}",
+            "Usage": "Managed database service",
+            "Optimization": "Consider Reserved Instances for 30% savings"
+        })
+    
+    # 2. Storage Services
+    # EBS Storage
+    ebs_cost = cost_analysis.get('aws_storage_cost', 0)
+    if ebs_cost > 0:
+        service_costs.append({
+            "Service Category": "Storage",
+            "AWS Service": "Amazon EBS",
+            "Description": f"Database storage (GP3/IO2)",
+            "Monthly Cost": f"${ebs_cost:,.0f}",
+            "Usage": f"Database storage ({config.get('database_size_gb', 0):,} GB)",
+            "Optimization": "Right-size based on IOPS requirements"
+        })
+    
+    # Destination Storage (S3/FSx)
+    dest_storage_cost = cost_analysis.get('destination_storage_cost', 0)
+    destination_type = config.get('destination_storage_type', 'S3')
+    service_costs.append({
+        "Service Category": "Storage",
+        "AWS Service": f"Amazon {destination_type}",
+        "Description": f"Migration destination storage",
+        "Monthly Cost": f"${dest_storage_cost:,.0f}",
+        "Usage": f"Backup/archive storage ({destination_type})",
+        "Optimization": "Use lifecycle policies for cost optimization" if destination_type == "S3" else f"Right-size {destination_type} for workload"
+    })
+    
+    # 3. Migration Services
+    agent_cost = cost_analysis.get('agent_cost', 0)
+    num_agents = config.get('number_of_agents', 1)
+    is_homogeneous = config.get('source_database_engine') == config.get('ec2_database_engine', 'mysql')
+    migration_service = "DataSync" if is_homogeneous else "DMS"
+    
+    service_costs.append({
+        "Service Category": "Migration",
+        "AWS Service": f"AWS {migration_service}",
+        "Description": f"{num_agents}x {migration_service} agents",
+        "Monthly Cost": f"${agent_cost:,.0f}",
+        "Usage": f"Data migration and sync ({num_agents} agents)",
+        "Optimization": "Optimize agent count based on throughput needs"
+    })
+    
+    # 4. Network Services
+    dx_cost = cost_analysis.get('network_cost', 0)
+    environment = config.get('environment', 'non-production')
+    
+    service_costs.append({
+        "Service Category": "Networking",
+        "AWS Service": "AWS Direct Connect",
+        "Description": f"{environment.title()} DX connection",
+        "Monthly Cost": f"${dx_cost:,.0f}",
+        "Usage": f"Dedicated network connectivity ({environment})",
+        "Optimization": "Consider DX Gateway for multiple VPCs"
+    })
+    
+    # 5. Additional AWS Services
+    
+    # VPC and Security
+    service_costs.append({
+        "Service Category": "Networking",
+        "AWS Service": "Amazon VPC",
+        "Description": "Virtual Private Cloud setup",
+        "Monthly Cost": "$50",
+        "Usage": "Network isolation and security",
+        "Optimization": "Included in base networking costs"
+    })
+    
+    # CloudWatch Monitoring
+    monitoring_cost = 100 + (num_agents * 20)  # Base + per agent
+    service_costs.append({
+        "Service Category": "Management",
+        "AWS Service": "Amazon CloudWatch",
+        "Description": "Monitoring and alerting",
+        "Monthly Cost": f"${monitoring_cost:,.0f}",
+        "Usage": "Database and migration monitoring",
+        "Optimization": "Optimize log retention and metrics"
+    })
+    
+    # AWS Backup (if applicable)
+    if not config.get('database_engine', '').startswith('rds_'):
+        backup_cost = cost_analysis.get('aws_storage_cost', 0) * 0.2  # 20% of storage for backups
+        service_costs.append({
+            "Service Category": "Backup",
+            "AWS Service": "AWS Backup",
+            "Description": "Automated backup service",
+            "Monthly Cost": f"${backup_cost:,.0f}",
+            "Usage": "Database backup and recovery",
+            "Optimization": "Configure retention policies"
+        })
+    
+    # IAM and Security Services
+    service_costs.append({
+        "Service Category": "Security",
+        "AWS Service": "AWS IAM + KMS",
+        "Description": "Identity and encryption management",
+        "Monthly Cost": "$25",
+        "Usage": "Access control and encryption keys",
+        "Optimization": "Included in security baseline"
+    })
+    
+    # SQL Server Specific Costs
+    if config.get('is_sql_server'):
+        # SQL Server licensing
+        sql_licensing_cost = cost_analysis.get('os_licensing_cost', 0)
+        service_costs.append({
+            "Service Category": "Licensing",
+            "AWS Service": "SQL Server License",
+            "Description": "BYOL or License Included",
+            "Monthly Cost": f"${sql_licensing_cost:,.0f}",
+            "Usage": "SQL Server database engine licensing",
+            "Optimization": "Consider BYOL for long-term savings"
+        })
+        
+        # Windows Server licensing
+        windows_licensing_cost = 200  # Estimated Windows Server cost
+        service_costs.append({
+            "Service Category": "Licensing",
+            "AWS Service": "Windows Server License",
+            "Description": "Windows OS licensing on EC2",
+            "Monthly Cost": f"${windows_licensing_cost:,.0f}",
+            "Usage": "Windows Server OS for SQL Server",
+            "Optimization": "Include in EC2 pricing or BYOL"
+        })
+    
+    # Create comprehensive service table
+    df_services = pd.DataFrame(service_costs)
+    st.dataframe(df_services, use_container_width=True)
+    
+    # Cost by Category Analysis
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**📈 Cost by Service Category:**")
+        
+        # Calculate category totals
+        category_costs = {}
+        for service in service_costs:
+            category = service["Service Category"]
+            cost_str = service["Monthly Cost"].replace("$", "").replace(",", "")
+            try:
+                cost = float(cost_str)
+                category_costs[category] = category_costs.get(category, 0) + cost
+            except:
+                continue
+        
+        if category_costs:
+            fig_category = px.pie(
+                values=list(category_costs.values()),
+                names=list(category_costs.keys()),
+                title="Monthly Cost by Service Category"
+            )
+            st.plotly_chart(fig_category, use_container_width=True)
+    
+    with col2:
+        st.markdown("**💡 Cost Optimization Recommendations:**")
+        
+        with st.container():
+            st.success("Cost Optimization Strategies")
+            
+            # Generate optimization recommendations based on configuration
+            optimizations = []
+            
+            if not config.get('database_engine', '').startswith('rds_'):
+                optimizations.append("• Consider Reserved Instances for 30-50% compute savings")
+            
+            if config.get('destination_storage_type') == 'S3':
+                optimizations.append("• Implement S3 Intelligent Tiering for storage optimization")
+            
+            if num_agents > 3:
+                optimizations.append(f"• Optimize {num_agents} agents - consider consolidation")
+            
+            if config.get('environment') == 'non-production':
+                optimizations.append("• Use Spot Instances for non-prod workloads (60% savings)")
+            
+            optimizations.append("• Implement auto-scaling policies")
+            optimizations.append("• Regular cost reviews and rightsizing")
+            
+            for opt in optimizations:
+                st.write(opt)
+    
+    # One-time Migration Costs
+    st.markdown("**🔄 One-time Migration and Setup Costs:**")
+    
+    onetime_col1, onetime_col2, onetime_col3 = st.columns(3)
+    
+    with onetime_col1:
+        st.info("**Migration Setup Costs**")
+        setup_costs = {
+            "Professional Services": "$15,000",
+            "Agent Setup": f"${cost_analysis.get('agent_setup_cost', 0):,.0f}",
+            "Network Configuration": "$5,000",
+            "Testing & Validation": "$8,000",
+            "Training": "$3,000"
+        }
+        
+        for item, cost in setup_costs.items():
+            st.write(f"**{item}:** {cost}")
+    
+    with onetime_col2:
+        st.warning("**Data Transfer Costs**")
+        
+        database_size_gb = config.get('database_size_gb', 0)
+        data_transfer_cost = database_size_gb * 0.02  # $0.02 per GB estimate
+        
+        st.write(f"**Initial Data Transfer:** ${data_transfer_cost:,.0f}")
+        st.write(f"**Database Size:** {database_size_gb:,} GB")
+        st.write(f"**Transfer Rate:** $0.02/GB")
+        st.write(f"**Ongoing Sync:** Included in DX")
+        st.write(f"**Backup Transfer:** ${data_transfer_cost * 0.1:,.0f}/month")
+    
+    with onetime_col3:
+        st.error("**Risk Mitigation Costs**")
+        
+        risk_costs = {
+            "Rollback Preparation": "$5,000",
+            "Extended Support": "$10,000",
+            "Additional Testing": "$5,000",
+            "Contingency (10%)": f"${cost_analysis.get('one_time_migration_cost', 0) * 0.1:,.0f}"
+        }
+        
+        for item, cost in risk_costs.items():
+            st.write(f"**{item}:** {cost}")
+    
+    # Total Cost Summary
+    st.markdown("**📊 Total Cost of Ownership (TCO) Analysis:**")
+    
+    # Calculate 3-year TCO
+    monthly_total = sum(category_costs.values()) if category_costs else total_monthly
+    one_time_total = cost_analysis.get('one_time_migration_cost', 0) + 51000  # Professional services + setup
+    
+    tco_data = {
+        "Timeline": ["Month 1", "Year 1", "Year 2", "Year 3", "3-Year Total"],
+        "Monthly Costs": [f"${monthly_total:,.0f}", f"${monthly_total * 12:,.0f}", 
+                         f"${monthly_total * 12:,.0f}", f"${monthly_total * 12:,.0f}",
+                         f"${monthly_total * 36:,.0f}"],
+        "One-time Costs": [f"${one_time_total:,.0f}", "$0", "$0", "$0", f"${one_time_total:,.0f}"],
+        "Total": [f"${monthly_total + one_time_total:,.0f}", 
+                 f"${monthly_total * 12:,.0f}",
+                 f"${monthly_total * 12:,.0f}", 
+                 f"${monthly_total * 12:,.0f}",
+                 f"${monthly_total * 36 + one_time_total:,.0f}"]
+    }
+    
+    df_tco = pd.DataFrame(tco_data)
+    st.dataframe(df_tco, use_container_width=True)
+    
+    
+    
+    
     
     # Professional footer with FSx capabilities
     st.markdown("""
