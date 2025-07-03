@@ -19,10 +19,17 @@ from dataclasses import dataclass
  
 import base64
 from io import BytesIO
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.backends.backend_pdf import PdfPages
-
+# Optional imports for PDF generation
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    from matplotlib.backends.backend_pdf import PdfPages
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    plt = None
+    mpatches = None
+    PdfPages = None
 import seaborn as sns
 
 
