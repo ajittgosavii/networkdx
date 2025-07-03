@@ -2102,6 +2102,166 @@ class AWSAPIManager:
 class OSPerformanceManager:
     """Enhanced OS performance manager with AI insights"""
     
+    def __init__(self):
+        self.operating_systems = {
+            'windows_server_2019': {
+                'name': 'Windows Server 2019',
+                'cpu_efficiency': 0.88,
+                'memory_efficiency': 0.85,
+                'io_efficiency': 0.87,
+                'network_efficiency': 0.90,
+                'licensing_cost_factor': 2.0,
+                'management_complexity': 0.6,
+                'security_overhead': 0.05,
+                'virtualization_overhead': 0.08,
+                'database_optimizations': {
+                    'mysql': 0.85,
+                    'postgresql': 0.82,
+                    'oracle': 0.90,
+                    'sqlserver': 0.95,
+                    'mongodb': 0.80
+                },
+                'ai_insights': {
+                    'strengths': ['Good SQL Server integration', 'Familiar management tools', 'Enterprise features'],
+                    'weaknesses': ['Higher licensing costs', 'More resource overhead'],
+                    'migration_considerations': ['License optimization needed', 'Consider newer versions']
+                }
+            },
+            'windows_server_2022': {
+                'name': 'Windows Server 2022',
+                'cpu_efficiency': 0.90,
+                'memory_efficiency': 0.88,
+                'io_efficiency': 0.89,
+                'network_efficiency': 0.92,
+                'licensing_cost_factor': 2.2,
+                'management_complexity': 0.5,
+                'security_overhead': 0.03,
+                'virtualization_overhead': 0.06,
+                'database_optimizations': {
+                    'mysql': 0.87,
+                    'postgresql': 0.85,
+                    'oracle': 0.92,
+                    'sqlserver': 0.98,
+                    'mongodb': 0.83
+                },
+                'ai_insights': {
+                    'strengths': ['Latest Windows features', 'Better security', 'Improved performance'],
+                    'weaknesses': ['Higher licensing costs', 'Newer platform considerations'],
+                    'migration_considerations': ['Modern platform benefits', 'License optimization']
+                }
+            },
+            'rhel_8': {
+                'name': 'Red Hat Enterprise Linux 8',
+                'cpu_efficiency': 0.92,
+                'memory_efficiency': 0.90,
+                'io_efficiency': 0.91,
+                'network_efficiency': 0.93,
+                'licensing_cost_factor': 1.5,
+                'management_complexity': 0.7,
+                'security_overhead': 0.02,
+                'virtualization_overhead': 0.05,
+                'database_optimizations': {
+                    'mysql': 0.92,
+                    'postgresql': 0.95,
+                    'oracle': 0.88,
+                    'sqlserver': 0.75,
+                    'mongodb': 0.90
+                },
+                'ai_insights': {
+                    'strengths': ['Excellent performance', 'Strong security', 'Enterprise support'],
+                    'weaknesses': ['Commercial licensing', 'Learning curve'],
+                    'migration_considerations': ['Great for database workloads', 'Consider support costs']
+                }
+            },
+            'rhel_9': {
+                'name': 'Red Hat Enterprise Linux 9',
+                'cpu_efficiency': 0.94,
+                'memory_efficiency': 0.92,
+                'io_efficiency': 0.93,
+                'network_efficiency': 0.95,
+                'licensing_cost_factor': 1.6,
+                'management_complexity': 0.6,
+                'security_overhead': 0.01,
+                'virtualization_overhead': 0.04,
+                'database_optimizations': {
+                    'mysql': 0.94,
+                    'postgresql': 0.97,
+                    'oracle': 0.90,
+                    'sqlserver': 0.78,
+                    'mongodb': 0.93
+                },
+                'ai_insights': {
+                    'strengths': ['Latest performance optimizations', 'Enhanced security', 'Modern container support'],
+                    'weaknesses': ['Commercial licensing', 'Newer platform'],
+                    'migration_considerations': ['Best performance option', 'Modern Linux features']
+                }
+            },
+            'ubuntu_20_04': {
+                'name': 'Ubuntu Server 20.04 LTS',
+                'cpu_efficiency': 0.91,
+                'memory_efficiency': 0.89,
+                'io_efficiency': 0.90,
+                'network_efficiency': 0.92,
+                'licensing_cost_factor': 1.0,
+                'management_complexity': 0.8,
+                'security_overhead': 0.02,
+                'virtualization_overhead': 0.05,
+                'database_optimizations': {
+                    'mysql': 0.90,
+                    'postgresql': 0.93,
+                    'oracle': 0.85,
+                    'sqlserver': 0.70,
+                    'mongodb': 0.88
+                },
+                'ai_insights': {
+                    'strengths': ['No licensing costs', 'Good community support', 'Wide compatibility'],
+                    'weaknesses': ['Limited enterprise support', 'Manual management'],
+                    'migration_considerations': ['Cost-effective option', 'Consider support needs']
+                }
+            },
+            'ubuntu_22_04': {
+                'name': 'Ubuntu Server 22.04 LTS',
+                'cpu_efficiency': 0.93,
+                'memory_efficiency': 0.91,
+                'io_efficiency': 0.92,
+                'network_efficiency': 0.94,
+                'licensing_cost_factor': 1.0,
+                'management_complexity': 0.7,
+                'security_overhead': 0.01,
+                'virtualization_overhead': 0.04,
+                'database_optimizations': {
+                    'mysql': 0.92,
+                    'postgresql': 0.95,
+                    'oracle': 0.87,
+                    'sqlserver': 0.73,
+                    'mongodb': 0.91
+                },
+                'ai_insights': {
+                    'strengths': ['Latest Ubuntu LTS', 'No licensing costs', 'Modern features'],
+                    'weaknesses': ['Limited enterprise support', 'Self-managed'],
+                    'migration_considerations': ['Best free option', 'Modern platform features']
+                }
+            }
+        }
+        
+        # Storage type definitions
+        self.storage_types = {
+            'nvme_ssd': {
+                'iops': 100000,
+                'throughput_mbps': 3500,
+                'latency_ms': 0.1
+            },
+            'sata_ssd': {
+                'iops': 50000,
+                'throughput_mbps': 550,
+                'latency_ms': 0.2
+            },
+            'sas_hdd': {
+                'iops': 200,
+                'throughput_mbps': 200,
+                'latency_ms': 8.0
+            }
+        }
     
     def extract_database_engine(self, target_database_selection: str, ec2_database_engine: str = None) -> str:
         """Extract the actual database engine from target selection"""
@@ -2115,6 +2275,51 @@ class OSPerformanceManager:
         else:
             # Fallback for any other format
             return target_database_selection
+    
+    def calculate_os_performance_impact(self, os_type: str, platform_type: str, database_engine: str, ec2_database_engine: str = None) -> Dict:
+        """Enhanced OS performance calculation with AI insights"""
+        
+        # Extract the actual database engine
+        actual_engine = self.extract_database_engine(database_engine, ec2_database_engine)
+        
+        os_config = self.operating_systems[os_type]
+        
+        # Base OS efficiency calculation (preserved original logic)
+        base_efficiency = (
+            os_config['cpu_efficiency'] * 0.3 +
+            os_config['memory_efficiency'] * 0.25 +
+            os_config['io_efficiency'] * 0.25 +
+            os_config['network_efficiency'] * 0.2
+        )
+        
+        # Database-specific optimization
+        db_optimization = os_config['database_optimizations'].get(actual_engine, 0.85)
+        
+        # Virtualization impact
+        if platform_type == 'vmware':
+            virtualization_penalty = os_config['virtualization_overhead']
+            total_efficiency = base_efficiency * db_optimization * (1 - virtualization_penalty)
+        else:
+            total_efficiency = base_efficiency * db_optimization
+        
+        # Platform-specific adjustments
+        if platform_type == 'physical':
+            if 'windows' in os_type:
+                total_efficiency *= 1.02
+            else:
+                total_efficiency *= 1.05
+        
+        # Enhanced return with AI insights
+        return {
+            **{k: v for k, v in os_config.items() if k != 'ai_insights'},
+            'total_efficiency': total_efficiency,
+            'base_efficiency': base_efficiency,
+            'db_optimization': db_optimization,
+            'actual_database_engine': actual_engine,
+            'virtualization_overhead': os_config['virtualization_overhead'] if platform_type == 'vmware' else 0,
+            'ai_insights': os_config['ai_insights'],
+            'platform_optimization': 1.02 if platform_type == 'physical' and 'windows' in os_type else 1.05 if platform_type == 'physical' else 1.0
+        }
     
 
 
