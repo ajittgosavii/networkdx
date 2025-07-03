@@ -1655,6 +1655,54 @@ class AnthropicAIManager:
 class AWSAPIManager:
     """Manage AWS API integration for real-time pricing and optimization"""
     
+    def __init__(self):
+        self.pricing_client = None
+        self.connected = False
+        self.error_message = None
+        self._initialize_connection()
+    
+    def _initialize_connection(self):
+        """Initialize connection to AWS APIs"""
+        try:
+            # Try to initialize AWS clients
+            import os
+            if os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY'):
+                self.pricing_client = boto3.client('pricing', region_name='us-east-1')
+                self.connected = True
+                self.error_message = None
+            else:
+                self.connected = False
+                self.error_message = "AWS credentials not found"
+                
+        except Exception as e:
+            self.connected = False
+            self.error_message = str(e)
+    
+    async def get_real_time_pricing(self, region: str = 'us-west-2') -> Dict:
+        """Fetch real-time AWS pricing data including FSx"""
+        if not self.connected:
+            return self._fallback_pricing_data(region)
+        
+        try:
+            # Implementation would go here
+            return self._fallback_pricing_data(region)
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch AWS pricing: {e}")
+            return self._fallback_pricing_data(region)
+    
+    def _fallback_pricing_data(self, region: str) -> Dict:
+        """Fallback pricing data when API is unavailable"""
+        return {
+            'region': region,
+            'last_updated': datetime.now(),
+            'data_source': 'fallback',
+            'ec2_instances': {},
+            'rds_instances': {},
+            'storage': {},
+            'fsx': {}
+        }
+    
     
     async def get_real_time_pricing(self, region: str = 'us-west-2') -> Dict:
         """Fetch real-time AWS pricing data including FSx"""
