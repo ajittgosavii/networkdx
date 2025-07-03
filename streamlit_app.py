@@ -2585,6 +2585,122 @@ class EnhancedNetworkIntelligenceManager:
 class EnhancedAgentSizingManager:
     """Enhanced agent sizing with scalable agent count and AI recommendations"""
     
+    def __init__(self):
+        # DataSync agent specifications
+        self.datasync_agent_specs = {
+            'small': {
+                'vcpu': 2,
+                'memory_gb': 4,
+                'max_throughput_mbps_per_agent': 250,
+                'max_concurrent_tasks_per_agent': 10,
+                'cost_per_hour_per_agent': 0.05,
+                'ai_optimization_tips': [
+                    'Suitable for small databases under 1TB',
+                    'Good for development and testing',
+                    'Cost-effective for non-critical workloads'
+                ]
+            },
+            'medium': {
+                'vcpu': 4,
+                'memory_gb': 8,
+                'max_throughput_mbps_per_agent': 500,
+                'max_concurrent_tasks_per_agent': 20,
+                'cost_per_hour_per_agent': 0.10,
+                'ai_optimization_tips': [
+                    'Balanced performance and cost',
+                    'Suitable for most production workloads',
+                    'Good scaling characteristics'
+                ]
+            },
+            'large': {
+                'vcpu': 8,
+                'memory_gb': 16,
+                'max_throughput_mbps_per_agent': 1000,
+                'max_concurrent_tasks_per_agent': 40,
+                'cost_per_hour_per_agent': 0.20,
+                'ai_optimization_tips': [
+                    'High-performance option',
+                    'Suitable for large databases',
+                    'Better for time-sensitive migrations'
+                ]
+            },
+            'xlarge': {
+                'vcpu': 16,
+                'memory_gb': 32,
+                'max_throughput_mbps_per_agent': 2000,
+                'max_concurrent_tasks_per_agent': 80,
+                'cost_per_hour_per_agent': 0.40,
+                'ai_optimization_tips': [
+                    'Maximum performance',
+                    'Best for very large databases',
+                    'Optimal for minimal downtime requirements'
+                ]
+            }
+        }
+        
+        # DMS agent specifications
+        self.dms_agent_specs = {
+            'small': {
+                'vcpu': 2,
+                'memory_gb': 4,
+                'max_throughput_mbps_per_agent': 200,
+                'max_concurrent_tasks_per_agent': 8,
+                'cost_per_hour_per_agent': 0.06,
+                'ai_optimization_tips': [
+                    'Basic DMS performance',
+                    'Suitable for small heterogeneous migrations',
+                    'Cost-effective for simple transformations'
+                ]
+            },
+            'medium': {
+                'vcpu': 4,
+                'memory_gb': 8,
+                'max_throughput_mbps_per_agent': 400,
+                'max_concurrent_tasks_per_agent': 16,
+                'cost_per_hour_per_agent': 0.12,
+                'ai_optimization_tips': [
+                    'Standard DMS performance',
+                    'Good for most heterogeneous migrations',
+                    'Balanced transformation capabilities'
+                ]
+            },
+            'large': {
+                'vcpu': 8,
+                'memory_gb': 16,
+                'max_throughput_mbps_per_agent': 800,
+                'max_concurrent_tasks_per_agent': 32,
+                'cost_per_hour_per_agent': 0.24,
+                'ai_optimization_tips': [
+                    'High-performance DMS',
+                    'Suitable for complex transformations',
+                    'Better for large heterogeneous migrations'
+                ]
+            },
+            'xlarge': {
+                'vcpu': 16,
+                'memory_gb': 32,
+                'max_throughput_mbps_per_agent': 1500,
+                'max_concurrent_tasks_per_agent': 64,
+                'cost_per_hour_per_agent': 0.48,
+                'ai_optimization_tips': [
+                    'Maximum DMS performance',
+                    'Best for very complex transformations',
+                    'Optimal for large-scale heterogeneous migrations'
+                ]
+            },
+            'xxlarge': {
+                'vcpu': 32,
+                'memory_gb': 64,
+                'max_throughput_mbps_per_agent': 2500,
+                'max_concurrent_tasks_per_agent': 128,
+                'cost_per_hour_per_agent': 0.96,
+                'ai_optimization_tips': [
+                    'Enterprise-grade DMS performance',
+                    'Best for extremely large migrations',
+                    'Maximum transformation capabilities'
+                ]
+            }
+        }
     
     def calculate_agent_configuration(self, agent_type: str, agent_size: str, number_of_agents: int, destination_storage: str = 'S3') -> Dict:
         """Calculate agent configuration with corrected FSx architecture"""
@@ -2691,49 +2807,21 @@ class EnhancedAgentSizingManager:
         
         if number_of_agents == 1:
             recommendations.append("Single agent configuration - consider scaling for larger workloads")
-            recommendations.append("Ensure agent has sufficient resources for peak throughput")
         elif number_of_agents <= 3:
             recommendations.append("Good balance of performance and manageability")
-            recommendations.append("Configure load balancing for optimal distribution")
-            recommendations.append("Implement agent health monitoring")
-        elif number_of_agents <= 5:
-            recommendations.append("High-scale configuration requiring careful coordination")
-            recommendations.append("Implement centralized monitoring and logging")
-            recommendations.append("Consider agent consolidation if underutilized")
         else:
-            recommendations.append("Very high-scale configuration - ensure proper orchestration")
-            recommendations.append("Implement automated agent management")
-            recommendations.append("Monitor for diminishing returns on additional agents")
-        
-        # Size-specific recommendations
-        if agent_size in ['small', 'medium'] and number_of_agents > 5:
-            recommendations.append("Consider fewer larger agents instead of many small agents")
-        elif agent_size in ['xlarge', 'xxlarge'] and number_of_agents > 3:
-            recommendations.append("Large agents may be underutilized - consider workload distribution")
-        
-        # Storage-specific recommendations
-        if destination_storage == 'FSx_Lustre':
-            recommendations.append("Optimize agents for high-performance Lustre file system")
-            recommendations.append("Configure parallel I/O for FSx Lustre performance")
-        elif destination_storage == 'FSx_Windows':
-            recommendations.append("Ensure agents are optimized for Windows file sharing protocols")
-            recommendations.append("Configure SMB optimization for FSx Windows")
+            recommendations.append("High-scale configuration requiring careful coordination")
         
         return recommendations
     
     def _assess_configuration_optimality(self, agent_size: str, number_of_agents: int, destination_storage: str) -> Dict:
         """Assess if the configuration is optimal"""
         
-        # Scoring system
         efficiency_score = 100
         
         # Penalize for too many small agents
         if agent_size == 'small' and number_of_agents > 6:
             efficiency_score -= 20
-        
-        # Penalize for too few large agents when they could be better utilized
-        if agent_size in ['xlarge', 'xxlarge'] and number_of_agents == 1:
-            efficiency_score -= 10
         
         # Penalize for management complexity
         if number_of_agents > 8:
@@ -2743,129 +2831,15 @@ class EnhancedAgentSizingManager:
         if 2 <= number_of_agents <= 4 and agent_size in ['medium', 'large']:
             efficiency_score += 10
         
-        # Storage-specific adjustments
-        if destination_storage == 'FSx_Lustre' and agent_size in ['large', 'xlarge']:
-            efficiency_score += 5  # Bonus for high-performance storage
-        elif destination_storage == 'FSx_Windows' and agent_size in ['medium', 'large']:
-            efficiency_score += 3  # Bonus for balanced Windows performance
-        
-        # Management complexity assessment
-        if number_of_agents <= 2:
-            complexity = "Low"
-        elif number_of_agents <= 5:
-            complexity = "Medium"
-        else:
-            complexity = "High"
-        
-        # Cost efficiency
-        cost_efficiency = "Good" if efficiency_score >= 90 else "Fair" if efficiency_score >= 75 else "Poor"
-        
         return {
             'efficiency_score': max(0, efficiency_score),
-            'management_complexity': complexity,
-            'cost_efficiency': cost_efficiency,
-            'storage_optimization': self._get_storage_optimization_rating(destination_storage, agent_size),
-            'optimal_recommendation': self._generate_optimal_recommendation(agent_size, number_of_agents, efficiency_score, destination_storage)
+            'management_complexity': "Low" if number_of_agents <= 2 else "Medium" if number_of_agents <= 5 else "High",
+            'cost_efficiency': "Good" if efficiency_score >= 90 else "Fair" if efficiency_score >= 75 else "Poor"
         }
     
-    def _get_storage_optimization_rating(self, destination_storage: str, agent_size: str) -> str:
-        """Get storage optimization rating"""
-        if destination_storage == 'FSx_Lustre':
-            return "Excellent" if agent_size in ['large', 'xlarge'] else "Good"
-        elif destination_storage == 'FSx_Windows':
-            return "Very Good" if agent_size in ['medium', 'large'] else "Good"
-        else:  # S3
-            return "Good"
-    
-    def _generate_optimal_recommendation(self, agent_size: str, number_of_agents: int, efficiency_score: int, destination_storage: str) -> str:
-        """Generate optimal configuration recommendation"""
-        
-        if efficiency_score >= 90:
-            return f"Optimal configuration for {destination_storage} destination"
-        elif efficiency_score >= 75:
-            return f"Good configuration with minor optimization opportunities for {destination_storage}"
-        elif number_of_agents > 6 and agent_size == 'small':
-            return "Consider consolidating to fewer, larger agents"
-        elif number_of_agents > 8:
-            return "Consider reducing agent count to improve manageability"
-        elif agent_size in ['xlarge', 'xxlarge'] and number_of_agents == 1:
-            return "Consider multiple medium/large agents for better distribution"
-        elif destination_storage == 'FSx_Lustre' and agent_size == 'small':
-            return "Consider larger agents to fully utilize FSx Lustre performance"
-        else:
-            return f"Configuration needs optimization for better {destination_storage} efficiency"
-    
-    def recommend_optimal_agents(self, database_size_gb: int, network_bandwidth_mbps: int, 
-                                migration_window_hours: int, destination_storage: str = 'S3') -> Dict:
-        """AI-powered recommendation for optimal agent configuration including storage destination"""
-        
-        # Calculate required throughput
-        required_throughput_mbps = (database_size_gb * 8 * 1000) / (migration_window_hours * 3600)
-        
-        # Consider network constraints
-        effective_required_throughput = min(required_throughput_mbps, network_bandwidth_mbps * 0.8)
-        
-        # Adjust for destination storage performance
-        storage_multiplier = self._get_storage_performance_multiplier(destination_storage)
-        storage_adjusted_throughput = effective_required_throughput / storage_multiplier
-        
-        recommendations = []
-        
-        # Evaluate different configurations
-        for agent_type in ['datasync', 'dms']:
-            agent_specs = self.datasync_agent_specs if agent_type == 'datasync' else self.dms_agent_specs
-            
-            for size in agent_specs.keys():
-                for num_agents in range(1, 9):  # Test 1-8 agents
-                    config = self.calculate_agent_configuration(agent_type, size, num_agents, destination_storage)
-                    
-                    if config['total_max_throughput_mbps'] >= storage_adjusted_throughput:
-                        # Calculate efficiency score
-                        throughput_ratio = storage_adjusted_throughput / config['total_max_throughput_mbps']
-                        cost_efficiency = 1 / config['total_cost_per_hour']
-                        scaling_penalty = 1 - ((num_agents - 1) * 0.1)  # Penalty for complexity
-                        storage_bonus = storage_multiplier - 1  # Bonus for high-performance storage
-                        
-                        overall_score = (throughput_ratio * 0.4 + 
-                                       cost_efficiency * 100 * 0.3 + 
-                                       scaling_penalty * 0.2 +
-                                       storage_bonus * 0.1) * 100
-                        
-                        recommendations.append({
-                            'agent_type': agent_type,
-                            'agent_size': size,
-                            'number_of_agents': num_agents,
-                            'destination_storage': destination_storage,
-                            'total_throughput_mbps': config['total_max_throughput_mbps'],
-                            'total_cost_per_hour': config['total_cost_per_hour'],
-                            'overall_score': overall_score,
-                            'storage_performance_multiplier': storage_multiplier,
-                            'configuration': config
-                        })
-        
-        # Sort by overall score
-        recommendations.sort(key=lambda x: x['overall_score'], reverse=True)
-        
-        return {
-            'required_throughput_mbps': effective_required_throughput,
-            'storage_adjusted_throughput_mbps': storage_adjusted_throughput,
-            'destination_storage': destination_storage,
-            'storage_performance_multiplier': storage_multiplier,
-            'top_recommendations': recommendations[:5],
-            'optimal_configuration': recommendations[0] if recommendations else None,
-            'analysis_parameters': {
-                'database_size_gb': database_size_gb,
-                'network_bandwidth_mbps': network_bandwidth_mbps,
-                'migration_window_hours': migration_window_hours,
-                'destination_storage': destination_storage
-            }
-        }
-
     def get_actual_migration_architecture(self, agent_type: str, destination_storage: str, config: Dict) -> Dict:
         """Determine the actual migration architecture based on destination storage"""
 
-        database_size_gb = config.get('database_size_gb', 1000)
-        
         if destination_storage == 'S3':
             # Direct migration to S3
             return {
@@ -2878,34 +2852,28 @@ class EnhancedAgentSizingManager:
             }
         
         elif destination_storage == 'FSx_Windows':
-            # Hybrid architecture - adjust percentages based on database size
-            db_percentage = min(90, max(60, 80 - (database_size_gb - 1000) // 1000 * 5))
-            file_percentage = 100 - db_percentage
-            
+            # Hybrid architecture
             return {
                 'primary_target': 'EC2_EBS',  # Database goes to EC2 + EBS
                 'secondary_target': 'FSx_Windows',  # File data goes to FSx Windows
                 'agent_targets_destination': False,  # Agents don't directly target FSx
                 'architecture_type': 'hybrid_storage',
                 'bandwidth_calculation': 'split_workload',
-                'database_percentage': db_percentage,
-                'file_percentage': file_percentage,
+                'database_percentage': 80,
+                'file_percentage': 20,
                 'description': f'{agent_type.upper()} for database → EC2+EBS; DataSync for files → FSx Windows'
             }
         
         elif destination_storage == 'FSx_Lustre':
-            # HPC architecture - adjust percentages based on database size
-            db_percentage = min(85, max(50, 70 - (database_size_gb - 1000) // 1000 * 5))
-            file_percentage = 100 - db_percentage
-            
+            # HPC architecture
             return {
                 'primary_target': 'EC2_EBS',  # Database still goes to EC2 + EBS
                 'secondary_target': 'FSx_Lustre',  # HPC data goes to FSx Lustre
                 'agent_targets_destination': False,
                 'architecture_type': 'hpc_hybrid',
                 'bandwidth_calculation': 'split_workload',
-                'database_percentage': db_percentage,
-                'file_percentage': file_percentage,
+                'database_percentage': 70,
+                'file_percentage': 30,
                 'description': f'{agent_type.upper()} for database → EC2+EBS; DataSync for HPC data → FSx Lustre'
             }
         
