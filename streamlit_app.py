@@ -6719,6 +6719,8 @@ def render_fsx_destination_comparison_tab(analysis: Dict, config: Dict):
     df_matrix = pd.DataFrame(matrix_data)
     st.dataframe(df_matrix, use_container_width=True)
 def render_agent_scaling_tab(analysis, config):
+    """FIXED: Agent scaling tab with proper null checking"""
+    
     # Guard clause to handle None or invalid analysis
     if analysis is None:
         analysis = {}
@@ -6729,6 +6731,8 @@ def render_agent_scaling_tab(analysis, config):
     if not isinstance(analysis, dict):
         st.error("Invalid analysis data provided. Please check your data source.")
         return
+    
+    st.subheader("🤖 Agent Scaling Analysis & Optimization")
     
     agent_analysis = analysis.get('agent_analysis', {})
     optimal_recommendations = agent_analysis.get('optimal_recommendations', {})
@@ -6750,10 +6754,9 @@ def render_agent_scaling_tab(analysis, config):
             delta=f"Multiplier: {agent_analysis.get('storage_performance_multiplier', 1.0):.1f}x"
         )
     
-    # FIND THIS SECTION in render_agent_scaling_tab() and REPLACE the throughput metric:
     with col3:
         st.metric(
-            "⚡ Actual Migration Throughput",  # Changed from "Total Throughput"
+            "⚡ Actual Migration Throughput",
             f"{agent_analysis.get('total_effective_throughput', 0):,.0f} Mbps",
             delta=f"vs {analysis.get('network_performance', {}).get('effective_bandwidth_mbps', 0):,.0f} Mbps network capacity"
         )
@@ -6772,9 +6775,225 @@ def render_agent_scaling_tab(analysis, config):
             delta=f"${agent_analysis.get('cost_per_hour', 0):.2f}/hour"
         )
     
-    # ADD THIS AFTER THE EXISTING 5-COLUMN METRICS SECTION in render_agent_scaling_tab()
-
     # Enhanced DYNAMIC warning about bandwidth vs throughput
+    network_perf = analysis.get('network_performance', {})
+    
+    network_bw = network_perf.get('effective_bandwidth_mbps', 0)
+    actual_throughput = agent_analysis.get('total_effective_throughput', 0)
+
+    if network_bw > actual_throughput:
+        # Get ACTUAL user configuration values
+        nic_speed = config.get('nic_speed', 1000)
+        nic_type = config.get('nic_type', 'gigabit_fiber')
+        os_name = config.get('operating_system', 'Unknown').replace('_', ' ').title()
+        server_type = config.get('server_type', 'physical')
+        num_agents = config.get('number_of_agents', 1)
+        tool_name = analysis.get('primary_tool', 'DMS').upper()
+        
+        st.warning(f"""
+        ⚠️ **Why Your {nic_speed:,.0f} Mbps {nic_type.replace('_', ' ')} Shows {network_bw:,.0f} Mbps But Agents Only Achieve {actual_throughput:,.0f} Mbps**
+
+        🔍 **Your Actual Configuration Performance Stack:**
+        1. **Your Network:** {nic_speed:,.0f} Mbps {nic_type.replace('_', ' ')} connection
+        2. **Your Platform ({server_type.title()}):** {'-8%' if server_type == 'vmware' else 'No virtualization overhead'}
+        3. **Protocol Overhead:** -{15 if config.get('environment') != 'production' else 18}% (TCP/IP, encryption, compression)
+        4. **Your Migration Setup:** {num_agents}x {tool_name} agents = {actual_throughput:,.0f} Mbps final throughput
+
+        💡 **For Your Migration:** Plan timelines using **{actual_throughput:,.0f} Mbps actual throughput**, not the {nic_speed:,.0f} Mbps network capacity.
+        
+        📊 **See the Network Intelligence tab for your complete bandwidth waterfall analysis.**
+        """)
+    
+    # Agent Configuration Details with Storage Impact
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**🔧 Current Agent Configuration:**")
+        
+        agent_config = agent_analysis.get('agent_configuration', {})
+        destination_storage = agent_analysis.get('destination_storage', 'S3')
+        
+        with st.container():
+            st.success("Current Setup Details")
+            st.write(f"**Agent Type:** {agent_analysis.get('primary_tool', 'Unknown').upper()}")
+            
+            # FIXED: Proper null checking for agent_size
+            agent_size = agent_analysis.get('agent_size')
+            if agent_size and agent_size != 'Unknown':
+                st.write(f"**Agent Size:** {agent_size.title()}")
+            else:
+                st.write(f"**Agent Size:** Unknown")
+            
+            st.write(f"**Number of Agents:** {agent_analysis.get('number_of_agents', 1)}")
+            st.write(f"**Destination Storage:** {destination_storage}")
+            st.write(f"**Per-Agent vCPU:** {agent_config.get('per_agent_spec', {}).get('vcpu', 'N/A')}")
+            st.write(f"**Per-Agent Memory:** {agent_config.get('per_agent_spec', {}).get('memory_gb', 'N/A')} GB")
+            st.write(f"**Per-Agent Throughput:** {agent_config.get('max_throughput_mbps_per_agent', 0):,.0f} Mbps")
+            st.write(f"**Storage Performance Bonus:** {agent_config.get('storage_performance_multiplier', 1.0):.1f}x")
+            st.write(f"**Total Concurrent Tasks:** {agent_config.get('total_concurrent_tasks', 0)}")
+    
+    with col2:
+        st.markdown("**🎯 Optimal Configuration Recommendation:**")
+        
+        if optimal_recommendations.get('optimal_configuration'):
+            optimal_config = optimal_recommendations['optimal_configuration']
+            with st.container():
+                st.info("AI-Recommended Optimal Setup")
+                st.write(f"**Optimal Agents:** {optimal_config['configuration']['number_of_agents']}")
+                
+                # FIXED: Proper null checking for optimal agent size
+                optimal_agent_size = optimal_config['configuration'].get('agent_size')
+                if optimal_agent_size and optimal_agent_size != 'Unknown':
+                    st.write(f"**Optimal Size:** {optimal_agent_size.title()}")
+                else:
+                    st.write(f"**Optimal Size:** Unknown")
+                
+                st.write(f"**Recommended Destination:** {optimal_config['configuration']['destination_storage']}")
+                st.write(f"**Total Throughput:** {optimal_config['total_throughput_mbps']:,.0f} Mbps")
+                st.write(f"**Storage Performance:** {optimal_config.get('storage_performance_multiplier', 1.0):.1f}x")
+                st.write(f"**Monthly Cost:** ${optimal_config['total_cost_per_hour'] * 24 * 30:,.0f}")
+                st.write(f"**Overall Score:** {optimal_config['overall_score']:.1f}/100")
+                
+                efficiency_gain = optimal_config['overall_score'] - agent_config.get('optimal_configuration', {}).get('efficiency_score', 0)
+                st.write(f"**Efficiency Gain:** {efficiency_gain:.1f} points")
+        else:
+            with st.container():
+                st.warning("Configuration Analysis")
+                st.write(f"Current configuration appears optimal for {destination_storage}")
+                st.write(f"**Efficiency Score:** {agent_config.get('optimal_configuration', {}).get('efficiency_score', 0):.1f}/100")
+                st.write(f"**Management Complexity:** {agent_config.get('optimal_configuration', {}).get('management_complexity', 'Unknown')}")
+                st.write(f"**Storage Optimization:** {agent_config.get('optimal_configuration', {}).get('storage_optimization', 'Unknown')}")
+    
+    # Throughput Analysis Chart
+    st.markdown("**📊 Throughput Analysis with Storage Impact:**")
+    
+    throughput_data = {
+        'Component': ['Per-Agent Base', 'Per-Agent with Storage', 'Total Agent Capacity', 'Network Limit', 'Effective Throughput'],
+        'Throughput (Mbps)': [
+            agent_config.get('max_throughput_mbps_per_agent', 0),
+            agent_config.get('max_throughput_mbps_per_agent', 0) * agent_config.get('storage_performance_multiplier', 1.0),
+            agent_analysis.get('total_max_throughput_mbps', 0),
+            analysis.get('network_performance', {}).get('effective_bandwidth_mbps', 0),
+            agent_analysis.get('total_effective_throughput', 0)
+        ],
+        'Type': ['Base', 'Enhanced', 'Aggregate', 'Network', 'Effective']
+    }
+    
+    fig_throughput = px.bar(
+        throughput_data, 
+        x='Component', 
+        y='Throughput (Mbps)',
+        color='Type',
+        title=f"Agent vs Network Throughput Analysis ({destination_storage} Destination)",
+        color_discrete_map={'Base': '#95a5a6', 'Enhanced': '#3498db', 'Aggregate': '#2ecc71', 'Network': '#e74c3c', 'Effective': '#9b59b6'}
+    )
+    
+    st.plotly_chart(fig_throughput, use_container_width=True)
+    
+    # Scaling Efficiency Analysis using native components
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("**📈 Scaling Efficiency Analysis:**")
+        
+        scaling_recommendations = agent_config.get('scaling_recommendations', [])
+        
+        with st.container():
+            st.info("Scaling Assessment")
+            st.write(f"**Current Efficiency:** {agent_analysis.get('scaling_efficiency', 1.0)*100:.1f}%")
+            st.write(f"**Management Overhead:** {(agent_analysis.get('management_overhead', 1.0)-1)*100:.1f}%")
+            st.write(f"**Storage Overhead:** {(agent_analysis.get('storage_management_overhead', 1.0)-1)*100:.1f}%")
+            st.write(f"**Coordination Complexity:** {agent_config.get('optimal_configuration', {}).get('management_complexity', 'Unknown')}")
+            
+            if scaling_recommendations:
+                st.write("**Key Recommendations:**")
+                for rec in scaling_recommendations[:3]:
+                    st.write(f"• {rec}")
+    
+    with col2:
+        st.markdown("**🔍 Bottleneck Analysis:**")
+        
+        bottleneck = agent_analysis.get('bottleneck', 'unknown')
+        bottleneck_severity = agent_analysis.get('bottleneck_severity', 'medium')
+        
+        with st.container():
+            if bottleneck_severity == 'high':
+                st.error("Performance Constraints")
+            elif bottleneck_severity == 'medium':
+                st.warning("Performance Constraints")
+            else:
+                st.success("Performance Constraints")
+                
+            st.write(f"**Primary Bottleneck:** {bottleneck.title()}")
+            st.write(f"**Severity:** {bottleneck_severity.title()}")
+            st.write(f"**Throughput Impact:** {agent_analysis.get('throughput_impact', 0)*100:.1f}%")
+            st.write(f"**Storage Impact:** {destination_storage} provides {agent_analysis.get('storage_performance_multiplier', 1.0):.1f}x multiplier")
+            
+            recommendation = "Scale agents" if bottleneck == 'agents' else "Optimize network" if bottleneck == 'network' else "Monitor performance"
+            st.write(f"**Recommendation:** {recommendation}")
+    
+    with col3:
+        st.markdown("**💰 Cost Efficiency Analysis:**")
+        
+        cost_per_agent = agent_analysis.get('monthly_cost', 0) / config.get('number_of_agents', 1) if config.get('number_of_agents', 1) > 0 else 0
+        cost_per_mbps = agent_analysis.get('monthly_cost', 0) / agent_analysis.get('total_effective_throughput', 1) if agent_analysis.get('total_effective_throughput', 0) > 0 else 0
+        
+        storage_cost_impact = {
+            'S3': 1.0,
+            'FSx_Windows': 1.1,
+            'FSx_Lustre': 1.2
+        }.get(destination_storage, 1.0)
+        
+        with st.container():
+            st.info("Cost Efficiency Metrics")
+            st.write(f"**Cost per Agent:** ${cost_per_agent:,.0f}/month")
+            st.write(f"**Cost per Mbps:** ${cost_per_mbps:.2f}/month")
+            st.write(f"**Total Monthly:** ${agent_analysis.get('monthly_cost', 0):,.0f}")
+            st.write(f"**Storage Impact:** {storage_cost_impact:.1f}x base cost")
+            st.write(f"**Efficiency Rating:** {agent_config.get('optimal_configuration', {}).get('cost_efficiency', 'Unknown')}")
+            st.write(f"**Storage Optimization:** {agent_config.get('optimal_configuration', {}).get('storage_optimization', 'Standard')}")
+    
+    # AI Optimization Recommendations using expandable sections
+    ai_optimization = agent_analysis.get('ai_optimization', {})
+    optimization_recommendations = ai_optimization.get('recommendations', [])
+    
+    if optimization_recommendations:
+        st.markdown("**🤖 AI Agent Optimization Recommendations:**")
+        
+        for i, recommendation in enumerate(optimization_recommendations, 1):
+            complexity = "Low" if i <= 2 else "Medium" if i <= 4 else "High"
+            timeframe = "Immediate" if i <= 2 else "Short-term" if i <= 4 else "Long-term"
+            
+            # Determine if recommendation is storage-specific
+            storage_specific = any(storage in recommendation.lower() for storage in ['s3', 'fsx', 'lustre', 'windows'])
+            
+            with st.expander(f"Optimization {i}: {recommendation}", expanded=(i <= 2)):
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                with col1:
+                    if complexity == "Low":
+                        st.success(f"**Complexity:** {complexity}")
+                    elif complexity == "Medium":
+                        st.warning(f"**Complexity:** {complexity}")
+                    else:
+                        st.error(f"**Complexity:** {complexity}")
+                
+                with col2:
+                    st.write(f"**Timeframe:** {timeframe}")
+                
+                with col3:
+                    expected_benefit = ai_optimization.get('optimization_potential_percent', 0) // i
+                    st.write(f"**Expected Benefit:** {expected_benefit}% improvement")
+                
+                with col4:
+                    relevance = "High" if storage_specific else "General"
+                    st.write(f"**Storage Relevance:** {relevance}")
+                
+                with col5:
+                    destination_text = "Specific to " + destination_storage if storage_specific else "All destinations"
+                    st.write(f"**Destination:** {destination_text}")
+                    
+                    # Enhanced DYNAMIC warning about bandwidth vs throughput
     network_perf = analysis.get('network_performance', {})
     agent_analysis = analysis.get('agent_analysis', {})
 
@@ -6824,7 +7043,12 @@ def render_agent_scaling_tab(analysis, config):
         with st.container():
             st.success("Current Setup Details")
             st.write(f"**Agent Type:** {agent_analysis.get('primary_tool', 'Unknown').upper()}")
-            st.write(f"**Agent Size:** {agent_analysis.get('agent_size', 'Unknown').title()}")
+            # FIXED: Proper null checking for agent_size
+            agent_size = agent_analysis.get('agent_size', 'Unknown')
+            if agent_size and agent_size != 'Unknown':
+                st.write(f"**Agent Size:** {agent_size.title()}")
+            else:
+                st.write(f"**Agent Size:** Unknown")
             st.write(f"**Number of Agents:** {agent_analysis.get('number_of_agents', 1)}")
             st.write(f"**Destination Storage:** {destination_storage}")
             st.write(f"**Per-Agent vCPU:** {agent_config.get('per_agent_spec', {}).get('vcpu', 'N/A')}")
