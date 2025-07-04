@@ -2922,48 +2922,40 @@ class CentralizedCostCalculator:
                 'cost_per_gb': 0.023,
                 'setup_cost': 100
             }
-    
-async def _analyze_migration_agents_with_dynamic_pricing(self, config: Dict, primary_tool: str, 
-                                                        network_perf: Dict, pricing_data: Dict) -> Dict:
-        """Agent analysis using dynamic pricing data"""
-    
+
+    def _calculate_migration_service_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate migration service costs (DataSync/DMS)"""
+        
+        agent_analysis = analysis.get('agent_analysis', {})
         num_agents = config.get('number_of_agents', 1)
-        destination_storage = config.get('destination_storage_type', 'S3')
-    
-        if primary_tool == 'datasync':
-            agent_size = config['datasync_agent_size']
-            
-            # Get dynamic DataSync pricing
-            datasync_pricing = pricing_data.get('datasync', {})
-            agent_pricing = datasync_pricing.get('agent_infrastructure', {}).get(agent_size, {})
-            
-            # Use dynamic pricing if available
-            cost_per_hour = agent_pricing.get('estimated_cost_per_hour', 0.10)
+        database_size_gb = config.get('database_size_gb', 0)
         
-        else:
-            agent_size = config['dms_agent_size']
-            
-            # Get dynamic DMS pricing
-            dms_pricing = pricing_data.get('dms', {})
-            size_to_instance = {
-                'small': 'dms.t3.medium',
-                'medium': 'dms.c5.large',
-                'large': 'dms.c5.xlarge',
-                'xlarge': 'dms.c5.2xlarge',
-                'xxlarge': 'dms.c5.4xlarge'
+        # Determine migration service type
+        is_homogeneous = config.get('source_database_engine') == config.get('database_engine', '').replace('rds_', '')
+        service_type = 'DataSync' if is_homogeneous else 'DMS'
+        
+        # Get agent costs
+        agent_monthly_cost = agent_analysis.get('monthly_cost', num_agents * 200)
+        
+        # Calculate data transfer costs
+        transfer_cost_per_gb = 0.0125  # DataSync/DMS transfer cost
+        one_time_transfer_cost = database_size_gb * transfer_cost_per_gb
+        
+        return {
+            'service': f'AWS {service_type}',
+            'agent_count': num_agents,
+            'data_size_gb': database_size_gb,
+            'monthly_cost': agent_monthly_cost,
+            'one_time_cost': one_time_transfer_cost,
+            'details': {
+                'agent_monthly_cost': agent_monthly_cost,
+                'data_transfer_cost': one_time_transfer_cost,
+                'cost_per_gb': transfer_cost_per_gb,
+                'service_type': service_type
             }
-            
-            instance_type = size_to_instance.get(agent_size, 'dms.c5.large')
-            instance_pricing = dms_pricing.get(instance_type, {})
-            cost_per_hour = instance_pricing.get('cost_per_hour', 0.37)
+        }
     
-        # Calculate agent configuration with dynamic costs
-        agent_config = self.agent_manager.calculate_agent_configuration_with_dynamic_pricing(
-            primary_tool, agent_size, num_agents, destination_storage, cost_per_hour
-        )
-        
-        return agent_config
-def _calculate_networking_costs(self, config: Dict, analysis: Dict) -> Dict:
+    def _calculate_networking_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate networking costs using dynamic pricing"""
         
         environment = config.get('environment', 'non-production')
@@ -2997,7 +2989,7 @@ def _calculate_networking_costs(self, config: Dict, analysis: Dict) -> Dict:
             }
         }
     
-def _calculate_management_costs(self, config: Dict, analysis: Dict) -> Dict:
+    def _calculate_management_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate management and monitoring costs"""
         
         cloudwatch_pricing = self.pricing_data.get('cloudwatch', {})
@@ -3025,7 +3017,7 @@ def _calculate_management_costs(self, config: Dict, analysis: Dict) -> Dict:
             }
         }
     
-def _calculate_security_costs(self, config: Dict, analysis: Dict) -> Dict:
+    def _calculate_security_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate security service costs"""
         
         # IAM, KMS, and security baseline
@@ -3045,7 +3037,7 @@ def _calculate_security_costs(self, config: Dict, analysis: Dict) -> Dict:
             }
         }
     
-def _calculate_backup_costs(self, config: Dict, analysis: Dict) -> Dict:
+    def _calculate_backup_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate backup costs using dynamic pricing"""
         
         backup_pricing = self.pricing_data.get('backup', {})
@@ -3075,7 +3067,7 @@ def _calculate_backup_costs(self, config: Dict, analysis: Dict) -> Dict:
             }
         }
     
-def _calculate_licensing_costs(self, config: Dict, analysis: Dict) -> Dict:
+    def _calculate_licensing_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate licensing costs"""
         
         licensing_costs = {
@@ -3106,7 +3098,7 @@ def _calculate_licensing_costs(self, config: Dict, analysis: Dict) -> Dict:
         
         return licensing_costs
     
-def _generate_cost_summary(self, cost_breakdown: Dict, monthly_total: float) -> Dict:
+    def _generate_cost_summary(self, cost_breakdown: Dict, monthly_total: float) -> Dict:
         """Generate cost summary and insights"""
         
         # Find largest cost components
@@ -3126,7 +3118,7 @@ def _generate_cost_summary(self, cost_breakdown: Dict, monthly_total: float) -> 
             'data_source_reliability': 'high' if self.data_source == 'aws_api' else 'medium'
         }
     
-def get_cost_optimization_recommendations(self, costs: Dict, config: Dict) -> List[str]:
+    def get_cost_optimization_recommendations(self, costs: Dict, config: Dict) -> List[str]:
         """Generate cost optimization recommendations based on dynamic pricing"""
         
         recommendations = []
@@ -8314,7 +8306,14 @@ END OF REPORT
 # In the EnhancedMigrationAnalyzer class, update the fallback analysis section:
 
 def create_fallback_analysis_with_dynamic_structure(config):
-    """UPDATED: Create fallback analysis that matches dynamic pricing structure"""
+    """Create fallback analysis that matches dynamic pricing structure"""
+    
+    # Extract key configuration values
+    source_engine = config.get('source_database_engine', 'mysql')
+    target_engine = config.get('database_engine', 'mysql')
+    database_size_gb = config.get('database_size_gb', 1000)
+    destination_storage = config.get('destination_storage_type', 'S3')
+    environment = config.get('environment', 'non-production')
     
     # Create mock pricing data structure
     mock_pricing = {
@@ -8323,44 +8322,452 @@ def create_fallback_analysis_with_dynamic_structure(config):
         'data_source': 'fallback',
         'ec2_instances': {
             't3.medium': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.0416},
-            'r6i.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.252}
+            'r6i.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.252},
+            'r6i.xlarge': {'vcpu': 4, 'memory': 32, 'cost_per_hour': 0.504},
+            'r6i.2xlarge': {'vcpu': 8, 'memory': 64, 'cost_per_hour': 1.008}
         },
         'rds_instances': {
             'db.t3.medium': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.068},
-            'db.r6g.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.48}
+            'db.r6g.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.48},
+            'db.r6g.xlarge': {'vcpu': 4, 'memory': 32, 'cost_per_hour': 0.96},
+            'db.r6g.2xlarge': {'vcpu': 8, 'memory': 64, 'cost_per_hour': 1.92}
         },
         'storage': {
             'gp3': {'cost_per_gb_month': 0.08},
+            'io1': {'cost_per_gb_month': 0.125},
             's3_standard': {'cost_per_gb_month': 0.023}
         },
         'fsx': {
-            'windows': {'price_per_gb_month': 0.13},
-            'lustre': {'price_per_gb_month': 0.14}
+            'windows': {'price_per_gb_month': 0.13, 'minimum_size_gb': 32},
+            'lustre': {'price_per_gb_month': 0.14, 'minimum_size_gb': 1200}
         },
         'datasync': {
             'agent_infrastructure': {
-                'medium': {'estimated_cost_per_hour': 0.10}
+                'small': {'estimated_cost_per_hour': 0.05},
+                'medium': {'estimated_cost_per_hour': 0.10},
+                'large': {'estimated_cost_per_hour': 0.20},
+                'xlarge': {'estimated_cost_per_hour': 0.40}
             }
         },
         'dms': {
-            'dms.c5.large': {'cost_per_hour': 0.37}
+            'dms.t3.medium': {'cost_per_hour': 0.29},
+            'dms.c5.large': {'cost_per_hour': 0.37},
+            'dms.c5.xlarge': {'cost_per_hour': 0.74},
+            'dms.c5.2xlarge': {'cost_per_hour': 1.48}
+        },
+        'direct_connect': {
+            'dedicated_1gbps': {'monthly_cost': 400},
+            'dedicated_10gbps': {'monthly_cost': 800}
+        },
+        'cloudwatch': {
+            'metrics': {'price': 0.30},
+            'logs': {'price': 0.50},
+            'alarms': {'price': 0.10}
+        },
+        'backup': {
+            'warm': {'price_per_gb_month': 0.05},
+            'cold': {'price_per_gb_month': 0.012}
         }
     }
     
-    # Use centralized cost calculator even for fallback
-    cost_calculator = CentralizedCostCalculator(mock_pricing)
-    
-    # Build analysis structure
-    analysis = {
-        'pricing_data': mock_pricing,
-        # ... other analysis components
+    # Create network performance data
+    effective_bandwidth = 2000  # Default network bandwidth
+    network_performance = {
+        'path_name': f"{environment} environment path",
+        'destination_storage': destination_storage,
+        'total_latency_ms': 25.0,
+        'effective_bandwidth_mbps': effective_bandwidth,
+        'total_reliability': 0.998,
+        'network_quality_score': 85.0,
+        'ai_enhanced_quality_score': 88.0,
+        'ai_optimization_potential': 15.0,
+        'total_cost_factor': 1.2,
+        'storage_performance_bonus': 0 if destination_storage == 'S3' else 10 if destination_storage == 'FSx_Windows' else 20,
+        'segments': [
+            {
+                'name': 'Internal LAN',
+                'connection_type': 'internal_lan',
+                'bandwidth_mbps': 10000,
+                'latency_ms': 1.0,
+                'reliability': 0.999,
+                'cost_factor': 0.1,
+                'ai_optimization_potential': 0.95,
+                'effective_bandwidth_mbps': 9500,
+                'effective_latency_ms': 1.0
+            },
+            {
+                'name': 'Direct Connect',
+                'connection_type': 'direct_connect',
+                'bandwidth_mbps': effective_bandwidth,
+                'latency_ms': 15.0,
+                'reliability': 0.999,
+                'cost_factor': 1.0,
+                'ai_optimization_potential': 0.90,
+                'effective_bandwidth_mbps': effective_bandwidth,
+                'effective_latency_ms': 15.0
+            },
+            {
+                'name': f'AWS {destination_storage}',
+                'connection_type': 'aws_service',
+                'bandwidth_mbps': effective_bandwidth,
+                'latency_ms': 8.0,
+                'reliability': 0.9999,
+                'cost_factor': 0.5,
+                'ai_optimization_potential': 1.0,
+                'effective_bandwidth_mbps': effective_bandwidth,
+                'effective_latency_ms': 8.0
+            }
+        ],
+        'environment': environment,
+        'os_type': 'linux' if 'linux' in config.get('operating_system', '') or any(os in config.get('operating_system', '') for os in ['ubuntu', 'rhel']) else 'windows',
+        'storage_type': 'nas',
+        'ai_insights': {
+            'performance_bottlenecks': ['No significant bottlenecks detected'],
+            'optimization_opportunities': ['Network appears well-configured'],
+            'risk_factors': ['Standard network risk profile'],
+            'recommended_improvements': ['Continue monitoring performance']
+        }
     }
     
-    # Calculate costs using centralized calculator
+    # Calculate reader/writer configuration
+    writers = 1
+    readers = 0
+    
+    # Enhanced reader scaling logic
+    if database_size_gb > 1000:
+        readers += 1
+    if database_size_gb > 5000:
+        readers += 1
+    if database_size_gb > 20000:
+        readers += 2
+    if config.get('performance_requirements') == 'high':
+        readers += 1
+    if environment == 'production':
+        readers = max(readers, 1)
+    
+    total_instances = writers + readers
+    
+    # Create reader/writer configuration
+    reader_writer_config = {
+        'writers': writers,
+        'readers': readers,
+        'total_instances': total_instances,
+        'write_capacity_percent': (writers / total_instances) * 100 if total_instances > 0 else 100,
+        'read_capacity_percent': (readers / total_instances) * 100 if total_instances > 0 else 0,
+        'recommended_read_split': min(80, (readers / total_instances) * 100) if total_instances > 0 else 0,
+        'reasoning': f"AI-optimized for {database_size_gb}GB, {config.get('performance_requirements', 'standard')} performance",
+        'ai_insights': {
+            'complexity_impact': 6,
+            'agent_scaling_impact': config.get('number_of_agents', 1),
+            'scaling_factors': [
+                f"Database size drives {readers} reader replicas",
+                f"Performance requirement: {config.get('performance_requirements', 'standard')}",
+                f"Environment: {environment} scaling applied"
+            ]
+        }
+    }
+    
+    # Create AWS sizing recommendations
+    rds_recommendations = {
+        'primary_instance': 'db.r6g.large' if database_size_gb < 5000 else 'db.r6g.xlarge',
+        'instance_specs': mock_pricing['rds_instances']['db.r6g.large'],
+        'storage_type': 'gp3',
+        'storage_size_gb': max(database_size_gb * 1.5, 100),
+        'monthly_instance_cost': mock_pricing['rds_instances']['db.r6g.large']['cost_per_hour'] * 24 * 30,
+        'monthly_storage_cost': max(database_size_gb * 1.5, 100) * 0.08,
+        'total_monthly_cost': 0,  # Will be calculated below
+        'multi_az': environment == 'production',
+        'backup_retention_days': 30 if environment == 'production' else 7
+    }
+    rds_recommendations['total_monthly_cost'] = rds_recommendations['monthly_instance_cost'] + rds_recommendations['monthly_storage_cost']
+    
+    ec2_recommendations = {
+        'primary_instance': 'r6i.large' if database_size_gb < 5000 else 'r6i.xlarge',
+        'instance_specs': mock_pricing['ec2_instances']['r6i.large'],
+        'storage_type': 'gp3',
+        'storage_size_gb': max(database_size_gb * 2.0, 100),
+        'monthly_instance_cost': mock_pricing['ec2_instances']['r6i.large']['cost_per_hour'] * 24 * 30,
+        'monthly_storage_cost': max(database_size_gb * 2.0, 100) * 0.08,
+        'total_monthly_cost': 0,  # Will be calculated below
+        'ebs_optimized': True,
+        'enhanced_networking': True
+    }
+    ec2_recommendations['total_monthly_cost'] = ec2_recommendations['monthly_instance_cost'] + ec2_recommendations['monthly_storage_cost']
+    
+    # Determine deployment recommendation
+    rds_score = 75
+    ec2_score = 65
+    
+    if environment == 'production':
+        rds_score += 10
+    if database_size_gb > 20000:
+        ec2_score += 15
+    if config.get('performance_requirements') == 'high':
+        ec2_score += 10
+    
+    deployment_recommendation = {
+        'recommendation': 'rds' if rds_score > ec2_score else 'ec2',
+        'confidence': abs(rds_score - ec2_score) / max(rds_score, ec2_score),
+        'rds_score': rds_score,
+        'ec2_score': ec2_score,
+        'primary_reasons': [
+            f'Suitable for {database_size_gb}GB database',
+            f'Matches {environment} environment requirements',
+            f'Optimized for {config.get("performance_requirements", "standard")} performance'
+        ]
+    }
+    
+    # Create AI analysis
+    ai_analysis = {
+        'ai_complexity_score': 6,
+        'confidence_level': 'medium',
+        'risk_factors': [
+            'Standard migration complexity',
+            'Database size requires careful planning' if database_size_gb > 10000 else 'Standard database size',
+            'Agent coordination needed' if config.get('number_of_agents', 1) > 1 else 'Single agent simplicity'
+        ],
+        'risk_percentages': {
+            'migration_risk': 15,
+            'performance_risk': 10,
+            'complexity_risk': 20
+        },
+        'mitigation_strategies': [
+            'Implement comprehensive testing',
+            'Plan adequate migration windows',
+            'Configure proper monitoring'
+        ],
+        'performance_recommendations': [
+            'Optimize database before migration',
+            'Configure proper instance sizing',
+            'Implement monitoring and alerting'
+        ],
+        'timeline_suggestions': [
+            'Phase 1: Assessment and Planning (2-3 weeks)',
+            'Phase 2: Environment Setup (2-4 weeks)',
+            'Phase 3: Testing and Validation (1-2 weeks)',
+            'Phase 4: Migration Execution (1-3 days)',
+            'Phase 5: Post-Migration Optimization (1 week)'
+        ]
+    }
+    
+    # Create agent analysis
+    is_homogeneous = source_engine == target_engine.replace('rds_', '').replace('ec2_', '')
+    primary_tool = 'datasync' if is_homogeneous else 'dms'
+    num_agents = config.get('number_of_agents', 1)
+    
+    # Calculate agent performance
+    base_throughput_per_agent = 500 if primary_tool == 'datasync' else 400
+    storage_multiplier = {
+        'S3': 1.0,
+        'FSx_Windows': 1.15,
+        'FSx_Lustre': 1.4
+    }.get(destination_storage, 1.0)
+    
+    scaling_efficiency = min(1.0, 1.0 - (num_agents - 1) * 0.05)
+    total_throughput = base_throughput_per_agent * num_agents * scaling_efficiency * storage_multiplier
+    effective_throughput = min(total_throughput, effective_bandwidth)
+    
+    agent_analysis = {
+        'primary_tool': primary_tool,
+        'agent_size': config.get('datasync_agent_size', config.get('dms_agent_size', 'medium')),
+        'number_of_agents': num_agents,
+        'destination_storage': destination_storage,
+        'total_max_throughput_mbps': total_throughput,
+        'total_effective_throughput': effective_throughput,
+        'scaling_efficiency': scaling_efficiency,
+        'storage_performance_multiplier': storage_multiplier,
+        'management_overhead': 1.0 + (num_agents - 1) * 0.05,
+        'storage_management_overhead': storage_multiplier if destination_storage != 'S3' else 1.0,
+        'monthly_cost': num_agents * 200,
+        'cost_per_hour': num_agents * 200 / (24 * 30),
+        'bottleneck': 'network' if total_throughput > effective_bandwidth else 'agents',
+        'bottleneck_severity': 'medium',
+        'agent_configuration': {
+            'per_agent_spec': {
+                'vcpu': 2,
+                'memory_gb': 4
+            },
+            'max_throughput_mbps_per_agent': base_throughput_per_agent,
+            'storage_performance_multiplier': storage_multiplier,
+            'total_concurrent_tasks': num_agents * 20,
+            'optimal_configuration': {
+                'efficiency_score': 85,
+                'management_complexity': 'Low' if num_agents <= 2 else 'Medium',
+                'cost_efficiency': 'Good'
+            }
+        }
+    }
+    
+    # Create on-premises performance
+    onprem_performance = {
+        'performance_score': 75,
+        'overall_performance': {
+            'cpu_score': 70,
+            'memory_score': 75,
+            'storage_score': 80,
+            'network_score': 85,
+            'database_score': 78,
+            'composite_score': 75,
+            'ai_adjusted_score': 75
+        },
+        'os_impact': {
+            'name': config.get('operating_system', 'Unknown OS').replace('_', ' ').title(),
+            'total_efficiency': 0.85,
+            'base_efficiency': 0.90,
+            'cpu_efficiency': 0.88,
+            'memory_efficiency': 0.85,
+            'io_efficiency': 0.87,
+            'network_efficiency': 0.90,
+            'db_optimization': 0.85,
+            'actual_database_engine': source_engine,
+            'licensing_cost_factor': 1.5,
+            'management_complexity': 0.6,
+            'ai_insights': {
+                'strengths': ['Good performance characteristics', 'Stable platform'],
+                'weaknesses': ['Some optimization opportunities'],
+                'migration_considerations': ['Standard migration approach']
+            }
+        },
+        'bottlenecks': ['No major bottlenecks identified'],
+        'ai_insights': ['System appears well-configured for migration']
+    }
+    
+    # Create FSx comparisons
+    fsx_comparisons = {}
+    
+    for dest_type in ['S3', 'FSx_Windows', 'FSx_Lustre']:
+        dest_storage_multiplier = {
+            'S3': 1.0,
+            'FSx_Windows': 1.15,
+            'FSx_Lustre': 1.4
+        }.get(dest_type, 1.0)
+        
+        dest_throughput = base_throughput_per_agent * num_agents * scaling_efficiency * dest_storage_multiplier
+        dest_migration_time = (database_size_gb * 8 * 1000) / (min(dest_throughput, effective_bandwidth) * 3600)
+        
+        dest_storage_cost = database_size_gb * {
+            'S3': 0.023,
+            'FSx_Windows': 0.13,
+            'FSx_Lustre': 0.14
+        }.get(dest_type, 0.023)
+        
+        # Get actual migration architecture
+        agent_manager = EnhancedAgentSizingManager()
+        architecture = agent_manager.get_actual_migration_architecture(primary_tool, dest_type, config)
+        
+        fsx_comparisons[dest_type] = {
+            'destination_type': dest_type,
+            'migration_architecture': architecture,
+            'migration_description': f"Migration to {dest_type}",
+            'estimated_migration_time_hours': dest_migration_time,
+            'migration_throughput_mbps': min(dest_throughput, effective_bandwidth),
+            'estimated_monthly_storage_cost': dest_storage_cost,
+            'performance_rating': {
+                'S3': 'Good',
+                'FSx_Windows': 'Very Good',
+                'FSx_Lustre': 'Excellent'
+            }.get(dest_type, 'Good'),
+            'cost_rating': {
+                'S3': 'Excellent',
+                'FSx_Windows': 'Good',
+                'FSx_Lustre': 'Fair'
+            }.get(dest_type, 'Good'),
+            'complexity_rating': {
+                'S3': 'Low',
+                'FSx_Windows': 'Medium',
+                'FSx_Lustre': 'High'
+            }.get(dest_type, 'Low'),
+            'setup_complexity': {
+                'S3': 'Low',
+                'FSx_Windows': 'Medium-High',
+                'FSx_Lustre': 'High'
+            }.get(dest_type, 'Low'),
+            'recommendations': [
+                f'{dest_type} is suitable for this workload',
+                f'Consider performance vs cost trade-offs',
+                f'Validate {dest_type} integration requirements'
+            ],
+            'network_performance': network_performance,
+            'agent_configuration': {
+                'number_of_agents': num_agents,
+                'total_monthly_cost': num_agents * 200,
+                'storage_performance_multiplier': dest_storage_multiplier,
+                'migration_architecture': architecture
+            },
+            'architecture_notes': [
+                f"Primary tool: {architecture['description']}",
+                f"Architecture: {architecture['architecture_type']}",
+                f"Bandwidth calculation: {architecture['bandwidth_calculation']}"
+            ]
+        }
+    
+    # Build complete analysis structure
+    analysis = {
+        'pricing_data': mock_pricing,
+        'onprem_performance': onprem_performance,
+        'network_performance': network_performance,
+        'migration_type': 'homogeneous' if is_homogeneous else 'heterogeneous',
+        'primary_tool': primary_tool,
+        'agent_analysis': agent_analysis,
+        'migration_throughput_mbps': effective_throughput,
+        'estimated_migration_time_hours': (database_size_gb * 8 * 1000) / (effective_throughput * 3600) if effective_throughput > 0 else 0,
+        'aws_sizing_recommendations': {
+            'rds_recommendations': rds_recommendations,
+            'ec2_recommendations': ec2_recommendations,
+            'reader_writer_config': reader_writer_config,
+            'deployment_recommendation': deployment_recommendation,
+            'ai_analysis': ai_analysis,
+            'pricing_data': mock_pricing
+        },
+        'fsx_comparisons': fsx_comparisons,
+        'ai_overall_assessment': {
+            'migration_readiness_score': 80,
+            'success_probability': 85,
+            'risk_level': 'Medium',
+            'readiness_factors': [
+                'System appears ready for migration',
+                'Standard complexity migration',
+                'Proper planning required'
+            ],
+            'ai_confidence': 0.8,
+            'agent_scaling_impact': {
+                'scaling_efficiency': scaling_efficiency * 100,
+                'optimal_agents': 2,
+                'current_agents': num_agents,
+                'efficiency_bonus': 5
+            },
+            'destination_storage_impact': {
+                'storage_type': destination_storage,
+                'performance_bonus': 0 if destination_storage == 'S3' else 10 if destination_storage == 'FSx_Windows' else 20,
+                'storage_performance_multiplier': storage_multiplier
+            },
+            'recommended_next_steps': [
+                'Conduct detailed performance baseline',
+                'Set up AWS environment and testing',
+                'Plan comprehensive testing strategy',
+                'Develop detailed migration runbook'
+            ],
+            'timeline_recommendation': {
+                'planning_phase_weeks': 2,
+                'testing_phase_weeks': 3,
+                'migration_window_hours': 24,
+                'total_project_weeks': 6,
+                'recommended_approach': 'staged'
+            }
+        },
+        'api_status': {
+            'anthropic_connected': False,
+            'aws_pricing_connected': False,
+            'last_update': datetime.now()
+        }
+    }
+    
+    # Use centralized cost calculator
+    cost_calculator = CentralizedCostCalculator(mock_pricing)
     cost_analysis = cost_calculator.calculate_comprehensive_costs(config, analysis)
     analysis['cost_analysis'] = cost_analysis
     
-    return analysis    
+    return analysis  
     # Generate comprehensive AWS sizing recommendations
     def get_fallback_rds_sizing():
         # Determine instance size based on database size and requirements
