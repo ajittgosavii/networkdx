@@ -9,7 +9,7 @@ import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 import asyncio
-import aiohttp
+ 
 import base64
 from io import BytesIO
 
