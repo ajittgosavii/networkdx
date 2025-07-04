@@ -2709,32 +2709,77 @@ class EnhancedAWSAPIManager:
             return self._fallback_pricing_data(region)
 
     async def _get_ec2_pricing_async(self, region: str) -> Dict:
-        """Get EC2 instance pricing"""
-        try:
-            # AWS Pricing API calls for EC2 instances
-            instance_types = ['t3.medium', 't3.large', 't3.xlarge', 'c5.large', 'c5.xlarge', 
-                            'c5.2xlarge', 'c5.4xlarge', 'r6i.large', 'r6i.xlarge', 
-                            'r6i.2xlarge', 'r6i.4xlarge', 'r6i.8xlarge']
+    """Simplified EC2 pricing method for debugging"""
+    print(f"🔍 Starting pricing fetch for region: {region}")
+    
+    if not self.connected:
+        print("❌ Not connected - using fallback")
+        return self._fallback_ec2_pricing()
+    
+    try:
+        # Start with just one instance type to test
+        instance_type = 't3.medium'
+        location = self._region_to_location(region)
+        
+        print(f"🔍 Testing {instance_type} in {location}")
+        
+        # Try with minimal filters first
+        response = self.pricing_client.get_products(
+            ServiceCode='AmazonEC2',
+            Filters=[
+                {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+                {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': location},
+                {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'}
+                # Removed restrictive filters temporarily
+            ],
+            MaxResults=5
+        )
+        
+        print(f"🔍 API returned {len(response['PriceList'])} results")
+        
+        if not response['PriceList']:
+            print("❌ No results from API - this is the problem!")
+            print("Trying different filters...")
+            
+            # Try even simpler filters
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonEC2',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type}
+                ],
+                MaxResults=5
+            )
+            
+            print(f"🔍 With minimal filters: {len(response['PriceList'])} results")
+            
+            if response['PriceList']:
+                # Show what we got
+                for i, item in enumerate(response['PriceList'][:2]):
+                    data = json.loads(item)
+                    attrs = data.get('product', {}).get('attributes', {})
+                    print(f"   Result {i+1}: {attrs.get('location', 'N/A')} - {attrs.get('operatingSystem', 'N/A')}")
+        
+        # If we have results, try to parse them
+        if response['PriceList']:
+            print("✅ Found pricing data - attempting to parse...")
             
             pricing_data = {}
-            
-            for instance_type in instance_types:
+            for item in response['PriceList']:
                 try:
-                    response = self.pricing_client.get_products(
-                        ServiceCode='AmazonEC2',
-                        Filters=[
-                            {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
-                            {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)},
-                            {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'},
-                            {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
-                            {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}
-                        ],
-                        MaxResults=1
-                    )
+                    price_data = json.loads(item)
                     
-                    if response['PriceList']:
-                        price_data = json.loads(response['PriceList'][0])
-                        # Extract pricing information
+                    # Check the location and OS to find the right one
+                    attributes = price_data.get('product', {}).get('attributes', {})
+                    item_location = attributes.get('location', '')
+                    item_os = attributes.get('operatingSystem', '')
+                    
+                    print(f"   Checking item: {item_location} / {item_os}")
+                    
+                    # Look for Linux in the right location
+                    if location in item_location and 'Linux' in item_os:
+                        print(f"   ✅ Found matching item!")
+                        
+                        # Extract pricing
                         terms = price_data.get('terms', {}).get('OnDemand', {})
                         if terms:
                             term_data = list(terms.values())[0]
@@ -2743,25 +2788,36 @@ class EnhancedAWSAPIManager:
                                 price_info = list(price_dimensions.values())[0]
                                 price_per_hour = float(price_info['pricePerUnit']['USD'])
                                 
-                                # Get instance specs
-                                attributes = price_data.get('product', {}).get('attributes', {})
-                                
                                 pricing_data[instance_type] = {
-                                    'vcpu': int(attributes.get('vcpu', 2)),
+                                    'vcpu': self._extract_vcpu(attributes.get('vcpu', '2')),
                                     'memory': self._extract_memory_gb(attributes.get('memory', '4 GiB')),
-                                    'cost_per_hour': price_per_hour
+                                    'cost_per_hour': price_per_hour,
+                                    'data_source': 'aws_api',
+                                    'location': item_location
                                 }
                                 
+                                print(f"   💰 Successfully extracted: ${price_per_hour}/hour")
+                                break
+                
                 except Exception as e:
-                    logger.warning(f"Failed to get pricing for {instance_type}: {e}")
-                    # Use fallback pricing
-                    pricing_data[instance_type] = self._get_fallback_instance_pricing(instance_type)
+                    print(f"   ❌ Error parsing item: {e}")
+                    continue
             
-            return pricing_data
-            
-        except Exception as e:
-            logger.error(f"EC2 pricing fetch failed: {e}")
-            return self._fallback_ec2_pricing()
+            if pricing_data:
+                print("🎉 SUCCESS! Got real pricing data from API")
+                return pricing_data
+            else:
+                print("❌ Could not parse pricing from API response")
+                
+        # If we get here, something failed
+        print("❌ Using fallback data")
+        return self._fallback_ec2_pricing()
+        
+    except Exception as e:
+        print(f"❌ Exception in pricing fetch: {e}")
+        import traceback
+        traceback.print_exc()
+        return self._fallback_ec2_pricing()
 
     async def _get_rds_pricing_async(self, region: str) -> Dict:
         """Get RDS instance pricing"""
