@@ -2345,59 +2345,233 @@ async def comprehensive_ai_migration_analysis(self, config: Dict) -> Dict:
             'platform_optimization': 1.02 if platform_type == 'physical' and 'windows' in os_type else 1.05 if platform_type == 'physical' else 1.0
         }
 
-import boto3
-import json
-import asyncio
-import logging
-from datetime import datetime
-from typing import Dict, Any
-import streamlit as st
-
 logger = logging.getLogger(__name__)
 
 class EnhancedAWSAPIManager:
     """Enhanced AWS API manager with comprehensive real-time pricing"""
     
-    def __init__(self):
+    def __init__(self, debug=True):
         self.pricing_client = None
         self.connected = False
         self.error_message = None
         self.pricing_cache = {}
         self.cache_expiry = {}
+        self.debug = debug
         self._initialize_connection()
     
     def _initialize_connection(self):
-        """Initialize connection to AWS APIs"""
+        """Initialize connection to AWS APIs with enhanced debugging"""
+        if self.debug:
+            print("🔍 Starting AWS connection initialization...")
+        
         try:
-            import os
-            # Try multiple credential sources
-            if hasattr(st, 'secrets') and 'AWS_ACCESS_KEY_ID' in st.secrets:
-                self.pricing_client = boto3.client(
-                    'pricing', 
-                    region_name='us-east-1',  # Pricing API only available in us-east-1
-                    aws_access_key_id=st.secrets['AWS_ACCESS_KEY_ID'],
-                    aws_secret_access_key=st.secrets['AWS_SECRET_ACCESS_KEY']
-                )
-            elif os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY'):
-                self.pricing_client = boto3.client('pricing', region_name='us-east-1')
-            else:
-                # Try default credentials (IAM role, profile, etc.)
+            # Check available credential sources
+            cred_sources = []
+            
+            # Check Streamlit secrets
+            try:
+                import streamlit as st
+                if hasattr(st, 'secrets') and 'AWS_ACCESS_KEY_ID' in st.secrets:
+                    cred_sources.append("Streamlit secrets")
+                    if self.debug:
+                        print("✅ Found Streamlit secrets")
+            except ImportError:
+                if self.debug:
+                    print("ℹ️  Streamlit not available")
+            
+            # Check environment variables
+            if os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY'):
+                cred_sources.append("Environment variables")
+                if self.debug:
+                    print("✅ Found environment variables")
+            
+            # Check AWS profile
+            try:
+                session = boto3.Session()
+                if session.get_credentials():
+                    cred_sources.append("AWS profile/role")
+                    if self.debug:
+                        print("✅ Found AWS profile/role credentials")
+            except Exception as e:
+                if self.debug:
+                    print(f"❌ AWS profile check failed: {e}")
+            
+            if self.debug:
+                print(f"📋 Available credential sources: {cred_sources}")
+            
+            if not cred_sources:
+                self.connected = False
+                self.error_message = "No AWS credentials found. Please set up credentials."
+                if self.debug:
+                    print("❌ No credentials found!")
+                return
+            
+            # Try to initialize client with available credentials
+            client_created = False
+            
+            # Try Streamlit secrets first
+            try:
+                import streamlit as st
+                if hasattr(st, 'secrets') and 'AWS_ACCESS_KEY_ID' in st.secrets:
+                    self.pricing_client = boto3.client(
+                        'pricing', 
+                        region_name='us-east-1',
+                        aws_access_key_id=st.secrets['AWS_ACCESS_KEY_ID'],
+                        aws_secret_access_key=st.secrets['AWS_SECRET_ACCESS_KEY']
+                    )
+                    client_created = True
+                    if self.debug:
+                        print("✅ Created client with Streamlit secrets")
+            except Exception as e:
+                if self.debug:
+                    print(f"❌ Streamlit secrets failed: {e}")
+            
+            # Try environment variables
+            if not client_created and os.getenv('AWS_ACCESS_KEY_ID'):
                 try:
                     self.pricing_client = boto3.client('pricing', region_name='us-east-1')
-                except:
-                    self.connected = False
-                    self.error_message = "AWS credentials not found"
-                    return
+                    client_created = True
+                    if self.debug:
+                        print("✅ Created client with environment variables")
+                except Exception as e:
+                    if self.debug:
+                        print(f"❌ Environment variables failed: {e}")
             
-            # Test connection
-            self.pricing_client.describe_services(ServiceCode='AmazonEC2', MaxResults=1)
+            # Try default credentials
+            if not client_created:
+                try:
+                    self.pricing_client = boto3.client('pricing', region_name='us-east-1')
+                    client_created = True
+                    if self.debug:
+                        print("✅ Created client with default credentials")
+                except Exception as e:
+                    if self.debug:
+                        print(f"❌ Default credentials failed: {e}")
+            
+            if not client_created:
+                self.connected = False
+                self.error_message = "Failed to create AWS pricing client"
+                return
+            
+            # Test the connection
+            if self.debug:
+                print("🧪 Testing AWS connection...")
+            
+            response = self.pricing_client.describe_services(
+                ServiceCode='AmazonEC2', 
+                MaxResults=1
+            )
+            
             self.connected = True
             self.error_message = None
+            
+            if self.debug:
+                print("🎉 AWS connection successful!")
+                print(f"📊 Available services: {len(response.get('Services', []))}")
                 
         except Exception as e:
             self.connected = False
-            self.error_message = str(e)
+            self.error_message = f"AWS connection failed: {str(e)}"
+            if self.debug:
+                print(f"❌ Connection failed: {e}")
+                import traceback
+                traceback.print_exc()
 
+    def get_connection_diagnostics(self) -> Dict:
+        """Get detailed connection diagnostics"""
+        diagnostics = {
+            'connected': self.connected,
+            'error_message': self.error_message,
+            'pricing_client_available': self.pricing_client is not None,
+            'credential_sources': []
+        }
+        
+        # Check credential sources
+        try:
+            import streamlit as st
+            if hasattr(st, 'secrets') and 'AWS_ACCESS_KEY_ID' in st.secrets:
+                diagnostics['credential_sources'].append('streamlit_secrets')
+        except:
+            pass
+        
+        if os.getenv('AWS_ACCESS_KEY_ID'):
+            diagnostics['credential_sources'].append('environment_variables')
+        
+        try:
+            session = boto3.Session()
+            if session.get_credentials():
+                diagnostics['credential_sources'].append('aws_profile_or_role')
+        except:
+            pass
+        
+        # Test simple API call
+        if self.pricing_client:
+            try:
+                response = self.pricing_client.describe_services(MaxResults=1)
+                diagnostics['api_test'] = 'success'
+                diagnostics['available_services'] = len(response.get('Services', []))
+            except Exception as e:
+                diagnostics['api_test'] = f'failed: {str(e)}'
+        
+        return diagnostics
+
+    def test_pricing_fetch(self, region='us-east-1'):
+        """Test fetching actual pricing data"""
+        if not self.connected:
+            return {
+                'success': False,
+                'error': 'Not connected to AWS',
+                'diagnostics': self.get_connection_diagnostics()
+            }
+        
+        try:
+            print(f"🧪 Testing pricing fetch for {region}...")
+            
+            # Test simple EC2 pricing fetch
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonEC2',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': 't3.medium'},
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)},
+                    {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
+                    {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'}
+                ],
+                MaxResults=1
+            )
+            
+            if response['PriceList']:
+                price_data = json.loads(response['PriceList'][0])
+                print("✅ Successfully fetched pricing data!")
+                
+                return {
+                    'success': True,
+                    'sample_data': {
+                        'service': 'EC2',
+                        'instance_type': 't3.medium',
+                        'region': region,
+                        'has_pricing': len(response['PriceList']) > 0
+                    }
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': 'No pricing data returned from API',
+                    'filters_used': [f['Field'] + '=' + f['Value'] for f in [
+                        {'Field': 'instanceType', 'Value': 't3.medium'},
+                        {'Field': 'location', 'Value': self._region_to_location(region)},
+                        {'Field': 'operatingSystem', 'Value': 'Linux'}
+                    ]]
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'diagnostics': self.get_connection_diagnostics()
+            }
+
+    # Add your existing methods here (_region_to_location, _extract_memory_gb, etc.)
+    
     def _region_to_location(self, region: str) -> str:
         """Convert AWS region to pricing API location"""
         region_mapping = {
@@ -2422,6 +2596,28 @@ class EnhancedAWSAPIManager:
         }
         return region_mapping.get(region, 'US East (N. Virginia)')
 
+
+# Usage example:
+if __name__ == "__main__":
+    # Create manager with debug output
+    manager = EnhancedAWSAPIManager(debug=True)
+    
+    # Check diagnostics
+    print("\n" + "="*50)
+    print("CONNECTION DIAGNOSTICS:")
+    print("="*50)
+    
+    diagnostics = manager.get_connection_diagnostics()
+    for key, value in diagnostics.items():
+        print(f"{key}: {value}")
+    
+    # Test pricing fetch
+    print("\n" + "="*50)
+    print("PRICING FETCH TEST:")
+    print("="*50)
+    
+    test_result = manager.test_pricing_fetch()
+    print(f"Test result: {test_result}")
     def _extract_memory_gb(self, memory_str: str) -> float:
         """Extract memory in GB from AWS memory string"""
         try:
@@ -11436,10 +11632,9 @@ def render_comprehensive_cost_pricing_tab(analysis: Dict, config: Dict):
     
     for i, rec in enumerate(recommendations, 1):
         st.write(f"{i}. {rec}")    
-    
-    
-    
-    
+  
+ 
+  
     # Professional footer with FSx capabilities
     st.markdown("""
     <div class="enterprise-footer">
@@ -11450,9 +11645,6 @@ def render_comprehensive_cost_pricing_tab(analysis: Dict, config: Dict):
         </p>
     </div>
     """, unsafe_allow_html=True)
-
-
-
 
 
 if __name__ == "__main__":
