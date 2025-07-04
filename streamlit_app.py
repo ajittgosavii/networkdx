@@ -1678,7 +1678,7 @@ class AWSAPIManager:
             self.connected = False
             self.error_message = str(e)
     
-    async def get_real_time_pricing(self, region: str = 'us-west-2') -> Dict:
+    async def get_real_time_pricing(self, region: str = 'us-east-1') -> Dict:
         """Fetch real-time AWS pricing data including FSx"""
         if not self.connected:
             return self._fallback_pricing_data(region)
@@ -1704,7 +1704,7 @@ class AWSAPIManager:
         }
     
     
-    async def get_real_time_pricing(self, region: str = 'us-west-2') -> Dict:
+    async def get_real_time_pricing(self, region: str = 'us-east-1') -> Dict:
         """Fetch real-time AWS pricing data including FSx"""
         if not self.connected:
             return self._fallback_pricing_data(region)
@@ -2663,7 +2663,7 @@ class EnhancedAWSAPIManager:
         }
 
     # Your existing async methods go here...
-    async def get_comprehensive_pricing(self, region: str = 'us-west-2') -> Dict:
+    async def get_comprehensive_pricing(self, region: str = 'us-east-1') -> Dict:
         """Get comprehensive AWS pricing for all services"""
         if not self.connected:
             return self._fallback_pricing_data(region)
@@ -3172,7 +3172,7 @@ class EnhancedAWSAPIManager:
     def get_pricing_sync(self, region: str = None) -> Dict:
         """Synchronous wrapper for getting comprehensive pricing data"""
         if region is None:
-            region = 'us-west-2'  # Default region
+            region = 'us-east-1'  # Default region
         
         try:
             # Create new event loop if none exists
@@ -3209,7 +3209,7 @@ class CentralizedCostCalculator:
     def __init__(self, pricing_data: Dict):
         self.pricing_data = pricing_data
         self.data_source = pricing_data.get('data_source', 'fallback')
-        self.region = pricing_data.get('region', 'us-west-2')
+        self.region = pricing_data.get('region', 'us-east-1')
         
     def calculate_comprehensive_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate all AWS service costs dynamically"""
@@ -5109,7 +5109,7 @@ class EnhancedMigrationAnalyzer:
         """UPDATED: Comprehensive analysis with dynamic pricing"""
         
         # Get real-time pricing data FIRST
-        pricing_data = await self.aws_api.get_comprehensive_pricing(config.get('region', 'us-west-2'))
+        pricing_data = await self.aws_api.get_comprehensive_pricing(config.get('region', 'us-east-1'))
         
         # Initialize cost calculator with dynamic pricing
         self.cost_calculator = CentralizedCostCalculator(pricing_data)
@@ -8819,7 +8819,7 @@ def create_fallback_analysis_with_dynamic_structure(config):
     
     # Create mock pricing data structure
     mock_pricing = {
-        'region': config.get('region', 'us-west-2'),
+        'region': config.get('region', 'us-east-1'),
         'last_updated': datetime.now(),
         'data_source': 'fallback',
         'ec2_instances': {
