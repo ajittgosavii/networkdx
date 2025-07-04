@@ -16,11 +16,6 @@ import anthropic
 import asyncio
 import logging
 from dataclasses import dataclass
-import boto3
-import json
-from typing import Dict, List, Optional
-from datetime import datetime
-import streamlit as st
  
 import base64
 from io import BytesIO
@@ -4741,9 +4736,6 @@ class EnhancedMigrationAnalyzer:
             }.get(destination_storage, "Standard setup time")
         }
 
-
-
-
 # PDF Report Generation Class
 class PDFReportGenerator:
     """Generate executive PDF reports for migration analysis"""
@@ -6726,15 +6718,7 @@ def render_fsx_destination_comparison_tab(analysis: Dict, config: Dict):
     
     df_matrix = pd.DataFrame(matrix_data)
     st.dataframe(df_matrix, use_container_width=True)
-def render_agent_scaling_tab(analysis, config, pricing=None):
-    if pricing:
-        # Use real AWS pricing
-        agent_cost = pricing['migration_services']['dms_instances']
-        transfer_cost = pricing['data_transfer']['ongoing_sync']
-    else:
-        # Fallback to hardcoded estimates
-        agent_cost = 200
-        transfer_cost = 50
+def render_agent_scaling_tab(analysis, config):
     """FIXED: Agent scaling tab with proper null checking"""
     
     # Guard clause to handle None or invalid analysis
@@ -7288,7 +7272,7 @@ async def main():
         render_network_intelligence_tab(analysis, config)
     
     with tab6:  # ENHANCED: Comprehensive Cost Analysis
-       render_comprehensive_cost_pricing_tab_with_api(analysis, config)
+        render_comprehensive_cost_pricing_tab(analysis, config)
     
     with tab7:
         render_os_performance_tab(analysis, config)
@@ -9758,1121 +9742,335 @@ def render_aws_sizing_tab(analysis: Dict, config: Dict):
                 st.write(f"**Expected Write Performance:** Consistent")
                 st.write(f"**Availability Improvement:** {'+99.5%' if readers > 0 else 'Standard'}")
     
-import boto3
-import json
-from typing import Dict, List, Optional
-from datetime import datetime
-import streamlit as st
-
-class CentralizedAWSPricingService:
-    """Centralized service to fetch and cache AWS pricing for all tabs"""
+    # ENHANCED: Comprehensive Cost Analysis
+def render_comprehensive_cost_pricing_tab(analysis: Dict, config: Dict):
+    """Render comprehensive cost analysis including ALL AWS services"""
+    st.subheader("💰 Comprehensive AWS Migration Cost Analysis")
     
-    def __init__(self, region: str = 'us-east-1'):
-        self.region = region
-        self.pricing_client = None
-        self.ce_client = None
-        self._initialize_clients()
-        
-    def _initialize_clients(self):
-        """Initialize AWS clients with error handling"""
-        try:
-            self.pricing_client = boto3.client('pricing', region_name='us-east-1')
-            self.ce_client = boto3.client('ce', region_name='us-east-1')
-        except Exception as e:
-            st.error(f"Failed to initialize AWS clients: {str(e)}")
-            self.pricing_client = None
-            self.ce_client = None
-
-    @st.cache_data(ttl=3600)  # Cache for 1 hour
-    def get_comprehensive_pricing(_self, config: Dict) -> Dict:
-        """Get comprehensive pricing for all AWS services used across tabs"""
-        if not _self.pricing_client:
-            return _self._get_fallback_pricing(config)
-            
-        try:
-            pricing = {}
-            
-            # 1. COMPUTE COSTS (Used in multiple tabs)
-            pricing['compute'] = _self._get_compute_costs(config)
-            
-            # 2. STORAGE COSTS (Used in FSx, Dashboard, Sizing tabs)
-            pricing['storage'] = _self._get_storage_costs(config)
-            
-            # 3. MIGRATION SERVICE COSTS (Used in Agent, Dashboard tabs)
-            pricing['migration_services'] = _self._get_migration_service_costs(config)
-            
-            # 4. NETWORK COSTS (Used in Network Intelligence, Dashboard tabs)
-            pricing['network'] = _self._get_network_costs(config)
-            
-            # 5. MONITORING COSTS (Used in Dashboard, Performance tabs)
-            pricing['monitoring'] = _self._get_monitoring_costs(config)
-            
-            # 6. DATA TRANSFER COSTS (Used in Agent, Network tabs)
-            pricing['data_transfer'] = _self._get_data_transfer_costs(config)
-            
-            # 7. BACKUP AND DISASTER RECOVERY (Used in Comprehensive, Sizing tabs)
-            pricing['backup_dr'] = _self._get_backup_dr_costs(config)
-            
-            # 8. SECURITY COSTS (Used in Multiple tabs)
-            pricing['security'] = _self._get_security_costs(config)
-            
-            # 9. LICENSING COSTS (Used in OS Performance, Sizing tabs)
-            pricing['licensing'] = _self._get_licensing_costs(config)
-            
-            # Calculate totals and breakdowns
-            pricing['totals'] = _self._calculate_totals(pricing)
-            pricing['metadata'] = {
-                'last_updated': datetime.now().isoformat(),
-                'region': _self.region,
-                'source': 'AWS_API'
-            }
-            
-            return pricing
-            
-        except Exception as e:
-            st.warning(f"Error fetching real-time pricing: {str(e)}. Using fallback estimates.")
-            return _self._get_fallback_pricing(config)
+    # Base cost analysis
+    cost_analysis = analysis.get('cost_analysis', {})
     
-    def _get_compute_costs(self, config: Dict) -> Dict:
-        """Get compute costs for EC2/RDS instances"""
-        costs = {}
-        
-        # Primary database instance
-        if config.get('is_sql_server') or config.get('database_engine', '').startswith('ec2_'):
-            instance_type = config.get('ec2_instance_type', 'm5.xlarge')
-            os = 'Windows' if config.get('is_sql_server') else 'Linux'
-            costs['primary_instance'] = self._get_ec2_pricing(instance_type, os)
-        else:
-            instance_class = config.get('rds_instance_class', 'db.m5.xlarge')
-            engine = config.get('database_engine', 'mysql').replace('rds_', '')
-            costs['primary_instance'] = self._get_rds_pricing(instance_class, engine)
-        
-        # Read replicas or secondary instances
-        num_replicas = config.get('read_replicas', 0)
-        if num_replicas > 0:
-            costs['read_replicas'] = costs['primary_instance'] * num_replicas * 0.8  # Slightly cheaper
-        
-        # Development/Test instances
-        if config.get('environment') == 'multi-environment':
-            costs['dev_test_instances'] = costs['primary_instance'] * 0.5  # Smaller instances
-        
-        return costs
+    # Enhanced cost breakdown with ALL AWS services
+    st.markdown("**💸 Complete AWS Service Cost Breakdown:**")
     
-    def _get_storage_costs(self, config: Dict) -> Dict:
-        """Get storage costs for EBS, S3, FSx"""
-        costs = {}
-        storage_gb = config.get('database_size_gb', 0)
-        
-        # EBS Storage
-        ebs_price_per_gb = self._get_ebs_pricing('gp3')
-        costs['ebs_primary'] = storage_gb * ebs_price_per_gb
-        
-        # EBS IOPS (if high performance needed)
-        if config.get('high_iops_required'):
-            iops_needed = config.get('required_iops', 3000)
-            base_iops = min(3000, storage_gb * 3)  # GP3 baseline
-            additional_iops = max(0, iops_needed - base_iops)
-            costs['ebs_additional_iops'] = additional_iops * 0.065  # $0.065 per IOPS per month
-        
-        # S3 Storage for backups/archives
-        s3_price_per_gb = self._get_s3_pricing('Standard')
-        backup_gb = storage_gb * config.get('backup_retention_multiplier', 1.5)
-        costs['s3_backup'] = backup_gb * s3_price_per_gb
-        
-        # FSx Storage (if selected as destination)
-        if config.get('destination_storage_type') == 'FSx':
-            fsx_gb = config.get('destination_storage_gb', storage_gb)
-            fsx_type = config.get('fsx_type', 'Lustre')
-            costs['fsx_storage'] = self._get_fsx_pricing(fsx_type, fsx_gb)
-        
-        # Archive storage (Glacier, etc.)
-        if config.get('long_term_archival'):
-            archive_gb = storage_gb * 0.3  # 30% for long-term archive
-            costs['glacier_archive'] = archive_gb * 0.004  # Glacier pricing
-        
-        return costs
-    
-    def _get_migration_service_costs(self, config: Dict) -> Dict:
-        """Get costs for DMS, DataSync, and migration tools"""
-        costs = {}
-        num_agents = config.get('number_of_agents', 1)
-        
-        # DMS Replication Instances
-        if config.get('migration_service') == 'DMS':
-            dms_instance_class = config.get('dms_instance_class', 'dms.t3.micro')
-            costs['dms_instances'] = self._get_dms_pricing(dms_instance_class) * num_agents
-            
-            # DMS Storage for change data capture
-            cdc_storage_gb = config.get('database_size_gb', 0) * 0.1  # 10% for CDC
-            costs['dms_storage'] = cdc_storage_gb * 0.115  # DMS storage pricing
-        
-        # DataSync for homogeneous migrations
-        if config.get('migration_service') == 'DataSync':
-            datasync_pricing = self._get_datasync_pricing()
-            monthly_sync_gb = config.get('monthly_sync_gb', config.get('database_size_gb', 0) * 0.1)
-            costs['datasync_transfer'] = monthly_sync_gb * datasync_pricing['per_gb_copied']
-        
-        # AWS Schema Conversion Tool (SCT) - compute resources
-        if config.get('requires_schema_conversion'):
-            costs['sct_compute'] = 200  # Estimated monthly compute for SCT
-        
-        return costs
-    
-    def _get_network_costs(self, config: Dict) -> Dict:
-        """Get network-related costs"""
-        costs = {}
-        
-        # Direct Connect
-        dx_speed = config.get('direct_connect_speed', '1Gbps')
-        costs['direct_connect'] = self._get_direct_connect_pricing(dx_speed)
-        
-        # VPN as backup/alternative
-        if config.get('vpn_backup'):
-            costs['vpn_gateway'] = 36  # AWS VPN Gateway monthly cost
-        
-        # NAT Gateway for private subnets
-        if config.get('private_subnets'):
-            costs['nat_gateway'] = 32 + (config.get('nat_gateway_data_gb', 100) * 0.045)
-        
-        # Data transfer costs
-        transfer_costs = self._get_data_transfer_costs(config)
-        costs.update(transfer_costs)
-        
-        return costs
-    
-    def _get_monitoring_costs(self, config: Dict) -> Dict:
-        """Get monitoring and observability costs"""
-        costs = {}
-        
-        # CloudWatch
-        cloudwatch_pricing = self._get_cloudwatch_pricing()
-        
-        # Metrics
-        num_agents = config.get('number_of_agents', 1)
-        estimated_metrics = 100 + (num_agents * 20)  # Base + per agent
-        costs['cloudwatch_metrics'] = max(0, estimated_metrics - 10) * cloudwatch_pricing['metrics']
-        
-        # Logs
-        estimated_log_gb = 20 + (num_agents * 5)  # GB per month
-        costs['cloudwatch_logs'] = (
-            estimated_log_gb * cloudwatch_pricing['logs_ingestion'] +
-            estimated_log_gb * cloudwatch_pricing['logs_storage']
-        )
-        
-        # CloudWatch Dashboards
-        num_dashboards = config.get('custom_dashboards', 3)
-        costs['cloudwatch_dashboards'] = num_dashboards * 3  # $3 per dashboard
-        
-        # X-Ray tracing (if enabled)
-        if config.get('enable_xray_tracing'):
-            estimated_traces = 1000000  # 1M traces per month
-            costs['xray_tracing'] = (estimated_traces / 1000000) * 5  # $5 per million traces
-        
-        return costs
-    
-    def _get_data_transfer_costs(self, config: Dict) -> Dict:
-        """Get data transfer costs"""
-        costs = {}
-        
-        # Get transfer pricing
-        transfer_pricing = self._get_data_transfer_pricing()
-        
-        # Initial migration transfer
-        initial_transfer_gb = config.get('database_size_gb', 0)
-        costs['initial_migration'] = self._calculate_tiered_transfer_cost(
-            initial_transfer_gb, transfer_pricing
-        )
-        
-        # Ongoing sync transfer
-        monthly_sync_gb = config.get('monthly_sync_gb', initial_transfer_gb * 0.1)
-        costs['ongoing_sync'] = self._calculate_tiered_transfer_cost(
-            monthly_sync_gb, transfer_pricing
-        )
-        
-        # Cross-AZ transfer (if multi-AZ)
-        if config.get('multi_az_deployment'):
-            cross_az_gb = monthly_sync_gb * 0.5  # 50% cross-AZ
-            costs['cross_az_transfer'] = cross_az_gb * transfer_pricing['inter_az']
-        
-        return costs
-    
-    def _get_backup_dr_costs(self, config: Dict) -> Dict:
-        """Get backup and disaster recovery costs"""
-        costs = {}
-        
-        storage_gb = config.get('database_size_gb', 0)
-        
-        # AWS Backup service
-        if config.get('use_aws_backup'):
-            backup_storage_gb = storage_gb * config.get('backup_retention_multiplier', 2.0)
-            costs['aws_backup_storage'] = backup_storage_gb * 0.05  # AWS Backup storage
-            costs['aws_backup_restore'] = 0  # Estimate restoration costs separately
-        
-        # Cross-region backup replication
-        if config.get('cross_region_backup'):
-            costs['cross_region_replication'] = storage_gb * 0.02  # Cross-region transfer
-        
-        # Point-in-time recovery storage
-        if config.get('point_in_time_recovery'):
-            pitr_storage_gb = storage_gb * 0.3  # 30% additional for PITR
-            costs['pitr_storage'] = pitr_storage_gb * 0.095  # RDS backup storage pricing
-        
-        return costs
-    
-    def _get_security_costs(self, config: Dict) -> Dict:
-        """Get security-related costs"""
-        costs = {}
-        
-        # KMS key usage
-        num_keys = config.get('kms_keys', 2)  # Database + backup encryption
-        costs['kms_keys'] = num_keys * 1  # $1 per key per month
-        
-        # KMS API calls (rough estimate)
-        estimated_api_calls = 100000  # 100K calls per month
-        costs['kms_api_calls'] = (estimated_api_calls / 20000) * 0.03  # $0.03 per 20K calls
-        
-        # Secrets Manager (for database credentials)
-        num_secrets = config.get('secrets_manager_secrets', 3)
-        costs['secrets_manager'] = num_secrets * 0.40  # $0.40 per secret per month
-        
-        # WAF (if web application)
-        if config.get('web_application_firewall'):
-            costs['waf'] = 5 + (config.get('waf_rules', 10) * 2)  # Base + per rule
-        
-        return costs
-    
-    def _get_licensing_costs(self, config: Dict) -> Dict:
-        """Get software licensing costs"""
-        costs = {}
-        
-        # SQL Server licensing
-        if config.get('is_sql_server'):
-            if config.get('sql_server_licensing') == 'BYOL':
-                costs['sql_server_license'] = 0  # Customer provides
-            else:
-                # License included pricing
-                costs['sql_server_license'] = config.get('sql_license_cost', 1000)
-        
-        # Windows Server licensing
-        if config.get('windows_server_required'):
-            costs['windows_server_license'] = 200  # Estimated monthly cost
-        
-        # Oracle licensing (if applicable)
-        if 'oracle' in config.get('database_engine', '').lower():
-            costs['oracle_license'] = config.get('oracle_license_cost', 2000)
-        
-        return costs
-    
-    def _calculate_totals(self, pricing: Dict) -> Dict:
-        """Calculate total costs across all categories"""
-        totals = {}
-        
-        # Sum up each category
-        for category, costs in pricing.items():
-            if isinstance(costs, dict) and category != 'metadata':
-                totals[f'{category}_total'] = sum(costs.values())
-        
-        # Overall totals
-        totals['monthly_total'] = sum(totals.values())
-        totals['annual_total'] = totals['monthly_total'] * 12
-        
-        # Calculate percentages
-        if totals['monthly_total'] > 0:
-            for category_total in totals:
-                if category_total.endswith('_total') and category_total != 'monthly_total':
-                    percentage = (totals[category_total] / totals['monthly_total']) * 100
-                    totals[f'{category_total}_percentage'] = percentage
-        
-        return totals
-    
-    def _get_fallback_pricing(self, config: Dict) -> Dict:
-        """Fallback pricing when AWS API is unavailable"""
-        # Return reasonable estimates based on configuration
-        storage_gb = config.get('database_size_gb', 0)
-        num_agents = config.get('number_of_agents', 1)
-        
-        return {
-            'compute': {'primary_instance': 500},
-            'storage': {'ebs_primary': storage_gb * 0.08},
-            'migration_services': {'dms_instances': num_agents * 200},
-            'network': {'direct_connect': 400},
-            'monitoring': {'cloudwatch_metrics': 100},
-            'data_transfer': {'ongoing_sync': 50},
-            'backup_dr': {'aws_backup_storage': storage_gb * 0.05},
-            'security': {'kms_keys': 10},
-            'licensing': {'sql_server_license': 800 if config.get('is_sql_server') else 0},
-            'totals': {'monthly_total': 2000, 'annual_total': 24000},
-            'metadata': {
-                'last_updated': datetime.now().isoformat(),
-                'region': self.region,
-                'source': 'FALLBACK_ESTIMATES'
-            }
-        }
-    
-    # Helper methods for individual AWS service pricing
-    def _get_ec2_pricing(self, instance_type: str, operating_system: str = 'Linux') -> float:
-        """Get EC2 pricing from AWS API"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonEC2',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
-                    {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': operating_system},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()},
-                    {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        price_per_hour = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-                        return price_per_hour * 24 * 30  # Convert to monthly
-            return 0.0
-        except:
-            return 500.0  # Fallback estimate
-    
-    def _get_rds_pricing(self, instance_class: str, engine: str) -> float:
-        """Get RDS pricing from AWS API"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonRDS',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_class},
-                    {'Type': 'TERM_MATCH', 'Field': 'databaseEngine', 'Value': engine},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        price_per_hour = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-                        return price_per_hour * 24 * 30  # Convert to monthly
-            return 0.0
-        except:
-            return 600.0  # Fallback estimate
-    
-    def _get_ebs_pricing(self, volume_type: str = 'gp3') -> float:
-        """Get EBS pricing per GB/month"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonEC2',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Storage'},
-                    {'Type': 'TERM_MATCH', 'Field': 'volumeType', 'Value': volume_type},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        return float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-            return 0.0
-        except:
-            return 0.08  # Fallback estimate
-    
-    def _get_s3_pricing(self, storage_class: str = 'Standard') -> float:
-        """Get S3 pricing per GB/month"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonS3',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'storageClass', 'Value': storage_class},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        return float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-            return 0.0
-        except:
-            return 0.023  # Fallback estimate
-    
-    def _get_dms_pricing(self, instance_class: str) -> float:
-        """Get DMS pricing"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSDatabaseMigrationSvc',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_class},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        price_per_hour = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-                        return price_per_hour * 24 * 30
-            return 0.0
-        except:
-            return 200.0  # Fallback estimate
-    
-    def _get_datasync_pricing(self) -> Dict[str, float]:
-        """Get DataSync pricing"""
-        return {'per_gb_copied': 0.0125}  # Standard DataSync pricing
-    
-    def _get_direct_connect_pricing(self, port_speed: str) -> float:
-        """Get Direct Connect pricing"""
-        pricing_map = {
-            '1Gbps': 400,
-            '10Gbps': 2300,
-            '100Gbps': 5000
-        }
-        return pricing_map.get(port_speed, 400)
-    
-    def _get_cloudwatch_pricing(self) -> Dict[str, float]:
-        """Get CloudWatch pricing"""
-        return {
-            'metrics': 0.30,
-            'api_requests': 0.01,
-            'logs_ingestion': 0.50,
-            'logs_storage': 0.03
-        }
-    
-    def _get_data_transfer_pricing(self) -> Dict[str, float]:
-        """Get data transfer pricing"""
-        return {
-            'out_to_internet_first_gb': 0.00,
-            'out_to_internet_up_to_10tb': 0.09,
-            'out_to_internet_next_40tb': 0.085,
-            'out_to_internet_next_100tb': 0.07,
-            'in_from_internet': 0.00,
-            'inter_az': 0.01,
-            'inter_region': 0.02
-        }
-    
-    def _get_fsx_pricing(self, fsx_type: str, storage_gb: float) -> float:
-        """Get FSx pricing"""
-        pricing_per_gb = {
-            'Lustre': 0.145,
-            'Windows': 0.130,
-            'NetApp': 0.170
-        }
-        return storage_gb * pricing_per_gb.get(fsx_type, 0.145)
-    
-    def _calculate_tiered_transfer_cost(self, gb_amount: float, pricing: Dict) -> float:
-        """Calculate tiered data transfer costs"""
-        if gb_amount <= 1:
-            return 0
-        elif gb_amount <= 10240:  # 10TB
-            return (gb_amount - 1) * pricing['out_to_internet_up_to_10tb']
-        else:
-            return (
-                9999 * pricing['out_to_internet_up_to_10tb'] +
-                (gb_amount - 10240) * pricing['out_to_internet_next_40tb']
-            )
-    
-    def _get_location_name(self) -> str:
-        """Map AWS region to location name for Pricing API"""
-        region_mapping = {
-            'us-east-1': 'US East (N. Virginia)',
-            'us-east-2': 'US East (Ohio)',
-            'us-west-1': 'US West (N. California)',
-            'us-west-2': 'US West (Oregon)',
-            'eu-west-1': 'Europe (Ireland)',
-            'eu-central-1': 'Europe (Frankfurt)',
-            'ap-southeast-1': 'Asia Pacific (Singapore)',
-            'ap-northeast-1': 'Asia Pacific (Tokyo)',
-        }
-        return region_mapping.get(self.region, 'US East (N. Virginia)')
-
-
-# Updated main function to use centralized pricing
-async def main():
-    """Enhanced main function with centralized real-time AWS pricing across all tabs"""
-    render_enhanced_header()
-    
-    # Get enhanced configuration
-    config = render_enhanced_sidebar_controls()
-    
-    # Initialize centralized pricing service
-    region = config.get('aws_region', 'us-east-1')
-    pricing_service = CentralizedAWSPricingService(region)
-    
-    # Get comprehensive pricing once for all tabs
-    with st.spinner("🔄 Fetching real-time AWS pricing for all services..."):
-        comprehensive_pricing = pricing_service.get_comprehensive_pricing(config)
-    
-    # Show pricing status
-    pricing_source = comprehensive_pricing['metadata']['source']
-    if pricing_source == 'AWS_API':
-        st.success(f"✅ Real-time AWS pricing loaded for {region}")
-    else:
-        st.warning("⚠️ Using fallback pricing estimates (AWS API unavailable)")
-    
-    # Initialize enhanced analyzer
-    analyzer = EnhancedMigrationAnalyzer()
-    
-    # Run analysis with real pricing
-    analysis_placeholder = st.empty()
-    
-    with analysis_placeholder.container():
-        if config['enable_ai_analysis']:
-            with st.spinner("🧠 Running comprehensive AI-powered migration analysis..."):
-                try:
-                    analysis = await analyzer.comprehensive_ai_migration_analysis(config)
-                    # Inject real pricing into analysis
-                    analysis['cost_analysis'] = comprehensive_pricing
-                except Exception as e:
-                    st.error(f"Analysis error: {str(e)}")
-                    analysis = create_fallback_analysis_with_proper_readers_writers(config)
-                    analysis['cost_analysis'] = comprehensive_pricing
-        else:
-            with st.spinner("🔬 Running standard migration analysis..."):
-                analysis = create_fallback_analysis_with_proper_readers_writers(config)
-                # Inject real pricing into analysis
-                analysis['cost_analysis'] = comprehensive_pricing
-    
-    analysis_placeholder.empty()
-    
-    # Enhanced tabs with real pricing across all tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
-        "🧠 AI Insights & Analysis", 
-        "🤖 Agent Scaling Analysis",
-        "🏢 Agent Positioning",
-        "🗄️ FSx Destination Comparison",
-        "🌐 Network Intelligence",
-        "💰 Comprehensive Costs",
-        "💻 OS Performance Analysis",
-        "📊 Migration Dashboard",
-        "🎯 AWS Sizing & Configuration",
-        "📄 Executive PDF Reports"
-    ])
-    
-    with tab1:
-        if config['enable_ai_analysis']:
-            render_ai_insights_tab_enhanced(analysis, config)
-        else:
-            st.info("🤖 Enable AI Analysis in the sidebar for comprehensive migration insights")
-    
-    with tab2:
-        # Pass real pricing to agent scaling analysis
-        render_agent_scaling_tab(analysis, config, pricing=comprehensive_pricing)
-    
-    with tab3:
-        # Pass real pricing to agent positioning
-        render_agent_positioning_tab(analysis, config, pricing=comprehensive_pricing)
-    
-    with tab4:
-        # Pass real pricing to FSx comparison
-        render_fsx_destination_comparison_tab(analysis, config, pricing=comprehensive_pricing)
-    
-    with tab5:
-        # Pass real pricing to network intelligence
-        render_network_intelligence_tab(analysis, config, pricing=comprehensive_pricing)
-    
-    with tab6:
-        # Comprehensive cost analysis with real pricing
-        render_comprehensive_cost_pricing_tab_with_real_pricing(analysis, config, comprehensive_pricing)
-    
-    with tab7:
-        # Pass real pricing to OS performance
-        render_os_performance_tab(analysis, config, pricing=comprehensive_pricing)
-    
-    with tab8:
-        # Pass real pricing to migration dashboard
-        render_migration_dashboard_tab(analysis, config, pricing=comprehensive_pricing)
-    
-    with tab9:
-        # Pass real pricing to AWS sizing
-        render_aws_sizing_tab(analysis, config, pricing=comprehensive_pricing)
-    
-    with tab10:
-        # Pass real pricing to PDF reports
-        render_pdf_reports_tab(analysis, config, pricing=comprehensive_pricing)
-
-
-# Helper function to extract specific costs for individual tabs
-def get_tab_specific_costs(comprehensive_pricing: Dict, tab_name: str) -> Dict:
-    """Extract relevant costs for specific tabs"""
-    
-    tab_cost_mapping = {
-        'agent_scaling': ['compute', 'migration_services', 'data_transfer'],
-        'agent_positioning': ['migration_services', 'network', 'monitoring'],
-        'fsx_comparison': ['storage', 'backup_dr'],
-        'network_intelligence': ['network', 'data_transfer', 'monitoring'],
-        'os_performance': ['compute', 'licensing', 'monitoring'],
-        'migration_dashboard': ['totals', 'compute', 'storage', 'migration_services'],
-        'aws_sizing': ['compute', 'storage', 'network', 'totals']
-    }
-    
-    relevant_categories = tab_cost_mapping.get(tab_name, [])
-    tab_costs = {}
-    
-    for category in relevant_categories:
-        if category in comprehensive_pricing:
-            tab_costs[category] = comprehensive_pricing[category]
-    
-    tab_costs['metadata'] = comprehensive_pricing.get('metadata', {})
-    return tab_costs 
-
-class AWSPricingService:
-    """Service to fetch real-time AWS pricing from AWS APIs"""
-    
-    def __init__(self, region: str = 'us-east-1'):
-        self.region = region
-        self.pricing_client = boto3.client('pricing', region_name='us-east-1')  # Pricing API is only in us-east-1
-        self.ce_client = boto3.client('ce', region_name='us-east-1')  # Cost Explorer
-        
-    def get_ec2_pricing(self, instance_type: str, operating_system: str = 'Linux', 
-                       tenancy: str = 'Shared', pricing_model: str = 'OnDemand') -> float:
-        """Get EC2 instance pricing from AWS Pricing API"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonEC2',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
-                    {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': operating_system},
-                    {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': tenancy},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()},
-                    {'Type': 'TERM_MATCH', 'Field': 'capacitystatus', 'Value': 'Used'}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms'][pricing_model]
-                
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        price_per_hour = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-                        return price_per_hour * 24 * 30  # Convert to monthly
-            
-            return 0.0
-        except Exception as e:
-            st.error(f"Error fetching EC2 pricing: {str(e)}")
-            return 0.0
-    
-    def get_rds_pricing(self, instance_class: str, engine: str, 
-                       deployment_option: str = 'Single-AZ') -> float:
-        """Get RDS instance pricing from AWS Pricing API"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonRDS',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_class},
-                    {'Type': 'TERM_MATCH', 'Field': 'databaseEngine', 'Value': engine},
-                    {'Type': 'TERM_MATCH', 'Field': 'deploymentOption', 'Value': deployment_option},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        price_per_hour = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-                        return price_per_hour * 24 * 30  # Convert to monthly
-            
-            return 0.0
-        except Exception as e:
-            st.error(f"Error fetching RDS pricing: {str(e)}")
-            return 0.0
-    
-    def get_ebs_pricing(self, volume_type: str = 'gp3') -> float:
-        """Get EBS storage pricing per GB/month"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonEC2',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Storage'},
-                    {'Type': 'TERM_MATCH', 'Field': 'volumeType', 'Value': volume_type},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        return float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-            
-            return 0.0
-        except Exception as e:
-            st.error(f"Error fetching EBS pricing: {str(e)}")
-            return 0.0
-    
-    def get_s3_pricing(self, storage_class: str = 'Standard') -> float:
-        """Get S3 storage pricing per GB/month"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonS3',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'storageClass', 'Value': storage_class},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        return float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-            
-            return 0.0
-        except Exception as e:
-            st.error(f"Error fetching S3 pricing: {str(e)}")
-            return 0.0
-    
-    def get_dms_pricing(self, instance_class: str = 'dms.t3.micro') -> float:
-        """Get DMS replication instance pricing"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSDatabaseMigrationSvc',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_class},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        price_per_hour = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-                        return price_per_hour * 24 * 30  # Convert to monthly
-            
-            return 0.0
-        except Exception as e:
-            st.error(f"Error fetching DMS pricing: {str(e)}")
-            return 0.0
-    
-    def get_datasync_pricing(self) -> Dict[str, float]:
-        """Get DataSync pricing - per GB transferred"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSDataSync',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            pricing = {
-                'per_gb_copied': 0.0125,  # Default AWS DataSync pricing
-                'agent_hour': 0.0  # Agents run on your infrastructure
-            }
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        pricing['per_gb_copied'] = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-            
-            return pricing
-        except Exception as e:
-            st.error(f"Error fetching DataSync pricing: {str(e)}")
-            return {'per_gb_copied': 0.0125, 'agent_hour': 0.0}
-    
-    def get_direct_connect_pricing(self, port_speed: str = '1Gbps') -> float:
-        """Get Direct Connect pricing"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSDirectConnect',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'portSpeed', 'Value': port_speed},
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            if response['PriceList']:
-                price_item = json.loads(response['PriceList'][0])
-                terms = price_item['terms']['OnDemand']
-                
-                for term_key in terms:
-                    price_dimensions = terms[term_key]['priceDimensions']
-                    for pd_key in price_dimensions:
-                        price_per_hour = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-                        return price_per_hour * 24 * 30  # Convert to monthly
-            
-            return 0.0
-        except Exception as e:
-            st.error(f"Error fetching Direct Connect pricing: {str(e)}")
-            return 0.0
-    
-    def get_cloudwatch_pricing(self) -> Dict[str, float]:
-        """Get CloudWatch pricing components"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonCloudWatch',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            pricing = {
-                'metrics': 0.30,  # Per metric per month (first 10 free)
-                'api_requests': 0.01,  # Per 1,000 requests
-                'logs_ingestion': 0.50,  # Per GB ingested
-                'logs_storage': 0.03  # Per GB stored per month
-            }
-            
-            # Parse actual pricing from response if available
-            for price_list in response['PriceList']:
-                price_item = json.loads(price_list)
-                product = price_item.get('product', {})
-                attributes = product.get('attributes', {})
-                
-                if 'metric' in attributes.get('group', '').lower():
-                    terms = price_item['terms']['OnDemand']
-                    for term_key in terms:
-                        price_dimensions = terms[term_key]['priceDimensions']
-                        for pd_key in price_dimensions:
-                            pricing['metrics'] = float(price_dimensions[pd_key]['pricePerUnit']['USD'])
-            
-            return pricing
-        except Exception as e:
-            st.error(f"Error fetching CloudWatch pricing: {str(e)}")
-            return {
-                'metrics': 0.30,
-                'api_requests': 0.01,
-                'logs_ingestion': 0.50,
-                'logs_storage': 0.03
-            }
-    
-    def get_data_transfer_pricing(self) -> Dict[str, float]:
-        """Get data transfer pricing"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSDataTransfer',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._get_location_name()}
-                ]
-            )
-            
-            pricing = {
-                'out_to_internet_first_gb': 0.00,  # First 1GB free
-                'out_to_internet_up_to_10tb': 0.09,  # Per GB
-                'out_to_internet_next_40tb': 0.085,  # Per GB
-                'out_to_internet_next_100tb': 0.07,  # Per GB
-                'in_from_internet': 0.00,  # Free
-                'inter_az': 0.01,  # Per GB
-                'inter_region': 0.02  # Per GB
-            }
-            
-            return pricing
-        except Exception as e:
-            st.error(f"Error fetching data transfer pricing: {str(e)}")
-            return {
-                'out_to_internet_first_gb': 0.00,
-                'out_to_internet_up_to_10tb': 0.09,
-                'out_to_internet_next_40tb': 0.085,
-                'out_to_internet_next_100tb': 0.07,
-                'in_from_internet': 0.00,
-                'inter_az': 0.01,
-                'inter_region': 0.02
-            }
-    
-    def _get_location_name(self) -> str:
-        """Map AWS region to location name used in Pricing API"""
-        region_mapping = {
-            'us-east-1': 'US East (N. Virginia)',
-            'us-east-2': 'US East (Ohio)',
-            'us-west-1': 'US West (N. California)',
-            'us-west-2': 'US West (Oregon)',
-            'eu-west-1': 'Europe (Ireland)',
-            'eu-central-1': 'Europe (Frankfurt)',
-            'ap-southeast-1': 'Asia Pacific (Singapore)',
-            'ap-northeast-1': 'Asia Pacific (Tokyo)',
-        }
-        return region_mapping.get(self.region, 'US East (N. Virginia)')
-
-
-def calculate_real_aws_costs(config: Dict, pricing_service: AWSPricingService) -> Dict:
-    """Calculate AWS costs using real-time pricing APIs"""
-    
-    costs = {}
-    
-    # 1. Compute Costs
-    if config.get('is_sql_server') or config.get('database_engine', '').startswith('ec2_'):
-        # EC2 instance cost
-        instance_type = config.get('ec2_instance_type', 'm5.xlarge')
-        os = 'Windows' if config.get('is_sql_server') else 'Linux'
-        costs['compute'] = pricing_service.get_ec2_pricing(instance_type, os)
-    else:
-        # RDS instance cost
-        instance_class = config.get('rds_instance_class', 'db.m5.xlarge')
-        engine = config.get('database_engine', 'mysql').replace('rds_', '')
-        costs['compute'] = pricing_service.get_rds_pricing(instance_class, engine)
-    
-    # 2. Storage Costs
-    storage_gb = config.get('database_size_gb', 0)
-    ebs_price_per_gb = pricing_service.get_ebs_pricing('gp3')
-    costs['storage'] = storage_gb * ebs_price_per_gb
-    
-    # 3. Destination Storage
-    dest_storage_gb = config.get('destination_storage_gb', storage_gb)
-    if config.get('destination_storage_type') == 'S3':
-        s3_price_per_gb = pricing_service.get_s3_pricing('Standard')
-        costs['destination_storage'] = dest_storage_gb * s3_price_per_gb
-    else:
-        # FSx pricing would need separate implementation
-        costs['destination_storage'] = dest_storage_gb * 0.13  # FSx estimate
-    
-    # 4. Migration Service Costs
-    num_agents = config.get('number_of_agents', 1)
-    if config.get('migration_service') == 'DMS':
-        dms_instance_class = config.get('dms_instance_class', 'dms.t3.micro')
-        costs['migration_service'] = pricing_service.get_dms_pricing(dms_instance_class) * num_agents
-    else:
-        # DataSync pricing
-        datasync_pricing = pricing_service.get_datasync_pricing()
-        monthly_transfer_gb = config.get('monthly_sync_gb', storage_gb * 0.1)  # 10% change estimate
-        costs['migration_service'] = monthly_transfer_gb * datasync_pricing['per_gb_copied']
-    
-    # 5. Network Costs
-    dx_speed = config.get('direct_connect_speed', '1Gbps')
-    costs['network'] = pricing_service.get_direct_connect_pricing(dx_speed)
-    
-    # 6. CloudWatch Monitoring
-    cloudwatch_pricing = pricing_service.get_cloudwatch_pricing()
-    estimated_metrics = 50 + (num_agents * 10)  # Base metrics + per agent
-    estimated_log_gb = 10 + (num_agents * 2)  # GB per month
-    
-    costs['monitoring'] = (
-        max(0, estimated_metrics - 10) * cloudwatch_pricing['metrics'] +  # First 10 free
-        estimated_log_gb * cloudwatch_pricing['logs_ingestion'] +
-        estimated_log_gb * cloudwatch_pricing['logs_storage']
-    )
-    
-    # 7. Data Transfer Costs
-    data_transfer_pricing = pricing_service.get_data_transfer_pricing()
-    monthly_transfer_gb = config.get('monthly_transfer_gb', 100)
-    
-    if monthly_transfer_gb <= 1:
-        costs['data_transfer'] = 0
-    elif monthly_transfer_gb <= 10240:  # Up to 10TB
-        costs['data_transfer'] = (monthly_transfer_gb - 1) * data_transfer_pricing['out_to_internet_up_to_10tb']
-    else:
-        # More complex tiered pricing calculation
-        costs['data_transfer'] = (
-            9999 * data_transfer_pricing['out_to_internet_up_to_10tb'] +
-            (monthly_transfer_gb - 10240) * data_transfer_pricing['out_to_internet_next_40tb']
-        )
-    
-    # 8. Backup costs (estimated as percentage of storage)
-    if not config.get('database_engine', '').startswith('rds_'):
-        costs['backup'] = costs['storage'] * 0.2  # 20% of primary storage
-    else:
-        costs['backup'] = 0  # Included in RDS pricing
-    
-    # Calculate totals
-    costs['total_monthly'] = sum(costs.values())
-    costs['total_annual'] = costs['total_monthly'] * 12
-    
-    return costs
-
-
-# Updated render function using real pricing
-def render_comprehensive_cost_pricing_tab_with_api(analysis: Dict, config: Dict):
-    """Render comprehensive cost analysis using AWS Pricing APIs"""
-    st.subheader("💰 Real-time AWS Migration Cost Analysis")
-    
-    # Initialize pricing service
-    region = config.get('aws_region', 'us-east-1')
-    
-    with st.spinner("Fetching real-time AWS pricing..."):
-        try:
-            pricing_service = AWSPricingService(region)
-            real_costs = calculate_real_aws_costs(config, pricing_service)
-            
-            st.success("✅ Pricing fetched from AWS APIs")
-            st.caption(f"Pricing data for region: {region} | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            
-        except Exception as e:
-            st.error(f"❌ Error fetching real-time pricing: {str(e)}")
-            st.warning("Falling back to estimated pricing...")
-            real_costs = analysis.get('cost_analysis', {})
-    
-    # Display real-time costs
+    # Primary AWS Services Costs
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
+        compute_cost = cost_analysis.get('aws_compute_cost', 0)
         st.metric(
-            "🖥️ Compute (Real-time)",
-            f"${real_costs.get('compute', 0):,.0f}/mo",
-            delta="Live AWS pricing"
+            "🖥️ Compute (RDS/EC2)",
+            f"${compute_cost:,.0f}/mo",
+            delta="Primary database hosting"
         )
     
     with col2:
-        storage_total = real_costs.get('storage', 0) + real_costs.get('destination_storage', 0)
+        storage_cost = cost_analysis.get('aws_storage_cost', 0) + cost_analysis.get('destination_storage_cost', 0)
         st.metric(
-            "💾 Storage (Real-time)",
-            f"${storage_total:,.0f}/mo",
-            delta="Live AWS pricing"
+            "💾 Storage (EBS/S3/FSx)",
+            f"${storage_cost:,.0f}/mo",
+            delta="Database + destination storage"
         )
     
     with col3:
+        # NEW: DataSync/DMS service costs
+        migration_service_cost = cost_analysis.get('agent_cost', 0)
         st.metric(
-            "🔄 Migration (Real-time)",
-            f"${real_costs.get('migration_service', 0):,.0f}/mo",
-            delta="Live AWS pricing"
+            "🔄 Migration Services",
+            f"${migration_service_cost:,.0f}/mo",
+            delta=f"DataSync/DMS agents"
         )
     
     with col4:
+        # NEW: Direct Connect costs
+        dx_cost = cost_analysis.get('network_cost', 0)
         st.metric(
-            "🌐 Network (Real-time)",
-            f"${real_costs.get('network', 0):,.0f}/mo",
-            delta="Live AWS pricing"
+            "🌐 Direct Connect (DX)",
+            f"${dx_cost:,.0f}/mo",
+            delta="Dedicated network connection"
         )
     
     with col5:
+        # Total monthly cost
+        total_monthly = cost_analysis.get('total_monthly_cost', 0)
         st.metric(
-            "💰 Total (Real-time)",
-            f"${real_costs.get('total_monthly', 0):,.0f}/mo",
-            delta=f"Annual: ${real_costs.get('total_annual', 0):,.0f}"
+            "💰 Total Monthly",
+            f"${total_monthly:,.0f}",
+            delta=f"Annual: ${total_monthly * 12:,.0f}"
         )
     
-    # Show pricing methodology
-    with st.expander("📊 Pricing Methodology", expanded=False):
-        st.markdown("""
-        **Real-time Pricing Sources:**
-        - **AWS Pricing API**: Live pricing for EC2, RDS, EBS, S3, DMS, Direct Connect
-        - **AWS Cost Explorer API**: Historical cost trends and optimization recommendations
-        - **Service-specific APIs**: Real-time capacity and availability-based pricing
-        
-        **Update Frequency:**
-        - Pricing refreshed on each page load
-        - Accounts for region-specific pricing variations
-        - Includes current AWS promotional pricing and reserved instance discounts
-        """)
+    # Detailed AWS Service Breakdown
+    st.markdown("**📊 Detailed AWS Service Cost Analysis:**")
     
-    return real_costs
+    # Create comprehensive cost breakdown
+    service_costs = []
+    
+    # 1. Compute Services
+    if config.get('is_sql_server') or config.get('database_engine', '').startswith('ec2_'):
+        # EC2 costs for SQL Server or self-managed
+        service_costs.append({
+            "Service Category": "Compute",
+            "AWS Service": "Amazon EC2",
+            "Description": f"SQL Server on {config.get('database_engine', 'EC2')}",
+            "Monthly Cost": f"${cost_analysis.get('aws_compute_cost', 0):,.0f}",
+            "Usage": "Database hosting (self-managed)",
+            "Optimization": "Consider Reserved Instances for 30% savings"
+        })
+    else:
+        # RDS costs
+        service_costs.append({
+            "Service Category": "Compute",
+            "AWS Service": "Amazon RDS",
+            "Description": f"Managed {config.get('database_engine', 'MySQL').replace('rds_', '')}",
+            "Monthly Cost": f"${cost_analysis.get('aws_compute_cost', 0):,.0f}",
+            "Usage": "Managed database service",
+            "Optimization": "Consider Reserved Instances for 30% savings"
+        })
+    
+    # 2. Storage Services
+    # EBS Storage
+    ebs_cost = cost_analysis.get('aws_storage_cost', 0)
+    if ebs_cost > 0:
+        service_costs.append({
+            "Service Category": "Storage",
+            "AWS Service": "Amazon EBS",
+            "Description": f"Database storage (GP3/IO2)",
+            "Monthly Cost": f"${ebs_cost:,.0f}",
+            "Usage": f"Database storage ({config.get('database_size_gb', 0):,} GB)",
+            "Optimization": "Right-size based on IOPS requirements"
+        })
+    
+    # Destination Storage (S3/FSx)
+    dest_storage_cost = cost_analysis.get('destination_storage_cost', 0)
+    destination_type = config.get('destination_storage_type', 'S3')
+    service_costs.append({
+        "Service Category": "Storage",
+        "AWS Service": f"Amazon {destination_type}",
+        "Description": f"Migration destination storage",
+        "Monthly Cost": f"${dest_storage_cost:,.0f}",
+        "Usage": f"Backup/archive storage ({destination_type})",
+        "Optimization": "Use lifecycle policies for cost optimization" if destination_type == "S3" else f"Right-size {destination_type} for workload"
+    })
+    
+    # 3. Migration Services
+    agent_cost = cost_analysis.get('agent_cost', 0)
+    num_agents = config.get('number_of_agents', 1)
+    is_homogeneous = config.get('source_database_engine') == config.get('ec2_database_engine', 'mysql')
+    migration_service = "DataSync" if is_homogeneous else "DMS"
+    
+    service_costs.append({
+        "Service Category": "Migration",
+        "AWS Service": f"AWS {migration_service}",
+        "Description": f"{num_agents}x {migration_service} agents",
+        "Monthly Cost": f"${agent_cost:,.0f}",
+        "Usage": f"Data migration and sync ({num_agents} agents)",
+        "Optimization": "Optimize agent count based on throughput needs"
+    })
+    
+    # 4. Network Services
+    dx_cost = cost_analysis.get('network_cost', 0)
+    environment = config.get('environment', 'non-production')
+    
+    service_costs.append({
+        "Service Category": "Networking",
+        "AWS Service": "AWS Direct Connect",
+        "Description": f"{environment.title()} DX connection",
+        "Monthly Cost": f"${dx_cost:,.0f}",
+        "Usage": f"Dedicated network connectivity ({environment})",
+        "Optimization": "Consider DX Gateway for multiple VPCs"
+    })
+    
+    # 5. Additional AWS Services
+    
+    # VPC and Security
+    service_costs.append({
+        "Service Category": "Networking",
+        "AWS Service": "Amazon VPC",
+        "Description": "Virtual Private Cloud setup",
+        "Monthly Cost": "$50",
+        "Usage": "Network isolation and security",
+        "Optimization": "Included in base networking costs"
+    })
+    
+    # CloudWatch Monitoring
+    monitoring_cost = 100 + (num_agents * 20)  # Base + per agent
+    service_costs.append({
+        "Service Category": "Management",
+        "AWS Service": "Amazon CloudWatch",
+        "Description": "Monitoring and alerting",
+        "Monthly Cost": f"${monitoring_cost:,.0f}",
+        "Usage": "Database and migration monitoring",
+        "Optimization": "Optimize log retention and metrics"
+    })
+    
+    # AWS Backup (if applicable)
+    if not config.get('database_engine', '').startswith('rds_'):
+        backup_cost = cost_analysis.get('aws_storage_cost', 0) * 0.2  # 20% of storage for backups
+        service_costs.append({
+            "Service Category": "Backup",
+            "AWS Service": "AWS Backup",
+            "Description": "Automated backup service",
+            "Monthly Cost": f"${backup_cost:,.0f}",
+            "Usage": "Database backup and recovery",
+            "Optimization": "Configure retention policies"
+        })
+    
+    # IAM and Security Services
+    service_costs.append({
+        "Service Category": "Security",
+        "AWS Service": "AWS IAM + KMS",
+        "Description": "Identity and encryption management",
+        "Monthly Cost": "$25",
+        "Usage": "Access control and encryption keys",
+        "Optimization": "Included in security baseline"
+    })
+    
+    # SQL Server Specific Costs
+    if config.get('is_sql_server'):
+        # SQL Server licensing
+        sql_licensing_cost = cost_analysis.get('os_licensing_cost', 0)
+        service_costs.append({
+            "Service Category": "Licensing",
+            "AWS Service": "SQL Server License",
+            "Description": "BYOL or License Included",
+            "Monthly Cost": f"${sql_licensing_cost:,.0f}",
+            "Usage": "SQL Server database engine licensing",
+            "Optimization": "Consider BYOL for long-term savings"
+        })
+        
+        # Windows Server licensing
+        windows_licensing_cost = 200  # Estimated Windows Server cost
+        service_costs.append({
+            "Service Category": "Licensing",
+            "AWS Service": "Windows Server License",
+            "Description": "Windows OS licensing on EC2",
+            "Monthly Cost": f"${windows_licensing_cost:,.0f}",
+            "Usage": "Windows Server OS for SQL Server",
+            "Optimization": "Include in EC2 pricing or BYOL"
+        })
+    
+    # Create comprehensive service table
+    df_services = pd.DataFrame(service_costs)
+    st.dataframe(df_services, use_container_width=True)
+    
+    # Cost by Category Analysis
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**📈 Cost by Service Category:**")
+        
+        # Calculate category totals
+        category_costs = {}
+        for service in service_costs:
+            category = service["Service Category"]
+            cost_str = service["Monthly Cost"].replace("$", "").replace(",", "")
+            try:
+                cost = float(cost_str)
+                category_costs[category] = category_costs.get(category, 0) + cost
+            except:
+                continue
+        
+        if category_costs:
+            fig_category = px.pie(
+                values=list(category_costs.values()),
+                names=list(category_costs.keys()),
+                title="Monthly Cost by Service Category"
+            )
+            st.plotly_chart(fig_category, use_container_width=True, key="cost_category_breakdown")
+    
+    with col2:
+        st.markdown("**💡 Cost Optimization Recommendations:**")
+        
+        with st.container():
+            st.success("Cost Optimization Strategies")
+            
+            # Generate optimization recommendations based on configuration
+            optimizations = []
+            
+            if not config.get('database_engine', '').startswith('rds_'):
+                optimizations.append("• Consider Reserved Instances for 30-50% compute savings")
+            
+            if config.get('destination_storage_type') == 'S3':
+                optimizations.append("• Implement S3 Intelligent Tiering for storage optimization")
+            
+            if num_agents > 3:
+                optimizations.append(f"• Optimize {num_agents} agents - consider consolidation")
+            
+            if config.get('environment') == 'non-production':
+                optimizations.append("• Use Spot Instances for non-prod workloads (60% savings)")
+            
+            optimizations.append("• Implement auto-scaling policies")
+            optimizations.append("• Regular cost reviews and rightsizing")
+            
+            for opt in optimizations:
+                st.write(opt)
+    
+    # One-time Migration Costs
+    st.markdown("**🔄 One-time Migration and Setup Costs:**")
+    
+    onetime_col1, onetime_col2, onetime_col3 = st.columns(3)
+    
+    with onetime_col1:
+        st.info("**Migration Setup Costs**")
+        setup_costs = {
+            "Professional Services": "$15,000",
+            "Agent Setup": f"${cost_analysis.get('agent_setup_cost', 0):,.0f}",
+            "Network Configuration": "$5,000",
+            "Testing & Validation": "$8,000",
+            "Training": "$3,000"
+        }
+        
+        for item, cost in setup_costs.items():
+            st.write(f"**{item}:** {cost}")
+    
+    with onetime_col2:
+        st.warning("**Data Transfer Costs**")
+        
+        database_size_gb = config.get('database_size_gb', 0)
+        data_transfer_cost = database_size_gb * 0.02  # $0.02 per GB estimate
+        
+        st.write(f"**Initial Data Transfer:** ${data_transfer_cost:,.0f}")
+        st.write(f"**Database Size:** {database_size_gb:,} GB")
+        st.write(f"**Transfer Rate:** $0.02/GB")
+        st.write(f"**Ongoing Sync:** Included in DX")
+        st.write(f"**Backup Transfer:** ${data_transfer_cost * 0.1:,.0f}/month")
+    
+    with onetime_col3:
+        st.error("**Risk Mitigation Costs**")
+        
+        risk_costs = {
+            "Rollback Preparation": "$5,000",
+            "Extended Support": "$10,000",
+            "Additional Testing": "$5,000",
+            "Contingency (10%)": f"${cost_analysis.get('one_time_migration_cost', 0) * 0.1:,.0f}"
+        }
+        
+        for item, cost in risk_costs.items():
+            st.write(f"**{item}:** {cost}")
+    
+    # Total Cost Summary
+    st.markdown("**📊 Total Cost of Ownership (TCO) Analysis:**")
+    
+    # Calculate 3-year TCO
+    monthly_total = sum(category_costs.values()) if category_costs else total_monthly
+    one_time_total = cost_analysis.get('one_time_migration_cost', 0) + 51000  # Professional services + setup
+    
+    tco_data = {
+        "Timeline": ["Month 1", "Year 1", "Year 2", "Year 3", "3-Year Total"],
+        "Monthly Costs": [f"${monthly_total:,.0f}", f"${monthly_total * 12:,.0f}", 
+                         f"${monthly_total * 12:,.0f}", f"${monthly_total * 12:,.0f}",
+                         f"${monthly_total * 36:,.0f}"],
+        "One-time Costs": [f"${one_time_total:,.0f}", "$0", "$0", "$0", f"${one_time_total:,.0f}"],
+        "Total": [f"${monthly_total + one_time_total:,.0f}", 
+                 f"${monthly_total * 12:,.0f}",
+                 f"${monthly_total * 12:,.0f}", 
+                 f"${monthly_total * 12:,.0f}",
+                 f"${monthly_total * 36 + one_time_total:,.0f}"]
+    }
+    
+    df_tco = pd.DataFrame(tco_data)
+    st.dataframe(df_tco, use_container_width=True)
+    
     
     
     
