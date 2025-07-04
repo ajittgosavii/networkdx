@@ -2923,47 +2923,47 @@ class CentralizedCostCalculator:
                 'setup_cost': 100
             }
     
-    async def _analyze_migration_agents_with_dynamic_pricing(self, config: Dict, primary_tool: str, 
+async def _analyze_migration_agents_with_dynamic_pricing(self, config: Dict, primary_tool: str, 
                                                         network_perf: Dict, pricing_data: Dict) -> Dict:
-    """Agent analysis using dynamic pricing data"""
+        """Agent analysis using dynamic pricing data"""
     
-    num_agents = config.get('number_of_agents', 1)
-    destination_storage = config.get('destination_storage_type', 'S3')
+        num_agents = config.get('number_of_agents', 1)
+        destination_storage = config.get('destination_storage_type', 'S3')
     
-    if primary_tool == 'datasync':
-        agent_size = config['datasync_agent_size']
+        if primary_tool == 'datasync':
+            agent_size = config['datasync_agent_size']
+            
+            # Get dynamic DataSync pricing
+            datasync_pricing = pricing_data.get('datasync', {})
+            agent_pricing = datasync_pricing.get('agent_infrastructure', {}).get(agent_size, {})
+            
+            # Use dynamic pricing if available
+            cost_per_hour = agent_pricing.get('estimated_cost_per_hour', 0.10)
         
-        # Get dynamic DataSync pricing
-        datasync_pricing = pricing_data.get('datasync', {})
-        agent_pricing = datasync_pricing.get('agent_infrastructure', {}).get(agent_size, {})
-        
-        # Use dynamic pricing if available
-        cost_per_hour = agent_pricing.get('estimated_cost_per_hour', 0.10)
-        
-    else:
-        agent_size = config['dms_agent_size']
-        
-        # Get dynamic DMS pricing
-        dms_pricing = pricing_data.get('dms', {})
-        size_to_instance = {
-            'small': 'dms.t3.medium',
-            'medium': 'dms.c5.large',
-            'large': 'dms.c5.xlarge',
-            'xlarge': 'dms.c5.2xlarge',
-            'xxlarge': 'dms.c5.4xlarge'
-        }
-        
-        instance_type = size_to_instance.get(agent_size, 'dms.c5.large')
-        instance_pricing = dms_pricing.get(instance_type, {})
-        cost_per_hour = instance_pricing.get('cost_per_hour', 0.37)
+        else:
+            agent_size = config['dms_agent_size']
+            
+            # Get dynamic DMS pricing
+            dms_pricing = pricing_data.get('dms', {})
+            size_to_instance = {
+                'small': 'dms.t3.medium',
+                'medium': 'dms.c5.large',
+                'large': 'dms.c5.xlarge',
+                'xlarge': 'dms.c5.2xlarge',
+                'xxlarge': 'dms.c5.4xlarge'
+            }
+            
+            instance_type = size_to_instance.get(agent_size, 'dms.c5.large')
+            instance_pricing = dms_pricing.get(instance_type, {})
+            cost_per_hour = instance_pricing.get('cost_per_hour', 0.37)
     
-    # Calculate agent configuration with dynamic costs
-    agent_config = self.agent_manager.calculate_agent_configuration_with_dynamic_pricing(
-        primary_tool, agent_size, num_agents, destination_storage, cost_per_hour
-    )
-    
-    return agent_config
-    def _calculate_networking_costs(self, config: Dict, analysis: Dict) -> Dict:
+        # Calculate agent configuration with dynamic costs
+        agent_config = self.agent_manager.calculate_agent_configuration_with_dynamic_pricing(
+            primary_tool, agent_size, num_agents, destination_storage, cost_per_hour
+        )
+        
+        return agent_config
+def _calculate_networking_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate networking costs using dynamic pricing"""
         
         environment = config.get('environment', 'non-production')
@@ -2997,7 +2997,7 @@ class CentralizedCostCalculator:
             }
         }
     
-    def _calculate_management_costs(self, config: Dict, analysis: Dict) -> Dict:
+def _calculate_management_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate management and monitoring costs"""
         
         cloudwatch_pricing = self.pricing_data.get('cloudwatch', {})
@@ -3025,7 +3025,7 @@ class CentralizedCostCalculator:
             }
         }
     
-    def _calculate_security_costs(self, config: Dict, analysis: Dict) -> Dict:
+def _calculate_security_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate security service costs"""
         
         # IAM, KMS, and security baseline
@@ -3045,7 +3045,7 @@ class CentralizedCostCalculator:
             }
         }
     
-    def _calculate_backup_costs(self, config: Dict, analysis: Dict) -> Dict:
+def _calculate_backup_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate backup costs using dynamic pricing"""
         
         backup_pricing = self.pricing_data.get('backup', {})
@@ -3075,7 +3075,7 @@ class CentralizedCostCalculator:
             }
         }
     
-    def _calculate_licensing_costs(self, config: Dict, analysis: Dict) -> Dict:
+def _calculate_licensing_costs(self, config: Dict, analysis: Dict) -> Dict:
         """Calculate licensing costs"""
         
         licensing_costs = {
@@ -3106,7 +3106,7 @@ class CentralizedCostCalculator:
         
         return licensing_costs
     
-    def _generate_cost_summary(self, cost_breakdown: Dict, monthly_total: float) -> Dict:
+def _generate_cost_summary(self, cost_breakdown: Dict, monthly_total: float) -> Dict:
         """Generate cost summary and insights"""
         
         # Find largest cost components
@@ -3126,7 +3126,7 @@ class CentralizedCostCalculator:
             'data_source_reliability': 'high' if self.data_source == 'aws_api' else 'medium'
         }
     
-    def get_cost_optimization_recommendations(self, costs: Dict, config: Dict) -> List[str]:
+def get_cost_optimization_recommendations(self, costs: Dict, config: Dict) -> List[str]:
         """Generate cost optimization recommendations based on dynamic pricing"""
         
         recommendations = []
