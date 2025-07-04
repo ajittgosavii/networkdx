@@ -16,6 +16,11 @@ import anthropic
 import asyncio
 import logging
 from dataclasses import dataclass
+import boto3
+import json
+from typing import Dict, List, Optional
+from datetime import datetime
+import streamlit as st
  
 import base64
 from io import BytesIO
@@ -9745,11 +9750,7 @@ def render_aws_sizing_tab(analysis: Dict, config: Dict):
                 st.write(f"**Expected Write Performance:** Consistent")
                 st.write(f"**Availability Improvement:** {'+99.5%' if readers > 0 else 'Standard'}")
     
- import boto3
-import json
-from typing import Dict, List, Optional
-from datetime import datetime
-import streamlit as st
+ 
 
 class AWSPricingService:
     """Service to fetch real-time AWS pricing from AWS APIs"""
