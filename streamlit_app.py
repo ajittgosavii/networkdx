@@ -11453,8 +11453,289 @@ def render_comprehensive_cost_pricing_tab(analysis: Dict, config: Dict):
     </div>
     """, unsafe_allow_html=True)
 
+class PricingAPIDebugger:
+    """Debug AWS Pricing API issues when connection shows as 'Connected' but data retrieval fails"""
+    
+    def __init__(self):
+        self.pricing_client = boto3.client('pricing', region_name='us-east-1')
+        
+    def test_basic_connection(self):
+        """Test basic connection (this is probably working since you see 'Connected')"""
+        try:
+            response = self.pricing_client.describe_services(ServiceCode='AmazonEC2', MaxResults=1)
+            print("✅ Basic connection test PASSED")
+            print(f"   Service found: {response['Services'][0]['ServiceCode']}")
+            return True
+        except Exception as e:
+            print(f"❌ Basic connection test FAILED: {e}")
+            return False
+    
+    def test_simple_pricing_call(self):
+        """Test a simple pricing API call"""
+        try:
+            print("\n🔍 Testing simple pricing call...")
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonEC2',
+                MaxResults=1
+            )
+            
+            if response['PriceList']:
+                print("✅ Simple pricing call PASSED")
+                print(f"   Got {len(response['PriceList'])} price records")
+                
+                # Parse the first result to see structure
+                price_data = json.loads(response['PriceList'][0])
+                print(f"   Sample product attributes: {list(price_data.get('product', {}).get('attributes', {}).keys())}")
+                return True
+            else:
+                print("⚠️  Simple pricing call returned empty results")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Simple pricing call FAILED: {e}")
+            logger.exception("Detailed error:")
+            return False
+    
+    def test_region_location_mapping(self, region='us-west-2'):
+        """Test if region to location mapping is correct"""
+        region_mapping = {
+            'us-east-1': 'US East (N. Virginia)',
+            'us-east-2': 'US East (Ohio)', 
+            'us-west-1': 'US West (N. California)',
+            'us-west-2': 'US West (Oregon)',
+            'eu-west-1': 'Europe (Ireland)',
+            'eu-central-1': 'Europe (Frankfurt)'
+        }
+        
+        location = region_mapping.get(region, 'US East (N. Virginia)')
+        
+        try:
+            print(f"\n🗺️  Testing region mapping: {region} → {location}")
+            
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonEC2',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': location}
+                ],
+                MaxResults=1
+            )
+            
+            if response['PriceList']:
+                print("✅ Region mapping test PASSED")
+                price_data = json.loads(response['PriceList'][0])
+                actual_location = price_data.get('product', {}).get('attributes', {}).get('location')
+                print(f"   Confirmed location: {actual_location}")
+                return True
+            else:
+                print("❌ Region mapping test FAILED - no results")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Region mapping test FAILED: {e}")
+            return False
+    
+    def test_instance_type_filters(self):
+        """Test specific instance type filtering"""
+        instance_types = ['t3.medium', 't3.large', 'c5.large']
+        
+        for instance_type in instance_types:
+            try:
+                print(f"\n🖥️  Testing instance type: {instance_type}")
+                
+                response = self.pricing_client.get_products(
+                    ServiceCode='AmazonEC2',
+                    Filters=[
+                        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+                        {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': 'US West (Oregon)'},
+                        {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'},
+                        {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
+                        {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}
+                    ],
+                    MaxResults=1
+                )
+                
+                if response['PriceList']:
+                    print(f"   ✅ Found pricing for {instance_type}")
+                    
+                    # Try to extract price
+                    price_data = json.loads(response['PriceList'][0])
+                    terms = price_data.get('terms', {}).get('OnDemand', {})
+                    
+                    if terms:
+                        term_data = list(terms.values())[0]
+                        price_dimensions = term_data.get('priceDimensions', {})
+                        if price_dimensions:
+                            price_info = list(price_dimensions.values())[0]
+                            price_per_hour = float(price_info['pricePerUnit']['USD'])
+                            print(f"   💰 Price: ${price_per_hour}/hour")
+                        else:
+                            print("   ⚠️  No price dimensions found")
+                    else:
+                        print("   ⚠️  No OnDemand terms found")
+                        
+                else:
+                    print(f"   ❌ No pricing found for {instance_type}")
+                    
+            except Exception as e:
+                print(f"   ❌ Error testing {instance_type}: {e}")
+    
+    def test_available_filters(self):
+        """Check what filters are available for EC2"""
+        try:
+            print("\n🔧 Testing available attribute values...")
+            
+            # Get available locations
+            locations = self.pricing_client.get_attribute_values(
+                ServiceCode='AmazonEC2',
+                AttributeName='location',
+                MaxResults=10
+            )
+            print(f"   Available locations: {[attr['Value'] for attr in locations['AttributeValues'][:5]]}")
+            
+            # Get available instance types
+            instance_types = self.pricing_client.get_attribute_values(
+                ServiceCode='AmazonEC2', 
+                AttributeName='instanceType',
+                MaxResults=10
+            )
+            print(f"   Available instance types: {[attr['Value'] for attr in instance_types['AttributeValues'][:5]]}")
+            
+            # Get available operating systems
+            os_types = self.pricing_client.get_attribute_values(
+                ServiceCode='AmazonEC2',
+                AttributeName='operatingSystem',
+                MaxResults=10
+            )
+            print(f"   Available OS types: {[attr['Value'] for attr in os_types['AttributeValues']]}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error getting attribute values: {e}")
+            return False
+    
+    def test_permissions(self):
+        """Test specific permissions that might be causing issues"""
+        permissions_to_test = [
+            ('pricing:GetProducts', lambda: self.pricing_client.get_products(ServiceCode='AmazonEC2', MaxResults=1)),
+            ('pricing:DescribeServices', lambda: self.pricing_client.describe_services(MaxResults=1)),
+            ('pricing:GetAttributeValues', lambda: self.pricing_client.get_attribute_values(
+                ServiceCode='AmazonEC2', AttributeName='location', MaxResults=1))
+        ]
+        
+        print("\n🔐 Testing specific permissions...")
+        
+        for permission, test_func in permissions_to_test:
+            try:
+                test_func()
+                print(f"   ✅ {permission} - ALLOWED")
+            except Exception as e:
+                print(f"   ❌ {permission} - DENIED: {e}")
+    
+    def debug_specific_api_call(self, instance_type='t3.medium', region='us-west-2'):
+        """Debug a specific API call with detailed logging"""
+        print(f"\n🔬 Detailed debugging for {instance_type} in {region}")
+        
+        region_mapping = {
+            'us-west-2': 'US West (Oregon)',
+            'us-east-1': 'US East (N. Virginia)'
+        }
+        location = region_mapping.get(region, 'US West (Oregon)')
+        
+        filters = [
+            {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+            {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': location},
+            {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'},
+            {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
+            {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}
+        ]
+        
+        print(f"   Using filters: {json.dumps(filters, indent=2)}")
+        
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonEC2',
+                Filters=filters,
+                MaxResults=5
+            )
+            
+            print(f"   API Response - Found {len(response['PriceList'])} results")
+            
+            if response['PriceList']:
+                for i, price_item in enumerate(response['PriceList']):
+                    print(f"\n   Result {i+1}:")
+                    price_data = json.loads(price_item)
+                    
+                    # Show product attributes
+                    attributes = price_data.get('product', {}).get('attributes', {})
+                    print(f"     Product attributes: {json.dumps(attributes, indent=6)}")
+                    
+                    # Show pricing terms
+                    terms = price_data.get('terms', {})
+                    print(f"     Available terms: {list(terms.keys())}")
+                    
+                    if 'OnDemand' in terms:
+                        on_demand = terms['OnDemand']
+                        print(f"     OnDemand terms: {len(on_demand)} term(s)")
+                        
+                        for term_key, term_data in on_demand.items():
+                            price_dimensions = term_data.get('priceDimensions', {})
+                            print(f"       Term {term_key}: {len(price_dimensions)} price dimension(s)")
+                            
+                            for price_key, price_info in price_dimensions.items():
+                                price_per_unit = price_info.get('pricePerUnit', {})
+                                usd_price = price_per_unit.get('USD', 'N/A')
+                                print(f"         Price: ${usd_price} per {price_info.get('unit', 'unknown')}")
+            else:
+                print("   No results found - this is the problem!")
+                
+        except Exception as e:
+            print(f"   ❌ API call failed: {e}")
+            logger.exception("Full exception details:")
+    
+    def run_full_diagnostic(self, region='us-west-2'):
+        """Run complete diagnostic suite"""
+        print("🩺 AWS Pricing API Full Diagnostic")
+        print("=" * 50)
+        
+        # Run all tests
+        tests = [
+            self.test_basic_connection,
+            self.test_simple_pricing_call,
+            lambda: self.test_region_location_mapping(region),
+            self.test_instance_type_filters,
+            self.test_available_filters,
+            self.test_permissions,
+            lambda: self.debug_specific_api_call('t3.medium', region)
+        ]
+        
+        results = []
+        for test in tests:
+            try:
+                result = test()
+                results.append(result)
+            except Exception as e:
+                print(f"❌ Test failed with exception: {e}")
+                results.append(False)
+        
+        print(f"\n📊 Summary: {sum(results)}/{len(results)} tests passed")
+        
+        if not all(results):
+            print("\n💡 Recommendations:")
+            print("   1. Check your IAM permissions include: pricing:GetProducts, pricing:GetAttributeValues")
+            print("   2. Verify region mapping is correct for your target region")
+            print("   3. Check if filters are too restrictive")
+            print("   4. Consider using broader filters and filtering results in code")
+
+# Usage
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    debugger = PricingAPIDebugger()
+    debugger.run_full_diagnostic('us-east-1')  # or whatever region you're using
+
+
+
+#if __name__ == "__main__":
+#    import asyncio
+#    asyncio.run(main())
 
 
