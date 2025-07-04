@@ -2347,6 +2347,16 @@ async def comprehensive_ai_migration_analysis(self, config: Dict) -> Dict:
             'platform_optimization': 1.02 if platform_type == 'physical' and 'windows' in os_type else 1.05 if platform_type == 'physical' else 1.0
         }
 
+import boto3
+import json
+import asyncio
+import logging
+from datetime import datetime
+from typing import Dict, Any
+import streamlit as st
+
+logger = logging.getLogger(__name__)
+
 class EnhancedAWSAPIManager:
     """Enhanced AWS API manager with comprehensive real-time pricing"""
     
@@ -2389,7 +2399,270 @@ class EnhancedAWSAPIManager:
         except Exception as e:
             self.connected = False
             self.error_message = str(e)
-    
+
+    def _region_to_location(self, region: str) -> str:
+        """Convert AWS region to pricing API location"""
+        region_mapping = {
+            'us-east-1': 'US East (N. Virginia)',
+            'us-east-2': 'US East (Ohio)',
+            'us-west-1': 'US West (N. California)',
+            'us-west-2': 'US West (Oregon)',
+            'ca-central-1': 'Canada (Central)',
+            'eu-west-1': 'Europe (Ireland)',
+            'eu-west-2': 'Europe (London)',
+            'eu-west-3': 'Europe (Paris)',
+            'eu-central-1': 'Europe (Frankfurt)',
+            'eu-north-1': 'Europe (Stockholm)',
+            'ap-southeast-1': 'Asia Pacific (Singapore)',
+            'ap-southeast-2': 'Asia Pacific (Sydney)',
+            'ap-northeast-1': 'Asia Pacific (Tokyo)',
+            'ap-northeast-2': 'Asia Pacific (Seoul)',
+            'ap-south-1': 'Asia Pacific (Mumbai)',
+            'sa-east-1': 'South America (Sao Paulo)',
+            'af-south-1': 'Africa (Cape Town)',
+            'me-south-1': 'Middle East (Bahrain)'
+        }
+        return region_mapping.get(region, 'US East (N. Virginia)')
+
+    def _extract_memory_gb(self, memory_str: str) -> float:
+        """Extract memory in GB from AWS memory string"""
+        try:
+            if isinstance(memory_str, (int, float)):
+                return float(memory_str)
+            
+            memory_str = str(memory_str).strip()
+            
+            # Handle formats like "4 GiB", "8 GB", "16 GiB", "32,768 MiB"
+            if 'GiB' in memory_str:
+                return float(memory_str.replace(' GiB', '').replace(',', ''))
+            elif 'GB' in memory_str:
+                return float(memory_str.replace(' GB', '').replace(',', ''))
+            elif 'MiB' in memory_str:
+                mib_value = float(memory_str.replace(' MiB', '').replace(',', ''))
+                return mib_value / 1024  # Convert MiB to GiB
+            elif 'MB' in memory_str:
+                mb_value = float(memory_str.replace(' MB', '').replace(',', ''))
+                return mb_value / 1000  # Convert MB to GB
+            else:
+                # Try to extract number
+                import re
+                numbers = re.findall(r'\d+\.?\d*', memory_str.replace(',', ''))
+                return float(numbers[0]) if numbers else 4.0
+        except:
+            return 4.0  # Default fallback
+
+    def _extract_vcpu(self, vcpu_str: str) -> int:
+        """Extract vCPU count from AWS vCPU string"""
+        try:
+            if isinstance(vcpu_str, int):
+                return vcpu_str
+            
+            # Handle formats like "2", "4 vCPUs", "8 vCPU"
+            import re
+            numbers = re.findall(r'\d+', str(vcpu_str))
+            return int(numbers[0]) if numbers else 2
+        except:
+            return 2  # Default fallback
+
+    def _get_fallback_instance_pricing(self, instance_type: str) -> Dict:
+        """Fallback pricing for EC2 instances"""
+        fallback_prices = {
+            't3.medium': {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.0416},
+            't3.large': {'vcpu': 2, 'memory': 8.0, 'cost_per_hour': 0.0832},
+            't3.xlarge': {'vcpu': 4, 'memory': 16.0, 'cost_per_hour': 0.1664},
+            't3.2xlarge': {'vcpu': 8, 'memory': 32.0, 'cost_per_hour': 0.3328},
+            'c5.large': {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.085},
+            'c5.xlarge': {'vcpu': 4, 'memory': 8.0, 'cost_per_hour': 0.17},
+            'c5.2xlarge': {'vcpu': 8, 'memory': 16.0, 'cost_per_hour': 0.34},
+            'c5.4xlarge': {'vcpu': 16, 'memory': 32.0, 'cost_per_hour': 0.68},
+            'r6i.large': {'vcpu': 2, 'memory': 16.0, 'cost_per_hour': 0.1008},
+            'r6i.xlarge': {'vcpu': 4, 'memory': 32.0, 'cost_per_hour': 0.2016},
+            'r6i.2xlarge': {'vcpu': 8, 'memory': 64.0, 'cost_per_hour': 0.4032},
+            'r6i.4xlarge': {'vcpu': 16, 'memory': 128.0, 'cost_per_hour': 0.8064},
+            'r6i.8xlarge': {'vcpu': 32, 'memory': 256.0, 'cost_per_hour': 1.6128},
+        }
+        return fallback_prices.get(instance_type, {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.05})
+
+    def _fallback_ec2_pricing(self) -> Dict:
+        """Complete fallback EC2 pricing"""
+        instance_types = ['t3.medium', 't3.large', 't3.xlarge', 't3.2xlarge', 
+                         'c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.4xlarge', 
+                         'r6i.large', 'r6i.xlarge', 'r6i.2xlarge', 'r6i.4xlarge', 'r6i.8xlarge']
+        
+        return {instance_type: self._get_fallback_instance_pricing(instance_type) 
+                for instance_type in instance_types}
+
+    def _get_fallback_rds_pricing(self, instance_type: str) -> Dict:
+        """Fallback pricing for RDS instances"""
+        fallback_prices = {
+            'db.t3.micro': {'vcpu': 2, 'memory': 1.0, 'cost_per_hour': 0.017},
+            'db.t3.small': {'vcpu': 2, 'memory': 2.0, 'cost_per_hour': 0.034},
+            'db.t3.medium': {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.068},
+            'db.t3.large': {'vcpu': 2, 'memory': 8.0, 'cost_per_hour': 0.136},
+            'db.r6g.large': {'vcpu': 2, 'memory': 16.0, 'cost_per_hour': 0.126},
+            'db.r6g.xlarge': {'vcpu': 4, 'memory': 32.0, 'cost_per_hour': 0.252},
+            'db.r6g.2xlarge': {'vcpu': 8, 'memory': 64.0, 'cost_per_hour': 0.504},
+            'db.r6g.4xlarge': {'vcpu': 16, 'memory': 128.0, 'cost_per_hour': 1.008},
+            'db.r6g.8xlarge': {'vcpu': 32, 'memory': 256.0, 'cost_per_hour': 2.016},
+        }
+        return fallback_prices.get(instance_type, {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.07})
+
+    def _fallback_rds_pricing(self) -> Dict:
+        """Complete fallback RDS pricing"""
+        instance_types = ['db.t3.micro', 'db.t3.small', 'db.t3.medium', 'db.t3.large', 
+                         'db.r6g.large', 'db.r6g.xlarge', 'db.r6g.2xlarge', 'db.r6g.4xlarge', 'db.r6g.8xlarge']
+        
+        return {instance_type: self._get_fallback_rds_pricing(instance_type) 
+                for instance_type in instance_types}
+
+    def _get_fallback_storage_pricing(self, storage_type: str) -> Dict:
+        """Fallback pricing for storage types"""
+        fallback_prices = {
+            'gp3': {'cost_per_gb_month': 0.08, 'iops_included': 3000, 'cost_per_iops_month': 0.005},
+            'gp2': {'cost_per_gb_month': 0.10, 'iops_included': 100, 'cost_per_iops_month': 0.0},
+            'io1': {'cost_per_gb_month': 0.125, 'iops_included': 0, 'cost_per_iops_month': 0.065},
+            'io2': {'cost_per_gb_month': 0.125, 'iops_included': 0, 'cost_per_iops_month': 0.065},
+            'st1': {'cost_per_gb_month': 0.045, 'iops_included': 0, 'cost_per_iops_month': 0.0},
+            'sc1': {'cost_per_gb_month': 0.025, 'iops_included': 0, 'cost_per_iops_month': 0.0}
+        }
+        return fallback_prices.get(storage_type, {'cost_per_gb_month': 0.08, 'iops_included': 0, 'cost_per_iops_month': 0.0})
+
+    def _fallback_storage_pricing(self) -> Dict:
+        """Complete fallback storage pricing"""
+        storage_types = ['gp3', 'gp2', 'io1', 'io2', 'st1', 'sc1']
+        pricing = {storage_type: self._get_fallback_storage_pricing(storage_type) 
+                   for storage_type in storage_types}
+        
+        # Add S3 pricing
+        pricing['s3_standard'] = {
+            'cost_per_gb_month': 0.023,
+            'requests_per_1000': 0.0004,
+            'data_transfer_out_per_gb': 0.09
+        }
+        return pricing
+
+    def _get_fallback_datasync_pricing(self) -> Dict:
+        """Fallback DataSync pricing"""
+        return {
+            'AWS-Inbound': {'price_per_gb': 0.0125, 'unit': 'GB', 'description': 'Data transferred in'},
+            'AWS-Outbound': {'price_per_gb': 0.0125, 'unit': 'GB', 'description': 'Data transferred out'},
+            'agent_infrastructure': {
+                'small': {'vcpu': 2, 'memory_gb': 4, 'estimated_cost_per_hour': 0.05},
+                'medium': {'vcpu': 4, 'memory_gb': 8, 'estimated_cost_per_hour': 0.10},
+                'large': {'vcpu': 8, 'memory_gb': 16, 'estimated_cost_per_hour': 0.20},
+                'xlarge': {'vcpu': 16, 'memory_gb': 32, 'estimated_cost_per_hour': 0.40}
+            }
+        }
+
+    def _get_fallback_dms_pricing(self) -> Dict:
+        """Fallback DMS pricing"""
+        return {
+            'dms.t3.micro': {'vcpu': 2, 'memory_gb': 1, 'cost_per_hour': 0.013},
+            'dms.t3.small': {'vcpu': 2, 'memory_gb': 2, 'cost_per_hour': 0.026},
+            'dms.t3.medium': {'vcpu': 2, 'memory_gb': 4, 'cost_per_hour': 0.052},
+            'dms.t3.large': {'vcpu': 2, 'memory_gb': 8, 'cost_per_hour': 0.104},
+            'dms.c5.large': {'vcpu': 2, 'memory_gb': 4, 'cost_per_hour': 0.096},
+            'dms.c5.xlarge': {'vcpu': 4, 'memory_gb': 8, 'cost_per_hour': 0.192},
+            'dms.c5.2xlarge': {'vcpu': 8, 'memory_gb': 16, 'cost_per_hour': 0.384},
+            'dms.c5.4xlarge': {'vcpu': 16, 'memory_gb': 32, 'cost_per_hour': 0.768}
+        }
+
+    def _get_fallback_dx_pricing(self) -> Dict:
+        """Fallback Direct Connect pricing"""
+        return {
+            'dedicated_1gbps': {
+                'connection_type': 'Dedicated',
+                'capacity': '1 Gbps',
+                'cost_per_hour': 0.30,
+                'monthly_cost': 216.0
+            },
+            'dedicated_10gbps': {
+                'connection_type': 'Dedicated',
+                'capacity': '10 Gbps',
+                'cost_per_hour': 2.25,
+                'monthly_cost': 1620.0
+            },
+            'hosted_50mbps': {
+                'connection_type': 'Hosted',
+                'capacity': '50 Mbps',
+                'cost_per_hour': 0.03,
+                'monthly_cost': 21.6
+            },
+            'hosted_100mbps': {
+                'connection_type': 'Hosted',
+                'capacity': '100 Mbps',
+                'cost_per_hour': 0.06,
+                'monthly_cost': 43.2
+            }
+        }
+
+    def _get_fallback_cloudwatch_pricing(self) -> Dict:
+        """Fallback CloudWatch pricing"""
+        return {
+            'metrics': {'price': 0.30, 'unit': 'per metric per month', 'description': 'Custom metrics'},
+            'alarms': {'price': 0.10, 'unit': 'per alarm per month', 'description': 'Standard alarms'},
+            'logs_ingestion': {'price': 0.50, 'unit': 'per GB ingested', 'description': 'Log data ingestion'},
+            'logs_storage': {'price': 0.03, 'unit': 'per GB per month', 'description': 'Log data storage'},
+            'api_requests': {'price': 0.01, 'unit': 'per 1000 requests', 'description': 'API requests'}
+        }
+
+    def _get_fallback_backup_pricing(self) -> Dict:
+        """Fallback AWS Backup pricing"""
+        return {
+            'warm': {'price_per_gb_month': 0.05, 'unit': 'GB-Month'},
+            'cold': {'price_per_gb_month': 0.01, 'unit': 'GB-Month'},
+            'continuous': {'price_per_gb_month': 0.20, 'unit': 'GB-Month'},
+            'restore_warm': {'price_per_gb': 0.02, 'unit': 'GB'},
+            'restore_cold': {'price_per_gb': 0.03, 'unit': 'GB'}
+        }
+
+    def _get_fallback_fsx_windows_pricing(self) -> Dict:
+        """Fallback FSx Windows pricing"""
+        return {
+            'price_per_gb_month': 0.13,
+            'minimum_size_gb': 32,
+            'maximum_size_gb': 65536,
+            'throughput_capacity_mbps': [8, 16, 32, 64, 128, 256, 512, 1024, 2048],
+            'backup_retention': True,
+            'multi_az': True
+        }
+
+    def _get_fallback_fsx_lustre_pricing(self) -> Dict:
+        """Fallback FSx Lustre pricing"""
+        return {
+            'price_per_gb_month': 0.145,
+            'minimum_size_gb': 1200,
+            'maximum_size_gb': 100800,
+            'throughput_per_tib': [50, 100, 200],
+            'deployment_type': ['SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', 'PERSISTENT_2'],
+            'data_repository_association': True
+        }
+
+    def _fallback_fsx_pricing(self) -> Dict:
+        """Complete fallback FSx pricing"""
+        return {
+            'windows': self._get_fallback_fsx_windows_pricing(),
+            'lustre': self._get_fallback_fsx_lustre_pricing()
+        }
+
+    def _fallback_pricing_data(self, region: str) -> Dict:
+        """Complete fallback pricing when API is unavailable"""
+        return {
+            'region': region,
+            'last_updated': datetime.now(),
+            'data_source': 'fallback',
+            'ec2_instances': self._fallback_ec2_pricing(),
+            'rds_instances': self._fallback_rds_pricing(),
+            'storage': self._fallback_storage_pricing(),
+            'fsx': self._fallback_fsx_pricing(),
+            'datasync': self._get_fallback_datasync_pricing(),
+            'dms': self._get_fallback_dms_pricing(),
+            'direct_connect': self._get_fallback_dx_pricing(),
+            'cloudwatch': self._get_fallback_cloudwatch_pricing(),
+            'backup': self._get_fallback_backup_pricing()
+        }
+
+    # Your existing async methods go here...
     async def get_comprehensive_pricing(self, region: str = 'us-west-2') -> Dict:
         """Get comprehensive AWS pricing for all services"""
         if not self.connected:
@@ -2434,224 +2707,6 @@ class EnhancedAWSAPIManager:
         except Exception as e:
             logger.error(f"Failed to fetch comprehensive AWS pricing: {e}")
             return self._fallback_pricing_data(region)
-    
-    async def _get_datasync_pricing_async(self, region: str) -> Dict:
-        """Get AWS DataSync pricing"""
-        try:
-            # DataSync has specific pricing structure
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSDataSync',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)},
-                    {'Type': 'TERM_MATCH', 'Field': 'transferType', 'Value': 'AWS-Inbound'}
-                ],
-                MaxResults=5
-            )
-            
-            datasync_pricing = {}
-            
-            for product in response['PriceList']:
-                price_data = json.loads(product)
-                terms = price_data.get('terms', {}).get('OnDemand', {})
-                if terms:
-                    term_data = list(terms.values())[0]
-                    price_dimensions = term_data.get('priceDimensions', {})
-                    if price_dimensions:
-                        price_info = list(price_dimensions.values())[0]
-                        
-                        # Extract transfer type and pricing
-                        attributes = price_data.get('product', {}).get('attributes', {})
-                        transfer_type = attributes.get('transferType', 'unknown')
-                        price_per_gb = float(price_info['pricePerUnit']['USD'])
-                        
-                        datasync_pricing[transfer_type] = {
-                            'price_per_gb': price_per_gb,
-                            'unit': price_info.get('unit', 'GB'),
-                            'description': price_info.get('description', '')
-                        }
-            
-            # Add agent costs (DataSync agents run on customer infrastructure)
-            datasync_pricing['agent_infrastructure'] = {
-                'small': {'vcpu': 2, 'memory_gb': 4, 'estimated_cost_per_hour': 0.05},
-                'medium': {'vcpu': 4, 'memory_gb': 8, 'estimated_cost_per_hour': 0.10},
-                'large': {'vcpu': 8, 'memory_gb': 16, 'estimated_cost_per_hour': 0.20},
-                'xlarge': {'vcpu': 16, 'memory_gb': 32, 'estimated_cost_per_hour': 0.40}
-            }
-            
-            return datasync_pricing
-            
-        except Exception as e:
-            logger.warning(f"Failed to get DataSync pricing: {e}")
-            return self._get_fallback_datasync_pricing()
-    
-    async def _get_dms_pricing_async(self, region: str) -> Dict:
-        """Get AWS DMS pricing"""
-        try:
-            dms_instances = ['dms.t3.micro', 'dms.t3.small', 'dms.t3.medium', 
-                           'dms.t3.large', 'dms.c5.large', 'dms.c5.xlarge', 
-                           'dms.c5.2xlarge', 'dms.c5.4xlarge']
-            
-            dms_pricing = {}
-            
-            for instance_type in dms_instances:
-                try:
-                    response = self.pricing_client.get_products(
-                        ServiceCode='AWSDatabaseMigrationSvc',
-                        Filters=[
-                            {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
-                            {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
-                        ],
-                        MaxResults=1
-                    )
-                    
-                    if response['PriceList']:
-                        price_data = json.loads(response['PriceList'][0])
-                        terms = price_data.get('terms', {}).get('OnDemand', {})
-                        if terms:
-                            term_data = list(terms.values())[0]
-                            price_dimensions = term_data.get('priceDimensions', {})
-                            if price_dimensions:
-                                price_info = list(price_dimensions.values())[0]
-                                price_per_hour = float(price_info['pricePerUnit']['USD'])
-                                
-                                # Get instance specs
-                                attributes = price_data.get('product', {}).get('attributes', {})
-                                
-                                dms_pricing[instance_type] = {
-                                    'vcpu': self._extract_vcpu(attributes.get('vcpu', '2')),
-                                    'memory_gb': self._extract_memory_gb(attributes.get('memory', '4 GiB')),
-                                    'cost_per_hour': price_per_hour
-                                }
-                
-                except Exception as e:
-                    logger.warning(f"Failed to get DMS pricing for {instance_type}: {e}")
-                    continue
-            
-            return dms_pricing
-            
-        except Exception as e:
-            logger.warning(f"Failed to get DMS pricing: {e}")
-            return self._get_fallback_dms_pricing()
-    
-    async def _get_dx_pricing_async(self, region: str) -> Dict:
-        """Get AWS Direct Connect pricing"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSDirectConnect',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
-                ],
-                MaxResults=10
-            )
-            
-            dx_pricing = {}
-            
-            for product in response['PriceList']:
-                price_data = json.loads(product)
-                terms = price_data.get('terms', {}).get('OnDemand', {})
-                if terms:
-                    term_data = list(terms.values())[0]
-                    price_dimensions = term_data.get('priceDimensions', {})
-                    if price_dimensions:
-                        price_info = list(price_dimensions.values())[0]
-                        
-                        attributes = price_data.get('product', {}).get('attributes', {})
-                        connection_type = attributes.get('connectionType', 'unknown')
-                        capacity = attributes.get('capacity', 'unknown')
-                        
-                        price_per_hour = float(price_info['pricePerUnit']['USD'])
-                        
-                        key = f"{connection_type}_{capacity}".lower()
-                        dx_pricing[key] = {
-                            'connection_type': connection_type,
-                            'capacity': capacity,
-                            'cost_per_hour': price_per_hour,
-                            'monthly_cost': price_per_hour * 24 * 30
-                        }
-            
-            return dx_pricing
-            
-        except Exception as e:
-            logger.warning(f"Failed to get Direct Connect pricing: {e}")
-            return self._get_fallback_dx_pricing()
-    
-    async def _get_cloudwatch_pricing_async(self, region: str) -> Dict:
-        """Get CloudWatch pricing"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AmazonCloudWatch',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
-                ],
-                MaxResults=10
-            )
-            
-            cloudwatch_pricing = {}
-            
-            for product in response['PriceList']:
-                price_data = json.loads(product)
-                terms = price_data.get('terms', {}).get('OnDemand', {})
-                if terms:
-                    term_data = list(terms.values())[0]
-                    price_dimensions = term_data.get('priceDimensions', {})
-                    if price_dimensions:
-                        price_info = list(price_dimensions.values())[0]
-                        
-                        attributes = price_data.get('product', {}).get('attributes', {})
-                        group = attributes.get('group', 'unknown')
-                        
-                        price = float(price_info['pricePerUnit']['USD'])
-                        unit = price_info.get('unit', 'Unknown')
-                        
-                        cloudwatch_pricing[group.lower()] = {
-                            'price': price,
-                            'unit': unit,
-                            'description': price_info.get('description', '')
-                        }
-            
-            return cloudwatch_pricing
-            
-        except Exception as e:
-            logger.warning(f"Failed to get CloudWatch pricing: {e}")
-            return self._get_fallback_cloudwatch_pricing()
-    
-    async def _get_backup_pricing_async(self, region: str) -> Dict:
-        """Get AWS Backup pricing"""
-        try:
-            response = self.pricing_client.get_products(
-                ServiceCode='AWSBackup',
-                Filters=[
-                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
-                ],
-                MaxResults=5
-            )
-            
-            backup_pricing = {}
-            
-            for product in response['PriceList']:
-                price_data = json.loads(product)
-                terms = price_data.get('terms', {}).get('OnDemand', {})
-                if terms:
-                    term_data = list(terms.values())[0]
-                    price_dimensions = term_data.get('priceDimensions', {})
-                    if price_dimensions:
-                        price_info = list(price_dimensions.values())[0]
-                        
-                        attributes = price_data.get('product', {}).get('attributes', {})
-                        storage_type = attributes.get('storageType', 'unknown')
-                        
-                        price_per_gb = float(price_info['pricePerUnit']['USD'])
-                        
-                        backup_pricing[storage_type.lower()] = {
-                            'price_per_gb_month': price_per_gb,
-                            'unit': price_info.get('unit', 'GB-Month')
-                        }
-            
-            return backup_pricing
-            
-        except Exception as e:
-            logger.warning(f"Failed to get Backup pricing: {e}")
-            return self._get_fallback_backup_pricing()
 
     async def _get_ec2_pricing_async(self, region: str) -> Dict:
         """Get EC2 instance pricing"""
@@ -2894,317 +2949,258 @@ class EnhancedAWSAPIManager:
         except Exception as e:
             logger.error(f"FSx pricing fetch failed: {e}")
             return self._fallback_fsx_pricing()
-    
-    import boto3
-import json
-import asyncio
-import logging
-from datetime import datetime
-from typing import Dict, Any
-import streamlit as st
 
-logger = logging.getLogger(__name__)
-
-# Add these methods to your existing EnhancedAWSAPIManager class:
-
-def _region_to_location(self, region: str) -> str:
-    """Convert AWS region to pricing API location"""
-    region_mapping = {
-        'us-east-1': 'US East (N. Virginia)',
-        'us-east-2': 'US East (Ohio)',
-        'us-west-1': 'US West (N. California)',
-        'us-west-2': 'US West (Oregon)',
-        'ca-central-1': 'Canada (Central)',
-        'eu-west-1': 'Europe (Ireland)',
-        'eu-west-2': 'Europe (London)',
-        'eu-west-3': 'Europe (Paris)',
-        'eu-central-1': 'Europe (Frankfurt)',
-        'eu-north-1': 'Europe (Stockholm)',
-        'ap-southeast-1': 'Asia Pacific (Singapore)',
-        'ap-southeast-2': 'Asia Pacific (Sydney)',
-        'ap-northeast-1': 'Asia Pacific (Tokyo)',
-        'ap-northeast-2': 'Asia Pacific (Seoul)',
-        'ap-south-1': 'Asia Pacific (Mumbai)',
-        'sa-east-1': 'South America (Sao Paulo)',
-        'af-south-1': 'Africa (Cape Town)',
-        'me-south-1': 'Middle East (Bahrain)'
-    }
-    return region_mapping.get(region, 'US East (N. Virginia)')
-
-def _extract_memory_gb(self, memory_str: str) -> float:
-    """Extract memory in GB from AWS memory string"""
-    try:
-        if isinstance(memory_str, (int, float)):
-            return float(memory_str)
-        
-        memory_str = str(memory_str).strip()
-        
-        # Handle formats like "4 GiB", "8 GB", "16 GiB", "32,768 MiB"
-        if 'GiB' in memory_str:
-            return float(memory_str.replace(' GiB', '').replace(',', ''))
-        elif 'GB' in memory_str:
-            return float(memory_str.replace(' GB', '').replace(',', ''))
-        elif 'MiB' in memory_str:
-            mib_value = float(memory_str.replace(' MiB', '').replace(',', ''))
-            return mib_value / 1024  # Convert MiB to GiB
-        elif 'MB' in memory_str:
-            mb_value = float(memory_str.replace(' MB', '').replace(',', ''))
-            return mb_value / 1000  # Convert MB to GB
-        else:
-            # Try to extract number
-            import re
-            numbers = re.findall(r'\d+\.?\d*', memory_str.replace(',', ''))
-            return float(numbers[0]) if numbers else 4.0
-    except:
-        return 4.0  # Default fallback
-
-def _extract_vcpu(self, vcpu_str: str) -> int:
-    """Extract vCPU count from AWS vCPU string"""
-    try:
-        if isinstance(vcpu_str, int):
-            return vcpu_str
-        
-        # Handle formats like "2", "4 vCPUs", "8 vCPU"
-        import re
-        numbers = re.findall(r'\d+', str(vcpu_str))
-        return int(numbers[0]) if numbers else 2
-    except:
-        return 2  # Default fallback
-
-# Fallback pricing methods
-
-def _fallback_pricing_data(self, region: str) -> Dict:
-    """Complete fallback pricing when API is unavailable"""
-    return {
-        'region': region,
-        'last_updated': datetime.now(),
-        'data_source': 'fallback',
-        'ec2_instances': self._fallback_ec2_pricing(),
-        'rds_instances': self._fallback_rds_pricing(),
-        'storage': self._fallback_storage_pricing(),
-        'fsx': self._fallback_fsx_pricing(),
-        'datasync': self._get_fallback_datasync_pricing(),
-        'dms': self._get_fallback_dms_pricing(),
-        'direct_connect': self._get_fallback_dx_pricing(),
-        'cloudwatch': self._get_fallback_cloudwatch_pricing(),
-        'backup': self._get_fallback_backup_pricing()
-    }
-
-def _get_fallback_instance_pricing(self, instance_type: str) -> Dict:
-    """Fallback pricing for EC2 instances"""
-    fallback_prices = {
-        't3.medium': {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.0416},
-        't3.large': {'vcpu': 2, 'memory': 8.0, 'cost_per_hour': 0.0832},
-        't3.xlarge': {'vcpu': 4, 'memory': 16.0, 'cost_per_hour': 0.1664},
-        't3.2xlarge': {'vcpu': 8, 'memory': 32.0, 'cost_per_hour': 0.3328},
-        'c5.large': {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.085},
-        'c5.xlarge': {'vcpu': 4, 'memory': 8.0, 'cost_per_hour': 0.17},
-        'c5.2xlarge': {'vcpu': 8, 'memory': 16.0, 'cost_per_hour': 0.34},
-        'c5.4xlarge': {'vcpu': 16, 'memory': 32.0, 'cost_per_hour': 0.68},
-        'r6i.large': {'vcpu': 2, 'memory': 16.0, 'cost_per_hour': 0.1008},
-        'r6i.xlarge': {'vcpu': 4, 'memory': 32.0, 'cost_per_hour': 0.2016},
-        'r6i.2xlarge': {'vcpu': 8, 'memory': 64.0, 'cost_per_hour': 0.4032},
-        'r6i.4xlarge': {'vcpu': 16, 'memory': 128.0, 'cost_per_hour': 0.8064},
-        'r6i.8xlarge': {'vcpu': 32, 'memory': 256.0, 'cost_per_hour': 1.6128},
-    }
-    return fallback_prices.get(instance_type, {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.05})
-
-def _fallback_ec2_pricing(self) -> Dict:
-    """Complete fallback EC2 pricing"""
-    instance_types = ['t3.medium', 't3.large', 't3.xlarge', 't3.2xlarge', 
-                     'c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.4xlarge', 
-                     'r6i.large', 'r6i.xlarge', 'r6i.2xlarge', 'r6i.4xlarge', 'r6i.8xlarge']
-    
-    return {instance_type: self._get_fallback_instance_pricing(instance_type) 
-            for instance_type in instance_types}
-
-def _get_fallback_rds_pricing(self, instance_type: str) -> Dict:
-    """Fallback pricing for RDS instances"""
-    fallback_prices = {
-        'db.t3.micro': {'vcpu': 2, 'memory': 1.0, 'cost_per_hour': 0.017},
-        'db.t3.small': {'vcpu': 2, 'memory': 2.0, 'cost_per_hour': 0.034},
-        'db.t3.medium': {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.068},
-        'db.t3.large': {'vcpu': 2, 'memory': 8.0, 'cost_per_hour': 0.136},
-        'db.r6g.large': {'vcpu': 2, 'memory': 16.0, 'cost_per_hour': 0.126},
-        'db.r6g.xlarge': {'vcpu': 4, 'memory': 32.0, 'cost_per_hour': 0.252},
-        'db.r6g.2xlarge': {'vcpu': 8, 'memory': 64.0, 'cost_per_hour': 0.504},
-        'db.r6g.4xlarge': {'vcpu': 16, 'memory': 128.0, 'cost_per_hour': 1.008},
-        'db.r6g.8xlarge': {'vcpu': 32, 'memory': 256.0, 'cost_per_hour': 2.016},
-    }
-    return fallback_prices.get(instance_type, {'vcpu': 2, 'memory': 4.0, 'cost_per_hour': 0.07})
-
-def _fallback_rds_pricing(self) -> Dict:
-    """Complete fallback RDS pricing"""
-    instance_types = ['db.t3.micro', 'db.t3.small', 'db.t3.medium', 'db.t3.large', 
-                     'db.r6g.large', 'db.r6g.xlarge', 'db.r6g.2xlarge', 'db.r6g.4xlarge', 'db.r6g.8xlarge']
-    
-    return {instance_type: self._get_fallback_rds_pricing(instance_type) 
-            for instance_type in instance_types}
-
-def _get_fallback_storage_pricing(self, storage_type: str) -> Dict:
-    """Fallback pricing for storage types"""
-    fallback_prices = {
-        'gp3': {'cost_per_gb_month': 0.08, 'iops_included': 3000, 'cost_per_iops_month': 0.005},
-        'gp2': {'cost_per_gb_month': 0.10, 'iops_included': 100, 'cost_per_iops_month': 0.0},
-        'io1': {'cost_per_gb_month': 0.125, 'iops_included': 0, 'cost_per_iops_month': 0.065},
-        'io2': {'cost_per_gb_month': 0.125, 'iops_included': 0, 'cost_per_iops_month': 0.065},
-        'st1': {'cost_per_gb_month': 0.045, 'iops_included': 0, 'cost_per_iops_month': 0.0},
-        'sc1': {'cost_per_gb_month': 0.025, 'iops_included': 0, 'cost_per_iops_month': 0.0}
-    }
-    return fallback_prices.get(storage_type, {'cost_per_gb_month': 0.08, 'iops_included': 0, 'cost_per_iops_month': 0.0})
-
-def _fallback_storage_pricing(self) -> Dict:
-    """Complete fallback storage pricing"""
-    storage_types = ['gp3', 'gp2', 'io1', 'io2', 'st1', 'sc1']
-    pricing = {storage_type: self._get_fallback_storage_pricing(storage_type) 
-               for storage_type in storage_types}
-    
-    # Add S3 pricing
-    pricing['s3_standard'] = {
-        'cost_per_gb_month': 0.023,
-        'requests_per_1000': 0.0004,
-        'data_transfer_out_per_gb': 0.09
-    }
-    return pricing
-
-def _get_fallback_datasync_pricing(self) -> Dict:
-    """Fallback DataSync pricing"""
-    return {
-        'AWS-Inbound': {'price_per_gb': 0.0125, 'unit': 'GB', 'description': 'Data transferred in'},
-        'AWS-Outbound': {'price_per_gb': 0.0125, 'unit': 'GB', 'description': 'Data transferred out'},
-        'agent_infrastructure': {
-            'small': {'vcpu': 2, 'memory_gb': 4, 'estimated_cost_per_hour': 0.05},
-            'medium': {'vcpu': 4, 'memory_gb': 8, 'estimated_cost_per_hour': 0.10},
-            'large': {'vcpu': 8, 'memory_gb': 16, 'estimated_cost_per_hour': 0.20},
-            'xlarge': {'vcpu': 16, 'memory_gb': 32, 'estimated_cost_per_hour': 0.40}
-        }
-    }
-
-def _get_fallback_dms_pricing(self) -> Dict:
-    """Fallback DMS pricing"""
-    return {
-        'dms.t3.micro': {'vcpu': 2, 'memory_gb': 1, 'cost_per_hour': 0.013},
-        'dms.t3.small': {'vcpu': 2, 'memory_gb': 2, 'cost_per_hour': 0.026},
-        'dms.t3.medium': {'vcpu': 2, 'memory_gb': 4, 'cost_per_hour': 0.052},
-        'dms.t3.large': {'vcpu': 2, 'memory_gb': 8, 'cost_per_hour': 0.104},
-        'dms.c5.large': {'vcpu': 2, 'memory_gb': 4, 'cost_per_hour': 0.096},
-        'dms.c5.xlarge': {'vcpu': 4, 'memory_gb': 8, 'cost_per_hour': 0.192},
-        'dms.c5.2xlarge': {'vcpu': 8, 'memory_gb': 16, 'cost_per_hour': 0.384},
-        'dms.c5.4xlarge': {'vcpu': 16, 'memory_gb': 32, 'cost_per_hour': 0.768}
-    }
-
-def _get_fallback_dx_pricing(self) -> Dict:
-    """Fallback Direct Connect pricing"""
-    return {
-        'dedicated_1gbps': {
-            'connection_type': 'Dedicated',
-            'capacity': '1 Gbps',
-            'cost_per_hour': 0.30,
-            'monthly_cost': 216.0
-        },
-        'dedicated_10gbps': {
-            'connection_type': 'Dedicated',
-            'capacity': '10 Gbps',
-            'cost_per_hour': 2.25,
-            'monthly_cost': 1620.0
-        },
-        'hosted_50mbps': {
-            'connection_type': 'Hosted',
-            'capacity': '50 Mbps',
-            'cost_per_hour': 0.03,
-            'monthly_cost': 21.6
-        },
-        'hosted_100mbps': {
-            'connection_type': 'Hosted',
-            'capacity': '100 Mbps',
-            'cost_per_hour': 0.06,
-            'monthly_cost': 43.2
-        }
-    }
-
-def _get_fallback_cloudwatch_pricing(self) -> Dict:
-    """Fallback CloudWatch pricing"""
-    return {
-        'metrics': {'price': 0.30, 'unit': 'per metric per month', 'description': 'Custom metrics'},
-        'alarms': {'price': 0.10, 'unit': 'per alarm per month', 'description': 'Standard alarms'},
-        'logs_ingestion': {'price': 0.50, 'unit': 'per GB ingested', 'description': 'Log data ingestion'},
-        'logs_storage': {'price': 0.03, 'unit': 'per GB per month', 'description': 'Log data storage'},
-        'api_requests': {'price': 0.01, 'unit': 'per 1000 requests', 'description': 'API requests'}
-    }
-
-def _get_fallback_backup_pricing(self) -> Dict:
-    """Fallback AWS Backup pricing"""
-    return {
-        'warm': {'price_per_gb_month': 0.05, 'unit': 'GB-Month'},
-        'cold': {'price_per_gb_month': 0.01, 'unit': 'GB-Month'},
-        'continuous': {'price_per_gb_month': 0.20, 'unit': 'GB-Month'},
-        'restore_warm': {'price_per_gb': 0.02, 'unit': 'GB'},
-        'restore_cold': {'price_per_gb': 0.03, 'unit': 'GB'}
-    }
-
-def _get_fallback_fsx_windows_pricing(self) -> Dict:
-    """Fallback FSx Windows pricing"""
-    return {
-        'price_per_gb_month': 0.13,
-        'minimum_size_gb': 32,
-        'maximum_size_gb': 65536,
-        'throughput_capacity_mbps': [8, 16, 32, 64, 128, 256, 512, 1024, 2048],
-        'backup_retention': True,
-        'multi_az': True
-    }
-
-def _get_fallback_fsx_lustre_pricing(self) -> Dict:
-    """Fallback FSx Lustre pricing"""
-    return {
-        'price_per_gb_month': 0.145,
-        'minimum_size_gb': 1200,
-        'maximum_size_gb': 100800,
-        'throughput_per_tib': [50, 100, 200],
-        'deployment_type': ['SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', 'PERSISTENT_2'],
-        'data_repository_association': True
-    }
-
-def _fallback_fsx_pricing(self) -> Dict:
-    """Complete fallback FSx pricing"""
-    return {
-        'windows': self._get_fallback_fsx_windows_pricing(),
-        'lustre': self._get_fallback_fsx_lustre_pricing()
-    }
-
-# Synchronous wrapper method
-def get_pricing_sync(self, region: str = None) -> Dict:
-    """Synchronous wrapper for getting comprehensive pricing data"""
-    if region is None:
-        region = 'us-west-2'  # Default region
-    
-    try:
-        # Create new event loop if none exists
+    async def _get_datasync_pricing_async(self, region: str) -> Dict:
+        """Get AWS DataSync pricing"""
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
+            # DataSync has specific pricing structure
+            response = self.pricing_client.get_products(
+                ServiceCode='AWSDataSync',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)},
+                    {'Type': 'TERM_MATCH', 'Field': 'transferType', 'Value': 'AWS-Inbound'}
+                ],
+                MaxResults=5
+            )
+            
+            datasync_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        # Extract transfer type and pricing
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        transfer_type = attributes.get('transferType', 'unknown')
+                        price_per_gb = float(price_info['pricePerUnit']['USD'])
+                        
+                        datasync_pricing[transfer_type] = {
+                            'price_per_gb': price_per_gb,
+                            'unit': price_info.get('unit', 'GB'),
+                            'description': price_info.get('description', '')
+                        }
+            
+            # Add agent costs (DataSync agents run on customer infrastructure)
+            datasync_pricing['agent_infrastructure'] = {
+                'small': {'vcpu': 2, 'memory_gb': 4, 'estimated_cost_per_hour': 0.05},
+                'medium': {'vcpu': 4, 'memory_gb': 8, 'estimated_cost_per_hour': 0.10},
+                'large': {'vcpu': 8, 'memory_gb': 16, 'estimated_cost_per_hour': 0.20},
+                'xlarge': {'vcpu': 16, 'memory_gb': 32, 'estimated_cost_per_hour': 0.40}
+            }
+            
+            return datasync_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get DataSync pricing: {e}")
+            return self._get_fallback_datasync_pricing()
+
+    async def _get_dms_pricing_async(self, region: str) -> Dict:
+        """Get AWS DMS pricing"""
+        try:
+            dms_instances = ['dms.t3.micro', 'dms.t3.small', 'dms.t3.medium', 
+                           'dms.t3.large', 'dms.c5.large', 'dms.c5.xlarge', 
+                           'dms.c5.2xlarge', 'dms.c5.4xlarge']
+            
+            dms_pricing = {}
+            
+            for instance_type in dms_instances:
+                try:
+                    response = self.pricing_client.get_products(
+                        ServiceCode='AWSDatabaseMigrationSvc',
+                        Filters=[
+                            {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+                            {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                        ],
+                        MaxResults=1
+                    )
+                    
+                    if response['PriceList']:
+                        price_data = json.loads(response['PriceList'][0])
+                        terms = price_data.get('terms', {}).get('OnDemand', {})
+                        if terms:
+                            term_data = list(terms.values())[0]
+                            price_dimensions = term_data.get('priceDimensions', {})
+                            if price_dimensions:
+                                price_info = list(price_dimensions.values())[0]
+                                price_per_hour = float(price_info['pricePerUnit']['USD'])
+                                
+                                # Get instance specs
+                                attributes = price_data.get('product', {}).get('attributes', {})
+                                
+                                dms_pricing[instance_type] = {
+                                    'vcpu': self._extract_vcpu(attributes.get('vcpu', '2')),
+                                    'memory_gb': self._extract_memory_gb(attributes.get('memory', '4 GiB')),
+                                    'cost_per_hour': price_per_hour
+                                }
+                
+                except Exception as e:
+                    logger.warning(f"Failed to get DMS pricing for {instance_type}: {e}")
+                    continue
+            
+            return dms_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get DMS pricing: {e}")
+            return self._get_fallback_dms_pricing()
+
+    async def _get_dx_pricing_async(self, region: str) -> Dict:
+        """Get AWS Direct Connect pricing"""
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AWSDirectConnect',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                ],
+                MaxResults=10
+            )
+            
+            dx_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        connection_type = attributes.get('connectionType', 'unknown')
+                        capacity = attributes.get('capacity', 'unknown')
+                        
+                        price_per_hour = float(price_info['pricePerUnit']['USD'])
+                        
+                        key = f"{connection_type}_{capacity}".lower()
+                        dx_pricing[key] = {
+                            'connection_type': connection_type,
+                            'capacity': capacity,
+                            'cost_per_hour': price_per_hour,
+                            'monthly_cost': price_per_hour * 24 * 30
+                        }
+            
+            return dx_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get Direct Connect pricing: {e}")
+            return self._get_fallback_dx_pricing()
+
+    async def _get_cloudwatch_pricing_async(self, region: str) -> Dict:
+        """Get CloudWatch pricing"""
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonCloudWatch',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                ],
+                MaxResults=10
+            )
+            
+            cloudwatch_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        group = attributes.get('group', 'unknown')
+                        
+                        price = float(price_info['pricePerUnit']['USD'])
+                        unit = price_info.get('unit', 'Unknown')
+                        
+                        cloudwatch_pricing[group.lower()] = {
+                            'price': price,
+                            'unit': unit,
+                            'description': price_info.get('description', '')
+                        }
+            
+            return cloudwatch_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get CloudWatch pricing: {e}")
+            return self._get_fallback_cloudwatch_pricing()
+
+    async def _get_backup_pricing_async(self, region: str) -> Dict:
+        """Get AWS Backup pricing"""
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AWSBackup',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                ],
+                MaxResults=5
+            )
+            
+            backup_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        storage_type = attributes.get('storageType', 'unknown')
+                        
+                        price_per_gb = float(price_info['pricePerUnit']['USD'])
+                        
+                        backup_pricing[storage_type.lower()] = {
+                            'price_per_gb_month': price_per_gb,
+                            'unit': price_info.get('unit', 'GB-Month')
+                        }
+            
+            return backup_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get Backup pricing: {e}")
+            return self._get_fallback_backup_pricing()
+
+    # Utility methods
+    def get_pricing_sync(self, region: str = None) -> Dict:
+        """Synchronous wrapper for getting comprehensive pricing data"""
+        if region is None:
+            region = 'us-west-2'  # Default region
+        
+        try:
+            # Create new event loop if none exists
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+            except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        
-        return loop.run_until_complete(self.get_comprehensive_pricing(region))
-    except Exception as e:
-        logger.error(f"Failed to get pricing synchronously: {e}")
-        return self._fallback_pricing_data(region)
+            
+            return loop.run_until_complete(self.get_comprehensive_pricing(region))
+        except Exception as e:
+            logger.error(f"Failed to get pricing synchronously: {e}")
+            return self._fallback_pricing_data(region)
 
-# Connection status methods
-def is_connected(self) -> bool:
-    """Check if AWS API connection is working"""
-    return self.connected
+    def is_connected(self) -> bool:
+        """Check if AWS API connection is working"""
+        return self.connected
 
-def get_connection_status(self) -> Dict:
-    """Get detailed connection status"""
-    return {
-        'connected': self.connected,
-        'error_message': self.error_message,
-        'pricing_client_available': self.pricing_client is not None
-    }
+    def get_connection_status(self) -> Dict:
+        """Get detailed connection status"""
+        return {
+            'connected': self.connected,
+            'error_message': self.error_message,
+            'pricing_client_available': self.pricing_client is not None
+        }
 
 
 class CentralizedCostCalculator:
