@@ -2000,103 +2000,9 @@ class AWSAPIManager:
         except:
             return 4
     
-    def _fallback_pricing_data(self, region: str) -> Dict:
-        """Fallback pricing data when API is unavailable"""
-        return {
-            'region': region,
-            'last_updated': datetime.now(),
-            'data_source': 'fallback',
-            'ec2_instances': self._fallback_ec2_pricing(),
-            'rds_instances': self._fallback_rds_pricing(),
-            'storage': self._fallback_storage_pricing(),
-            'fsx': self._fallback_fsx_pricing()
-        }
+
+           
     
-    def _fallback_ec2_pricing(self) -> Dict:
-        """Fallback EC2 pricing data"""
-        return {
-            't3.medium': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.0416},
-            't3.large': {'vcpu': 2, 'memory': 8, 'cost_per_hour': 0.0832},
-            't3.xlarge': {'vcpu': 4, 'memory': 16, 'cost_per_hour': 0.1664},
-            'c5.large': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.085},
-            'c5.xlarge': {'vcpu': 4, 'memory': 8, 'cost_per_hour': 0.17},
-            'c5.2xlarge': {'vcpu': 8, 'memory': 16, 'cost_per_hour': 0.34},
-            'c5.4xlarge': {'vcpu': 16, 'memory': 32, 'cost_per_hour': 0.68},
-            'r6i.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.252},
-            'r6i.xlarge': {'vcpu': 4, 'memory': 32, 'cost_per_hour': 0.504},
-            'r6i.2xlarge': {'vcpu': 8, 'memory': 64, 'cost_per_hour': 1.008},
-            'r6i.4xlarge': {'vcpu': 16, 'memory': 128, 'cost_per_hour': 2.016},
-            'r6i.8xlarge': {'vcpu': 32, 'memory': 256, 'cost_per_hour': 4.032}
-        }
-    
-    def _fallback_rds_pricing(self) -> Dict:
-        """Fallback RDS pricing data"""
-        return {
-            'db.t3.medium': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.068},
-            'db.t3.large': {'vcpu': 2, 'memory': 8, 'cost_per_hour': 0.136},
-            'db.r6g.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.48},
-            'db.r6g.xlarge': {'vcpu': 4, 'memory': 32, 'cost_per_hour': 0.96},
-            'db.r6g.2xlarge': {'vcpu': 8, 'memory': 64, 'cost_per_hour': 1.92},
-            'db.r6g.4xlarge': {'vcpu': 16, 'memory': 128, 'cost_per_hour': 3.84},
-            'db.r6g.8xlarge': {'vcpu': 32, 'memory': 256, 'cost_per_hour': 7.68}
-        }
-    
-    def _fallback_storage_pricing(self) -> Dict:
-        """Fallback storage pricing data"""
-        return {
-            'gp3': {'cost_per_gb_month': 0.08, 'iops_included': 3000},
-            'io1': {'cost_per_gb_month': 0.125, 'cost_per_iops_month': 0.065},
-            'io2': {'cost_per_gb_month': 0.125, 'cost_per_iops_month': 0.065},
-            's3_standard': {
-                'cost_per_gb_month': 0.023,
-                'requests_per_1000': 0.0004,
-                'data_transfer_out_per_gb': 0.09
-            }
-        }
-    
-    def _fallback_fsx_pricing(self) -> Dict:
-        """Fallback FSx pricing data"""
-        return {
-            'windows': self._get_fallback_fsx_windows_pricing(),
-            'lustre': self._get_fallback_fsx_lustre_pricing()
-        }
-    
-    def _get_fallback_fsx_windows_pricing(self) -> Dict:
-        """Get fallback FSx Windows pricing"""
-        return {
-            'price_per_gb_month': 0.13,
-            'minimum_size_gb': 32,
-            'maximum_size_gb': 65536,
-            'throughput_capacity_mbps': [8, 16, 32, 64, 128, 256, 512, 1024, 2048],
-            'backup_retention': True,
-            'multi_az': True
-        }
-    
-    def _get_fallback_fsx_lustre_pricing(self) -> Dict:
-        """Get fallback FSx Lustre pricing"""
-        return {
-            'price_per_gb_month': 0.14,
-            'minimum_size_gb': 1200,
-            'maximum_size_gb': 100800,
-            'throughput_per_tib': [50, 100, 200],
-            'deployment_type': ['SCRATCH_1', 'SCRATCH_2', 'PERSISTENT_1', 'PERSISTENT_2'],
-            'data_repository_association': True
-        }
-    
-    def _get_fallback_instance_pricing(self, instance_type: str) -> Dict:
-        """Get fallback pricing for specific instance type"""
-        fallback_data = self._fallback_ec2_pricing()
-        return fallback_data.get(instance_type, {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.05})
-    
-    def _get_fallback_rds_pricing(self, instance_type: str) -> Dict:
-        """Get fallback RDS pricing for specific instance type"""
-        fallback_data = self._fallback_rds_pricing()
-        return fallback_data.get(instance_type, {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.07})
-    
-    def _get_fallback_storage_pricing(self, storage_type: str) -> Dict:
-        """Get fallback storage pricing for specific type"""
-        fallback_data = self._fallback_storage_pricing()
-        return fallback_data.get(storage_type, {'cost_per_gb_month': 0.08, 'iops_included': 0})
 
 # Fixed OS Performance Manager
 class OSPerformanceManager:
@@ -2441,7 +2347,822 @@ async def comprehensive_ai_migration_analysis(self, config: Dict) -> Dict:
             'platform_optimization': 1.02 if platform_type == 'physical' and 'windows' in os_type else 1.05 if platform_type == 'physical' else 1.0
         }
 
+class EnhancedAWSAPIManager:
+    """Enhanced AWS API manager with comprehensive real-time pricing"""
+    
+    def __init__(self):
+        self.pricing_client = None
+        self.connected = False
+        self.error_message = None
+        self.pricing_cache = {}
+        self.cache_expiry = {}
+        self._initialize_connection()
+    
+    def _initialize_connection(self):
+        """Initialize connection to AWS APIs"""
+        try:
+            import os
+            # Try multiple credential sources
+            if hasattr(st, 'secrets') and 'AWS_ACCESS_KEY_ID' in st.secrets:
+                self.pricing_client = boto3.client(
+                    'pricing', 
+                    region_name='us-east-1',  # Pricing API only available in us-east-1
+                    aws_access_key_id=st.secrets['AWS_ACCESS_KEY_ID'],
+                    aws_secret_access_key=st.secrets['AWS_SECRET_ACCESS_KEY']
+                )
+            elif os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY'):
+                self.pricing_client = boto3.client('pricing', region_name='us-east-1')
+            else:
+                # Try default credentials (IAM role, profile, etc.)
+                try:
+                    self.pricing_client = boto3.client('pricing', region_name='us-east-1')
+                except:
+                    self.connected = False
+                    self.error_message = "AWS credentials not found"
+                    return
+            
+            # Test connection
+            self.pricing_client.describe_services(ServiceCode='AmazonEC2', MaxResults=1)
+            self.connected = True
+            self.error_message = None
+                
+        except Exception as e:
+            self.connected = False
+            self.error_message = str(e)
+    
+    async def get_comprehensive_pricing(self, region: str = 'us-west-2') -> Dict:
+        """Get comprehensive AWS pricing for all services"""
+        if not self.connected:
+            return self._fallback_pricing_data(region)
+        
+        try:
+            pricing_data = {
+                'region': region,
+                'last_updated': datetime.now(),
+                'data_source': 'aws_api'
+            }
+            
+            # Get all service pricing in parallel
+            tasks = [
+                self._get_ec2_pricing_async(region),
+                self._get_rds_pricing_async(region),
+                self._get_storage_pricing_async(region),
+                self._get_fsx_pricing_async(region),
+                self._get_datasync_pricing_async(region),
+                self._get_dms_pricing_async(region),
+                self._get_dx_pricing_async(region),
+                self._get_cloudwatch_pricing_async(region),
+                self._get_backup_pricing_async(region)
+            ]
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            pricing_data.update({
+                'ec2_instances': results[0] if not isinstance(results[0], Exception) else {},
+                'rds_instances': results[1] if not isinstance(results[1], Exception) else {},
+                'storage': results[2] if not isinstance(results[2], Exception) else {},
+                'fsx': results[3] if not isinstance(results[3], Exception) else {},
+                'datasync': results[4] if not isinstance(results[4], Exception) else {},
+                'dms': results[5] if not isinstance(results[5], Exception) else {},
+                'direct_connect': results[6] if not isinstance(results[6], Exception) else {},
+                'cloudwatch': results[7] if not isinstance(results[7], Exception) else {},
+                'backup': results[8] if not isinstance(results[8], Exception) else {}
+            })
+            
+            return pricing_data
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch comprehensive AWS pricing: {e}")
+            return self._fallback_pricing_data(region)
+    
+    async def _get_datasync_pricing_async(self, region: str) -> Dict:
+        """Get AWS DataSync pricing"""
+        try:
+            # DataSync has specific pricing structure
+            response = self.pricing_client.get_products(
+                ServiceCode='AWSDataSync',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)},
+                    {'Type': 'TERM_MATCH', 'Field': 'transferType', 'Value': 'AWS-Inbound'}
+                ],
+                MaxResults=5
+            )
+            
+            datasync_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        # Extract transfer type and pricing
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        transfer_type = attributes.get('transferType', 'unknown')
+                        price_per_gb = float(price_info['pricePerUnit']['USD'])
+                        
+                        datasync_pricing[transfer_type] = {
+                            'price_per_gb': price_per_gb,
+                            'unit': price_info.get('unit', 'GB'),
+                            'description': price_info.get('description', '')
+                        }
+            
+            # Add agent costs (DataSync agents run on customer infrastructure)
+            datasync_pricing['agent_infrastructure'] = {
+                'small': {'vcpu': 2, 'memory_gb': 4, 'estimated_cost_per_hour': 0.05},
+                'medium': {'vcpu': 4, 'memory_gb': 8, 'estimated_cost_per_hour': 0.10},
+                'large': {'vcpu': 8, 'memory_gb': 16, 'estimated_cost_per_hour': 0.20},
+                'xlarge': {'vcpu': 16, 'memory_gb': 32, 'estimated_cost_per_hour': 0.40}
+            }
+            
+            return datasync_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get DataSync pricing: {e}")
+            return self._get_fallback_datasync_pricing()
+    
+    async def _get_dms_pricing_async(self, region: str) -> Dict:
+        """Get AWS DMS pricing"""
+        try:
+            dms_instances = ['dms.t3.micro', 'dms.t3.small', 'dms.t3.medium', 
+                           'dms.t3.large', 'dms.c5.large', 'dms.c5.xlarge', 
+                           'dms.c5.2xlarge', 'dms.c5.4xlarge']
+            
+            dms_pricing = {}
+            
+            for instance_type in dms_instances:
+                try:
+                    response = self.pricing_client.get_products(
+                        ServiceCode='AWSDatabaseMigrationSvc',
+                        Filters=[
+                            {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+                            {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                        ],
+                        MaxResults=1
+                    )
+                    
+                    if response['PriceList']:
+                        price_data = json.loads(response['PriceList'][0])
+                        terms = price_data.get('terms', {}).get('OnDemand', {})
+                        if terms:
+                            term_data = list(terms.values())[0]
+                            price_dimensions = term_data.get('priceDimensions', {})
+                            if price_dimensions:
+                                price_info = list(price_dimensions.values())[0]
+                                price_per_hour = float(price_info['pricePerUnit']['USD'])
+                                
+                                # Get instance specs
+                                attributes = price_data.get('product', {}).get('attributes', {})
+                                
+                                dms_pricing[instance_type] = {
+                                    'vcpu': self._extract_vcpu(attributes.get('vcpu', '2')),
+                                    'memory_gb': self._extract_memory_gb(attributes.get('memory', '4 GiB')),
+                                    'cost_per_hour': price_per_hour
+                                }
+                
+                except Exception as e:
+                    logger.warning(f"Failed to get DMS pricing for {instance_type}: {e}")
+                    continue
+            
+            return dms_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get DMS pricing: {e}")
+            return self._get_fallback_dms_pricing()
+    
+    async def _get_dx_pricing_async(self, region: str) -> Dict:
+        """Get AWS Direct Connect pricing"""
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AWSDirectConnect',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                ],
+                MaxResults=10
+            )
+            
+            dx_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        connection_type = attributes.get('connectionType', 'unknown')
+                        capacity = attributes.get('capacity', 'unknown')
+                        
+                        price_per_hour = float(price_info['pricePerUnit']['USD'])
+                        
+                        key = f"{connection_type}_{capacity}".lower()
+                        dx_pricing[key] = {
+                            'connection_type': connection_type,
+                            'capacity': capacity,
+                            'cost_per_hour': price_per_hour,
+                            'monthly_cost': price_per_hour * 24 * 30
+                        }
+            
+            return dx_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get Direct Connect pricing: {e}")
+            return self._get_fallback_dx_pricing()
+    
+    async def _get_cloudwatch_pricing_async(self, region: str) -> Dict:
+        """Get CloudWatch pricing"""
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AmazonCloudWatch',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                ],
+                MaxResults=10
+            )
+            
+            cloudwatch_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        group = attributes.get('group', 'unknown')
+                        
+                        price = float(price_info['pricePerUnit']['USD'])
+                        unit = price_info.get('unit', 'Unknown')
+                        
+                        cloudwatch_pricing[group.lower()] = {
+                            'price': price,
+                            'unit': unit,
+                            'description': price_info.get('description', '')
+                        }
+            
+            return cloudwatch_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get CloudWatch pricing: {e}")
+            return self._get_fallback_cloudwatch_pricing()
+    
+    async def _get_backup_pricing_async(self, region: str) -> Dict:
+        """Get AWS Backup pricing"""
+        try:
+            response = self.pricing_client.get_products(
+                ServiceCode='AWSBackup',
+                Filters=[
+                    {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)}
+                ],
+                MaxResults=5
+            )
+            
+            backup_pricing = {}
+            
+            for product in response['PriceList']:
+                price_data = json.loads(product)
+                terms = price_data.get('terms', {}).get('OnDemand', {})
+                if terms:
+                    term_data = list(terms.values())[0]
+                    price_dimensions = term_data.get('priceDimensions', {})
+                    if price_dimensions:
+                        price_info = list(price_dimensions.values())[0]
+                        
+                        attributes = price_data.get('product', {}).get('attributes', {})
+                        storage_type = attributes.get('storageType', 'unknown')
+                        
+                        price_per_gb = float(price_info['pricePerUnit']['USD'])
+                        
+                        backup_pricing[storage_type.lower()] = {
+                            'price_per_gb_month': price_per_gb,
+                            'unit': price_info.get('unit', 'GB-Month')
+                        }
+            
+            return backup_pricing
+            
+        except Exception as e:
+            logger.warning(f"Failed to get Backup pricing: {e}")
+            return self._get_fallback_backup_pricing()
+    
+    # Helper methods for extracting values
+    def _extract_vcpu(self, vcpu_str: str) -> int:
+        """Extract vCPU count from string"""
+        try:
+            return int(float(vcpu_str))
+        except:
+            return 2
+    
+    # Fallback pricing methods
+    def _get_fallback_datasync_pricing(self) -> Dict:
+        return {
+            'aws_inbound': {'price_per_gb': 0.0125, 'unit': 'GB'},
+            'agent_infrastructure': {
+                'small': {'vcpu': 2, 'memory_gb': 4, 'estimated_cost_per_hour': 0.05},
+                'medium': {'vcpu': 4, 'memory_gb': 8, 'estimated_cost_per_hour': 0.10},
+                'large': {'vcpu': 8, 'memory_gb': 16, 'estimated_cost_per_hour': 0.20},
+                'xlarge': {'vcpu': 16, 'memory_gb': 32, 'estimated_cost_per_hour': 0.40}
+            }
+        }
+    
+    def _get_fallback_dms_pricing(self) -> Dict:
+        return {
+            'dms.t3.medium': {'vcpu': 2, 'memory_gb': 4, 'cost_per_hour': 0.29},
+            'dms.c5.large': {'vcpu': 2, 'memory_gb': 4, 'cost_per_hour': 0.37},
+            'dms.c5.xlarge': {'vcpu': 4, 'memory_gb': 8, 'cost_per_hour': 0.74},
+            'dms.c5.2xlarge': {'vcpu': 8, 'memory_gb': 16, 'cost_per_hour': 1.48}
+        }
+    
+    def _get_fallback_dx_pricing(self) -> Dict:
+        return {
+            'dedicated_1gbps': {'connection_type': 'Dedicated', 'capacity': '1Gbps', 'cost_per_hour': 0.30, 'monthly_cost': 216},
+            'dedicated_10gbps': {'connection_type': 'Dedicated', 'capacity': '10Gbps', 'cost_per_hour': 2.25, 'monthly_cost': 1620}
+        }
+    
+    def _get_fallback_cloudwatch_pricing(self) -> Dict:
+        return {
+            'metrics': {'price': 0.30, 'unit': 'Metrics', 'description': 'Custom metrics'},
+            'logs': {'price': 0.50, 'unit': 'GB', 'description': 'Log ingestion'},
+            'alarms': {'price': 0.10, 'unit': 'Alarms', 'description': 'CloudWatch alarms'}
+        }
+    
+    def _get_fallback_backup_pricing(self) -> Dict:
+        return {
+            'warm': {'price_per_gb_month': 0.05, 'unit': 'GB-Month'},
+            'cold': {'price_per_gb_month': 0.012, 'unit': 'GB-Month'}
+        }
 
+
+class CentralizedCostCalculator:
+    """Centralized cost calculation service using dynamic AWS pricing"""
+    
+    def __init__(self, pricing_data: Dict):
+        self.pricing_data = pricing_data
+        self.data_source = pricing_data.get('data_source', 'fallback')
+        self.region = pricing_data.get('region', 'us-west-2')
+        
+    def calculate_comprehensive_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate all AWS service costs dynamically"""
+        
+        # Initialize cost components
+        cost_breakdown = {
+            'compute': self._calculate_compute_costs(config, analysis),
+            'storage': self._calculate_storage_costs(config, analysis),
+            'migration_services': self._calculate_migration_service_costs(config, analysis),
+            'networking': self._calculate_networking_costs(config, analysis),
+            'management': self._calculate_management_costs(config, analysis),
+            'security': self._calculate_security_costs(config, analysis),
+            'backup': self._calculate_backup_costs(config, analysis),
+            'licensing': self._calculate_licensing_costs(config, analysis)
+        }
+        
+        # Calculate totals
+        monthly_total = sum(component['monthly_cost'] for component in cost_breakdown.values())
+        one_time_total = sum(component.get('one_time_cost', 0) for component in cost_breakdown.values())
+        
+        return {
+            'cost_breakdown': cost_breakdown,
+            'monthly_total': monthly_total,
+            'one_time_total': one_time_total,
+            'annual_total': monthly_total * 12 + one_time_total,
+            'data_source': self.data_source,
+            'region': self.region,
+            'last_updated': self.pricing_data.get('last_updated'),
+            'summary': self._generate_cost_summary(cost_breakdown, monthly_total)
+        }
+    
+    def _calculate_compute_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate compute costs (EC2/RDS) using dynamic pricing"""
+        
+        # Determine deployment type
+        deployment_rec = analysis.get('aws_sizing_recommendations', {}).get('deployment_recommendation', {})
+        is_rds = deployment_rec.get('recommendation') == 'rds'
+        
+        if is_rds:
+            return self._calculate_rds_costs(config, analysis)
+        else:
+            return self._calculate_ec2_costs(config, analysis)
+    
+    def _calculate_rds_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate RDS costs using dynamic pricing"""
+        
+        rds_rec = analysis.get('aws_sizing_recommendations', {}).get('rds_recommendations', {})
+        reader_writer = analysis.get('aws_sizing_recommendations', {}).get('reader_writer_config', {})
+        
+        instance_type = rds_rec.get('primary_instance', 'db.r6g.large')
+        writers = reader_writer.get('writers', 1)
+        readers = reader_writer.get('readers', 0)
+        total_instances = writers + readers
+        
+        # Get dynamic pricing
+        rds_pricing = self.pricing_data.get('rds_instances', {})
+        instance_pricing = rds_pricing.get(instance_type, {})
+        
+        # Use dynamic pricing if available, otherwise use stored recommendation
+        if instance_pricing:
+            cost_per_hour = instance_pricing.get('cost_per_hour', 0)
+            monthly_instance_cost = cost_per_hour * 24 * 30 * total_instances
+        else:
+            monthly_instance_cost = rds_rec.get('monthly_instance_cost', 0)
+        
+        # Multi-AZ pricing adjustment
+        if rds_rec.get('multi_az', False):
+            monthly_instance_cost *= 2  # Multi-AZ doubles the cost
+        
+        return {
+            'service': 'Amazon RDS',
+            'instance_type': instance_type,
+            'instance_count': total_instances,
+            'writers': writers,
+            'readers': readers,
+            'monthly_cost': monthly_instance_cost,
+            'one_time_cost': 0,
+            'details': {
+                'cost_per_hour_per_instance': instance_pricing.get('cost_per_hour', rds_rec.get('instance_specs', {}).get('cost_per_hour', 0)),
+                'multi_az': rds_rec.get('multi_az', False),
+                'vcpu_total': instance_pricing.get('vcpu', 0) * total_instances,
+                'memory_total_gb': instance_pricing.get('memory', 0) * total_instances
+            }
+        }
+    
+    def _calculate_ec2_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate EC2 costs using dynamic pricing"""
+        
+        ec2_rec = analysis.get('aws_sizing_recommendations', {}).get('ec2_recommendations', {})
+        reader_writer = analysis.get('aws_sizing_recommendations', {}).get('reader_writer_config', {})
+        
+        instance_type = ec2_rec.get('primary_instance', 'r6i.large')
+        writers = reader_writer.get('writers', 1)
+        readers = reader_writer.get('readers', 0)
+        total_instances = writers + readers
+        
+        # Get dynamic pricing
+        ec2_pricing = self.pricing_data.get('ec2_instances', {})
+        instance_pricing = ec2_pricing.get(instance_type, {})
+        
+        if instance_pricing:
+            cost_per_hour = instance_pricing.get('cost_per_hour', 0)
+            monthly_instance_cost = cost_per_hour * 24 * 30 * total_instances
+        else:
+            monthly_instance_cost = ec2_rec.get('monthly_instance_cost', 0)
+        
+        return {
+            'service': 'Amazon EC2',
+            'instance_type': instance_type,
+            'instance_count': total_instances,
+            'writers': writers,
+            'readers': readers,
+            'monthly_cost': monthly_instance_cost,
+            'one_time_cost': 0,
+            'details': {
+                'cost_per_hour_per_instance': instance_pricing.get('cost_per_hour', ec2_rec.get('instance_specs', {}).get('cost_per_hour', 0)),
+                'ebs_optimized': ec2_rec.get('ebs_optimized', True),
+                'vcpu_total': instance_pricing.get('vcpu', 0) * total_instances,
+                'memory_total_gb': instance_pricing.get('memory', 0) * total_instances
+            }
+        }
+    
+    def _calculate_storage_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate storage costs using dynamic pricing"""
+        
+        database_size_gb = config.get('database_size_gb', 0)
+        destination_storage_type = config.get('destination_storage_type', 'S3')
+        
+        # Database storage (EBS)
+        storage_pricing = self.pricing_data.get('storage', {})
+        
+        # Calculate EBS costs
+        storage_multiplier = 2.0  # Database needs extra space
+        ebs_size_gb = database_size_gb * storage_multiplier
+        ebs_type = 'gp3'  # Default to GP3
+        
+        ebs_pricing = storage_pricing.get(ebs_type, {})
+        ebs_monthly_cost = ebs_size_gb * ebs_pricing.get('cost_per_gb_month', 0.08)
+        
+        # Calculate destination storage costs
+        destination_costs = self._calculate_destination_storage_costs(
+            config, database_size_gb, destination_storage_type
+        )
+        
+        total_monthly_cost = ebs_monthly_cost + destination_costs['monthly_cost']
+        
+        return {
+            'service': f'Storage (EBS + {destination_storage_type})',
+            'ebs_storage_gb': ebs_size_gb,
+            'ebs_type': ebs_type,
+            'destination_storage_gb': destination_costs['storage_gb'],
+            'destination_type': destination_storage_type,
+            'monthly_cost': total_monthly_cost,
+            'one_time_cost': destination_costs.get('setup_cost', 0),
+            'details': {
+                'ebs_monthly_cost': ebs_monthly_cost,
+                'destination_monthly_cost': destination_costs['monthly_cost'],
+                'ebs_cost_per_gb': ebs_pricing.get('cost_per_gb_month', 0.08),
+                'destination_cost_per_gb': destination_costs.get('cost_per_gb', 0)
+            }
+        }
+    
+    def _calculate_destination_storage_costs(self, config: Dict, database_size_gb: int, destination_type: str) -> Dict:
+        """Calculate destination storage costs (S3/FSx)"""
+        
+        if destination_type == 'S3':
+            # S3 Standard pricing
+            s3_pricing = self.pricing_data.get('storage', {}).get('s3_standard', {})
+            cost_per_gb = s3_pricing.get('cost_per_gb_month', 0.023)
+            storage_gb = database_size_gb * 1.5  # 50% overhead for S3
+            
+            return {
+                'storage_gb': storage_gb,
+                'monthly_cost': storage_gb * cost_per_gb,
+                'cost_per_gb': cost_per_gb,
+                'setup_cost': 100
+            }
+        
+        elif destination_type == 'FSx_Windows':
+            # FSx for Windows pricing
+            fsx_pricing = self.pricing_data.get('fsx', {}).get('windows', {})
+            cost_per_gb = fsx_pricing.get('price_per_gb_month', 0.13)
+            min_size = fsx_pricing.get('minimum_size_gb', 32)
+            storage_gb = max(database_size_gb * 1.2, min_size)
+            
+            return {
+                'storage_gb': storage_gb,
+                'monthly_cost': storage_gb * cost_per_gb,
+                'cost_per_gb': cost_per_gb,
+                'setup_cost': 1000
+            }
+        
+        elif destination_type == 'FSx_Lustre':
+            # FSx for Lustre pricing
+            fsx_pricing = self.pricing_data.get('fsx', {}).get('lustre', {})
+            cost_per_gb = fsx_pricing.get('price_per_gb_month', 0.14)
+            min_size = fsx_pricing.get('minimum_size_gb', 1200)
+            storage_gb = max(database_size_gb * 1.1, min_size)
+            
+            return {
+                'storage_gb': storage_gb,
+                'monthly_cost': storage_gb * cost_per_gb,
+                'cost_per_gb': cost_per_gb,
+                'setup_cost': 2000
+            }
+        
+        else:
+            # Default fallback
+            return {
+                'storage_gb': database_size_gb,
+                'monthly_cost': database_size_gb * 0.023,
+                'cost_per_gb': 0.023,
+                'setup_cost': 100
+            }
+    
+    async def _analyze_migration_agents_with_dynamic_pricing(self, config: Dict, primary_tool: str, 
+                                                        network_perf: Dict, pricing_data: Dict) -> Dict:
+    """Agent analysis using dynamic pricing data"""
+    
+    num_agents = config.get('number_of_agents', 1)
+    destination_storage = config.get('destination_storage_type', 'S3')
+    
+    if primary_tool == 'datasync':
+        agent_size = config['datasync_agent_size']
+        
+        # Get dynamic DataSync pricing
+        datasync_pricing = pricing_data.get('datasync', {})
+        agent_pricing = datasync_pricing.get('agent_infrastructure', {}).get(agent_size, {})
+        
+        # Use dynamic pricing if available
+        cost_per_hour = agent_pricing.get('estimated_cost_per_hour', 0.10)
+        
+    else:
+        agent_size = config['dms_agent_size']
+        
+        # Get dynamic DMS pricing
+        dms_pricing = pricing_data.get('dms', {})
+        size_to_instance = {
+            'small': 'dms.t3.medium',
+            'medium': 'dms.c5.large',
+            'large': 'dms.c5.xlarge',
+            'xlarge': 'dms.c5.2xlarge',
+            'xxlarge': 'dms.c5.4xlarge'
+        }
+        
+        instance_type = size_to_instance.get(agent_size, 'dms.c5.large')
+        instance_pricing = dms_pricing.get(instance_type, {})
+        cost_per_hour = instance_pricing.get('cost_per_hour', 0.37)
+    
+    # Calculate agent configuration with dynamic costs
+    agent_config = self.agent_manager.calculate_agent_configuration_with_dynamic_pricing(
+        primary_tool, agent_size, num_agents, destination_storage, cost_per_hour
+    )
+    
+    return agent_config
+    def _calculate_networking_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate networking costs using dynamic pricing"""
+        
+        environment = config.get('environment', 'non-production')
+        dx_pricing = self.pricing_data.get('direct_connect', {})
+        
+        # Determine connection type based on environment
+        if environment == 'production':
+            connection_key = 'dedicated_10gbps'
+        else:
+            connection_key = 'dedicated_1gbps'
+        
+        dx_info = dx_pricing.get(connection_key, {})
+        monthly_cost = dx_info.get('monthly_cost', 800 if environment == 'production' else 400)
+        
+        # Add VPC costs
+        vpc_cost = 50  # Base VPC cost
+        
+        total_monthly_cost = monthly_cost + vpc_cost
+        
+        return {
+            'service': 'AWS Direct Connect + VPC',
+            'connection_type': dx_info.get('connection_type', 'Dedicated'),
+            'capacity': dx_info.get('capacity', '1Gbps'),
+            'environment': environment,
+            'monthly_cost': total_monthly_cost,
+            'one_time_cost': 5000,  # Installation and setup
+            'details': {
+                'direct_connect_monthly': monthly_cost,
+                'vpc_monthly': vpc_cost,
+                'setup_fee': 5000
+            }
+        }
+    
+    def _calculate_management_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate management and monitoring costs"""
+        
+        cloudwatch_pricing = self.pricing_data.get('cloudwatch', {})
+        num_agents = config.get('number_of_agents', 1)
+        
+        # Base CloudWatch costs
+        metrics_cost = cloudwatch_pricing.get('metrics', {}).get('price', 0.30) * 50  # 50 custom metrics
+        logs_cost = cloudwatch_pricing.get('logs', {}).get('price', 0.50) * 10  # 10 GB logs
+        alarms_cost = cloudwatch_pricing.get('alarms', {}).get('price', 0.10) * 20  # 20 alarms
+        
+        # Scale with number of agents
+        agent_monitoring_cost = num_agents * 25
+        
+        total_monthly_cost = metrics_cost + logs_cost + alarms_cost + agent_monitoring_cost
+        
+        return {
+            'service': 'CloudWatch + Management',
+            'monthly_cost': total_monthly_cost,
+            'one_time_cost': 0,
+            'details': {
+                'cloudwatch_metrics': metrics_cost,
+                'cloudwatch_logs': logs_cost,
+                'cloudwatch_alarms': alarms_cost,
+                'agent_monitoring': agent_monitoring_cost
+            }
+        }
+    
+    def _calculate_security_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate security service costs"""
+        
+        # IAM, KMS, and security baseline
+        base_security_cost = 25
+        
+        # Additional security for SQL Server
+        if config.get('is_sql_server'):
+            base_security_cost += 50
+        
+        return {
+            'service': 'Security (IAM + KMS)',
+            'monthly_cost': base_security_cost,
+            'one_time_cost': 0,
+            'details': {
+                'iam_kms': 25,
+                'sql_server_security': 50 if config.get('is_sql_server') else 0
+            }
+        }
+    
+    def _calculate_backup_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate backup costs using dynamic pricing"""
+        
+        backup_pricing = self.pricing_data.get('backup', {})
+        database_size_gb = config.get('database_size_gb', 0)
+        
+        # Use warm backup for recent backups, cold for archive
+        warm_cost_per_gb = backup_pricing.get('warm', {}).get('price_per_gb_month', 0.05)
+        cold_cost_per_gb = backup_pricing.get('cold', {}).get('price_per_gb_month', 0.012)
+        
+        # Backup strategy: 30 days warm, 11 months cold
+        warm_backup_gb = database_size_gb * 4  # 4 weeks of backups
+        cold_backup_gb = database_size_gb * 11  # 11 months of backups
+        
+        monthly_cost = (warm_backup_gb * warm_cost_per_gb) + (cold_backup_gb * cold_cost_per_gb)
+        
+        return {
+            'service': 'AWS Backup',
+            'warm_backup_gb': warm_backup_gb,
+            'cold_backup_gb': cold_backup_gb,
+            'monthly_cost': monthly_cost,
+            'one_time_cost': 0,
+            'details': {
+                'warm_storage_cost': warm_backup_gb * warm_cost_per_gb,
+                'cold_storage_cost': cold_backup_gb * cold_cost_per_gb,
+                'warm_cost_per_gb': warm_cost_per_gb,
+                'cold_cost_per_gb': cold_cost_per_gb
+            }
+        }
+    
+    def _calculate_licensing_costs(self, config: Dict, analysis: Dict) -> Dict:
+        """Calculate licensing costs"""
+        
+        licensing_costs = {
+            'service': 'Software Licensing',
+            'monthly_cost': 0,
+            'one_time_cost': 0,
+            'details': {}
+        }
+        
+        # SQL Server licensing
+        if config.get('is_sql_server'):
+            # SQL Server licensing (estimated)
+            sql_licensing = 500  # Monthly estimate for SQL Server
+            licensing_costs['monthly_cost'] += sql_licensing
+            licensing_costs['details']['sql_server'] = sql_licensing
+            
+            # Windows Server licensing
+            windows_licensing = 200  # Monthly estimate for Windows
+            licensing_costs['monthly_cost'] += windows_licensing
+            licensing_costs['details']['windows_server'] = windows_licensing
+        
+        # OS licensing for other platforms
+        os_type = config.get('operating_system', '')
+        if 'rhel' in os_type:
+            rhel_licensing = 150
+            licensing_costs['monthly_cost'] += rhel_licensing
+            licensing_costs['details']['rhel'] = rhel_licensing
+        
+        return licensing_costs
+    
+    def _generate_cost_summary(self, cost_breakdown: Dict, monthly_total: float) -> Dict:
+        """Generate cost summary and insights"""
+        
+        # Find largest cost components
+        sorted_components = sorted(
+            cost_breakdown.items(), 
+            key=lambda x: x[1]['monthly_cost'], 
+            reverse=True
+        )
+        
+        largest_component = sorted_components[0] if sorted_components else ('unknown', {'monthly_cost': 0})
+        
+        return {
+            'largest_cost_component': largest_component[0],
+            'largest_cost_amount': largest_component[1]['monthly_cost'],
+            'largest_cost_percentage': (largest_component[1]['monthly_cost'] / monthly_total * 100) if monthly_total > 0 else 0,
+            'total_services': len(cost_breakdown),
+            'data_source_reliability': 'high' if self.data_source == 'aws_api' else 'medium'
+        }
+    
+    def get_cost_optimization_recommendations(self, costs: Dict, config: Dict) -> List[str]:
+        """Generate cost optimization recommendations based on dynamic pricing"""
+        
+        recommendations = []
+        cost_breakdown = costs.get('cost_breakdown', {})
+        
+        # Compute optimization
+        compute_cost = cost_breakdown.get('compute', {}).get('monthly_cost', 0)
+        if compute_cost > 1000:
+            recommendations.append("Consider Reserved Instances for 30-50% compute savings")
+        
+        # Storage optimization
+        storage_cost = cost_breakdown.get('storage', {}).get('monthly_cost', 0)
+        if storage_cost > 500:
+            destination_type = config.get('destination_storage_type', 'S3')
+            if destination_type == 'S3':
+                recommendations.append("Implement S3 Intelligent Tiering for automatic cost optimization")
+            else:
+                recommendations.append(f"Right-size {destination_type} based on actual usage patterns")
+        
+        # Migration service optimization
+        migration_cost = cost_breakdown.get('migration_services', {}).get('monthly_cost', 0)
+        num_agents = config.get('number_of_agents', 1)
+        if num_agents > 3 and migration_cost > 300:
+            recommendations.append("Consider consolidating migration agents to reduce costs")
+        
+        # Networking optimization
+        network_cost = cost_breakdown.get('networking', {}).get('monthly_cost', 0)
+        if network_cost > 800:
+            recommendations.append("Evaluate Direct Connect usage and consider VPN for lower bandwidth needs")
+        
+        # Overall optimization
+        monthly_total = costs.get('monthly_total', 0)
+        if monthly_total > 5000:
+            recommendations.append("Engage AWS Enterprise Support for cost optimization review")
+        
+        return recommendations
 
 class EnhancedNetworkIntelligenceManager:
     """AI-powered network path intelligence with enhanced analysis including FSx destinations"""
@@ -3879,11 +4600,25 @@ class OnPremPerformanceAnalyzer:
         return recommendations
 
 class EnhancedMigrationAnalyzer:
-    """Enhanced migration analyzer with AI and AWS API integration plus FSx support"""
-    
+    def __init__(self):
+        self.ai_manager = AnthropicAIManager()
+        self.aws_api = EnhancedAWSAPIManager()  # Use enhanced version
+        self.os_manager = OSPerformanceManager()
+        self.network_manager = EnhancedNetworkIntelligenceManager()
+        self.agent_manager = EnhancedAgentSizingManager()
+        self.onprem_analyzer = OnPremPerformanceAnalyzer()
+        
+        # NEW: Add cost calculator
+        self.cost_calculator = None
     
     async def comprehensive_ai_migration_analysis(self, config: Dict) -> Dict:
-        """Comprehensive AI-powered migration analysis with agent scaling and FSx support"""
+        """UPDATED: Comprehensive analysis with dynamic pricing"""
+        
+        # Get real-time pricing data FIRST
+        pricing_data = await self.aws_api.get_comprehensive_pricing(config.get('region', 'us-west-2'))
+        
+        # Initialize cost calculator with dynamic pricing
+        self.cost_calculator = CentralizedCostCalculator(pricing_data)
         
         # API status tracking
         api_status = APIStatus(
@@ -3895,40 +4630,40 @@ class EnhancedMigrationAnalyzer:
         # Enhanced on-premises performance analysis
         onprem_performance = self.onprem_analyzer.calculate_ai_enhanced_performance(config, self.os_manager)
         
-        # Determine network path key based on config and destination storage
+        # Network analysis
         network_path_key = self._get_network_path_key(config)
-        
-        # AI-enhanced network path analysis
         network_perf = self.network_manager.calculate_ai_enhanced_path_performance(network_path_key)
         
-        # Determine migration type and tools (preserved)
-        is_homogeneous = config['source_database_engine'] == config['database_engine']
+        # Migration type and tools
+        is_homogeneous = config['source_database_engine'] == config.get('ec2_database_engine', config.get('database_engine', '').replace('rds_', ''))
         migration_type = 'homogeneous' if is_homogeneous else 'heterogeneous'
         primary_tool = 'datasync' if is_homogeneous else 'dms'
         
-        # Enhanced agent analysis with scaling support and destination storage
-        agent_analysis = await self._analyze_ai_migration_agents_with_scaling(config, primary_tool, network_perf)
+        # Agent analysis with dynamic pricing
+        agent_analysis = await self._analyze_migration_agents_with_dynamic_pricing(config, primary_tool, network_perf, pricing_data)
         
-        # Calculate effective migration throughput with multiple agents
+        # Migration time calculation
         agent_throughput = agent_analysis['total_effective_throughput']
         network_throughput = network_perf['effective_bandwidth_mbps']
         migration_throughput = min(agent_throughput, network_throughput)
         
-        # AI-enhanced migration time calculation with agent scaling
         migration_time_hours = await self._calculate_ai_migration_time_with_agents(
             config, migration_throughput, onprem_performance, agent_analysis
         )
         
-        # AI-powered AWS sizing recommendations
-        aws_sizing = await self.aws_manager.ai_enhanced_aws_sizing(config)
+        # AWS sizing with dynamic pricing
+        aws_sizing = await self._ai_enhanced_aws_sizing_with_dynamic_pricing(config, pricing_data)
         
-        # Enhanced cost analysis with agent scaling costs and FSx costs
-        cost_analysis = await self._calculate_ai_enhanced_costs_with_agents(
-            config, aws_sizing, agent_analysis, network_perf
-        )
+        # REPLACE: Use centralized cost calculator instead of hardcoded costs
+        cost_analysis = self.cost_calculator.calculate_comprehensive_costs(config, {
+            'aws_sizing_recommendations': aws_sizing,
+            'agent_analysis': agent_analysis,
+            'network_performance': network_perf,
+            'onprem_performance': onprem_performance
+        })
         
-        # Generate FSx destination comparisons
-        fsx_comparisons = await self._generate_fsx_destination_comparisons(config)
+        # Generate FSx comparisons with dynamic pricing
+        fsx_comparisons = await self._generate_fsx_comparisons_with_dynamic_pricing(config, pricing_data)
         
         return {
             'api_status': api_status,
@@ -3940,8 +4675,9 @@ class EnhancedMigrationAnalyzer:
             'migration_throughput_mbps': migration_throughput,
             'estimated_migration_time_hours': migration_time_hours,
             'aws_sizing_recommendations': aws_sizing,
-            'cost_analysis': cost_analysis,
+            'cost_analysis': cost_analysis,  # NOW USES DYNAMIC PRICING
             'fsx_comparisons': fsx_comparisons,
+            'pricing_data': pricing_data,  # Include pricing data for tabs
             'ai_overall_assessment': await self._generate_ai_overall_assessment_with_agents(
                 config, onprem_performance, aws_sizing, migration_time_hours, agent_analysis
             )
@@ -4256,6 +4992,10 @@ class EnhancedMigrationAnalyzer:
                 recommendations.append("Consider S3 Transfer Acceleration for better performance")
         
         return recommendations[:4]  # Limit to top 4 recommendations
+    
+    
+    
+    
     
     async def _analyze_ai_migration_agents_with_scaling(self, config: Dict, primary_tool: str, network_perf: Dict) -> Dict:
         """Enhanced migration agent analysis with scaling support and destination storage"""
@@ -7213,29 +7953,35 @@ def render_agent_scaling_tab(analysis, config):
 
 
 async def main():
-    """Enhanced main function with agent positioning tab and comprehensive costs"""
+    """Updated main function with dynamic pricing integration"""
     render_enhanced_header()
     
-    # Get enhanced configuration
     config = render_enhanced_sidebar_controls()
     
-    # Initialize enhanced analyzer
+    # Initialize enhanced analyzer with dynamic pricing
     analyzer = EnhancedMigrationAnalyzer()
     
-    # Run analysis
     analysis_placeholder = st.empty()
     
     with analysis_placeholder.container():
         if config['enable_ai_analysis']:
-            with st.spinner("🧠 Running comprehensive AI-powered migration analysis..."):
+            with st.spinner("🧠 Running comprehensive AI-powered migration analysis with real-time AWS pricing..."):
                 try:
                     analysis = await analyzer.comprehensive_ai_migration_analysis(config)
+                    
+                    # Show pricing data source
+                    pricing_source = analysis.get('pricing_data', {}).get('data_source', 'fallback')
+                    if pricing_source == 'aws_api':
+                        st.success("✅ Using real-time AWS pricing data")
+                    else:
+                        st.warning("⚠️ Using fallback pricing - configure AWS credentials for real-time pricing")
+                        
                 except Exception as e:
                     st.error(f"Analysis error: {str(e)}")
-                    analysis = create_fallback_analysis_with_proper_readers_writers(config)
+                    analysis = create_fallback_analysis_with_dynamic_structure(config)
         else:
             with st.spinner("🔬 Running standard migration analysis..."):
-                analysis = create_fallback_analysis_with_proper_readers_writers(config)
+                analysis = create_fallback_analysis_with_dynamic_structure(config)
     
     analysis_placeholder.empty()
     
@@ -7567,156 +8313,54 @@ END OF REPORT
 # Fix 4: Update the fallback analysis to include proper reader/writer config
 # In the EnhancedMigrationAnalyzer class, update the fallback analysis section:
 
-def create_fallback_analysis_with_proper_readers_writers(config):
-    """Create fallback analysis with proper reader/writer configuration and complete AWS sizing recommendations"""
+def create_fallback_analysis_with_dynamic_structure(config):
+    """UPDATED: Create fallback analysis that matches dynamic pricing structure"""
     
-    from datetime import datetime
-    
-    # Extract actual database engine for homogeneous check
-    source_engine = config['source_database_engine']
-    
-    if config['database_engine'].startswith('rds_'):
-        target_engine = config['database_engine'].replace('rds_', '')
-    elif config['database_engine'].startswith('ec2_'):
-        target_engine = config.get('ec2_database_engine', 'mysql')
-    else:
-        target_engine = config['database_engine']
-    
-    # Calculate readers based on database size for better defaults
-    database_size_gb = config['database_size_gb']
-    readers = 0
-    
-    if database_size_gb > 500:
-        readers = 1
-    if database_size_gb > 2000:
-        readers = 2
-    if database_size_gb > 10000:
-        readers = 3
-    if config.get('performance_requirements') == 'high':
-        readers += 1
-    if config.get('environment') == 'production':
-        readers = max(readers, 2)
-    
-    # Ensure minimum sensible configuration
-    if database_size_gb > 1000 and readers == 0:
-        readers = 1
-    
-    writers = 1
-    total_instances = writers + readers
-    
-    # FIXED: Create network performance analysis - DYNAMIC based on environment
-    environment = config.get('environment', 'non-production')
-    destination_storage = config.get('destination_storage_type', 'S3')
-    
-    # Determine bandwidth based on environment (matching actual network paths)
-    if environment == 'production':
-        # Production: Multi-hop high-bandwidth path (no bottleneck)
-        effective_bandwidth = 10000  # Full 10Gbps throughput
-        total_latency = 21  # SA → SJ → AWS
-        total_reliability = 0.999 * 0.9995 * 0.9999  # Product of all segments
-        network_quality_score = 90
-        ai_enhanced_quality_score = 95
-        cost_factor = 7.0  # Higher cost for production path
-        segments = [
-            {
-                'name': 'San Antonio Linux NAS to Jump Server',
-                'effective_bandwidth_mbps': 10000,
-                'effective_latency_ms': 1,
-                'reliability': 0.999,
-                'connection_type': 'internal_lan',
-                'cost_factor': 0.0
-            },
-            {
-                'name': 'San Antonio to San Jose (Private Line)',
-                'effective_bandwidth_mbps': 10000,
-                'effective_latency_ms': 12,
-                'reliability': 0.9995,
-                'connection_type': 'private_line',
-                'cost_factor': 3.0
-            },
-            {
-                'name': f'San Jose to AWS {destination_storage} (DX)',
-                'effective_bandwidth_mbps': 10000,
-                'effective_latency_ms': 8,
-                'reliability': 0.9999,
-                'connection_type': 'direct_connect',
-                'cost_factor': 4.0
+    # Create mock pricing data structure
+    mock_pricing = {
+        'region': config.get('region', 'us-west-2'),
+        'last_updated': datetime.now(),
+        'data_source': 'fallback',
+        'ec2_instances': {
+            't3.medium': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.0416},
+            'r6i.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.252}
+        },
+        'rds_instances': {
+            'db.t3.medium': {'vcpu': 2, 'memory': 4, 'cost_per_hour': 0.068},
+            'db.r6g.large': {'vcpu': 2, 'memory': 16, 'cost_per_hour': 0.48}
+        },
+        'storage': {
+            'gp3': {'cost_per_gb_month': 0.08},
+            's3_standard': {'cost_per_gb_month': 0.023}
+        },
+        'fsx': {
+            'windows': {'price_per_gb_month': 0.13},
+            'lustre': {'price_per_gb_month': 0.14}
+        },
+        'datasync': {
+            'agent_infrastructure': {
+                'medium': {'estimated_cost_per_hour': 0.10}
             }
-        ]
-    else:
-        # Non-production: DX connection bottleneck at 2Gbps
-        effective_bandwidth = 2000  # Bottlenecked by DX connection
-        total_latency = 17  # SJ local → AWS
-        total_reliability = 0.999 * 0.998  # Product of segments
-        network_quality_score = 80
-        ai_enhanced_quality_score = 85
-        cost_factor = 2.0  # Lower cost for non-prod
-        segments = [
-            {
-                'name': 'San Jose Linux NAS to Jump Server',
-                'effective_bandwidth_mbps': 10000,
-                'effective_latency_ms': 2,
-                'reliability': 0.999,
-                'connection_type': 'internal_lan',
-                'cost_factor': 0.0
-            },
-            {
-                'name': f'San Jose to AWS {destination_storage} (DX)',
-                'effective_bandwidth_mbps': 2000,  # This is the bottleneck!
-                'effective_latency_ms': 15,
-                'reliability': 0.998,
-                'connection_type': 'direct_connect',
-                'cost_factor': 2.0
-            }
-        ]
-    
-    # Apply destination storage bonuses
-    storage_bonus = 0
-    if destination_storage == 'FSx_Windows':
-        storage_bonus = 10
-        ai_enhanced_quality_score += storage_bonus
-        # Adjust latency for FSx Windows (better performance)
-        total_latency *= 0.9
-        for segment in segments:
-            if 'AWS' in segment['name']:
-                segment['effective_latency_ms'] *= 0.9
-    elif destination_storage == 'FSx_Lustre':
-        storage_bonus = 20
-        ai_enhanced_quality_score += storage_bonus
-        # Adjust latency for FSx Lustre (much better performance)
-        total_latency *= 0.7
-        for segment in segments:
-            if 'AWS' in segment['name']:
-                segment['effective_latency_ms'] *= 0.7
-    
-    # Ensure quality scores don't exceed 100
-    ai_enhanced_quality_score = min(100, ai_enhanced_quality_score)
-    
-    # Create network performance analysis - NOW FULLY DYNAMIC
-    network_performance = {
-        'path_name': f'{environment.title()}: Network path to AWS {destination_storage}',
-        'destination_storage': destination_storage,
-        'network_quality_score': network_quality_score,
-        'ai_enhanced_quality_score': ai_enhanced_quality_score,
-        'effective_bandwidth_mbps': effective_bandwidth,  # NOW DYNAMIC!
-        'total_latency_ms': total_latency,
-        'total_reliability': total_reliability,
-        'total_cost_factor': cost_factor,
-        'storage_performance_bonus': storage_bonus,
-        'ai_optimization_potential': 15,
-        'environment': environment,
-        'os_type': 'linux' if any(os_name in config.get('operating_system', '') for os_name in ['linux', 'ubuntu', 'rhel']) else 'windows',
-        'storage_type': 'nas',
-        'segments': segments,
-        'ai_insights': {
-            'performance_bottlenecks': [f'{environment.title()} network path analysis'] + 
-                                     (['DX connection bandwidth limit'] if environment != 'production' else ['No significant bottlenecks']),
-            'optimization_opportunities': ['Network path optimization available', f'{destination_storage} performance tuning'],
-            'recommended_improvements': [f'{environment.title()} network best practices', f'Optimize for {destination_storage}'],
-            'risk_factors': ['No significant network risks identified']
+        },
+        'dms': {
+            'dms.c5.large': {'cost_per_hour': 0.37}
         }
     }
     
+    # Use centralized cost calculator even for fallback
+    cost_calculator = CentralizedCostCalculator(mock_pricing)
+    
+    # Build analysis structure
+    analysis = {
+        'pricing_data': mock_pricing,
+        # ... other analysis components
+    }
+    
+    # Calculate costs using centralized calculator
+    cost_analysis = cost_calculator.calculate_comprehensive_costs(config, analysis)
+    analysis['cost_analysis'] = cost_analysis
+    
+    return analysis    
     # Generate comprehensive AWS sizing recommendations
     def get_fallback_rds_sizing():
         # Determine instance size based on database size and requirements
@@ -9744,333 +10388,91 @@ def render_aws_sizing_tab(analysis: Dict, config: Dict):
     
     # ENHANCED: Comprehensive Cost Analysis
 def render_comprehensive_cost_pricing_tab(analysis: Dict, config: Dict):
-    """Render comprehensive cost analysis including ALL AWS services"""
+    """UPDATED: Use centralized cost calculator results"""
     st.subheader("💰 Comprehensive AWS Migration Cost Analysis")
     
-    # Base cost analysis
+    # Get cost analysis from centralized calculator
     cost_analysis = analysis.get('cost_analysis', {})
+    cost_breakdown = cost_analysis.get('cost_breakdown', {})
+    pricing_data = analysis.get('pricing_data', {})
+    
+    # Show data source reliability
+    data_source = cost_analysis.get('data_source', 'fallback')
+    if data_source == 'aws_api':
+        st.success(f"✅ **Real-time AWS Pricing Data** (Updated: {cost_analysis.get('last_updated', 'Unknown')})")
+    else:
+        st.warning(f"⚠️ **Fallback Pricing Data** - Configure AWS credentials for real-time pricing")
     
     # Enhanced cost breakdown with ALL AWS services
     st.markdown("**💸 Complete AWS Service Cost Breakdown:**")
     
-    # Primary AWS Services Costs
+    # Display dynamic service costs
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        compute_cost = cost_analysis.get('aws_compute_cost', 0)
+        compute_cost = cost_breakdown.get('compute', {}).get('monthly_cost', 0)
         st.metric(
             "🖥️ Compute (RDS/EC2)",
             f"${compute_cost:,.0f}/mo",
-            delta="Primary database hosting"
+            delta=f"Source: {data_source}"
         )
     
     with col2:
-        storage_cost = cost_analysis.get('aws_storage_cost', 0) + cost_analysis.get('destination_storage_cost', 0)
+        storage_cost = cost_breakdown.get('storage', {}).get('monthly_cost', 0)
         st.metric(
             "💾 Storage (EBS/S3/FSx)",
             f"${storage_cost:,.0f}/mo",
-            delta="Database + destination storage"
+            delta="Dynamic pricing"
         )
     
     with col3:
-        # NEW: DataSync/DMS service costs
-        migration_service_cost = cost_analysis.get('agent_cost', 0)
+        migration_cost = cost_breakdown.get('migration_services', {}).get('monthly_cost', 0)
         st.metric(
             "🔄 Migration Services",
-            f"${migration_service_cost:,.0f}/mo",
-            delta=f"DataSync/DMS agents"
+            f"${migration_cost:,.0f}/mo",
+            delta="DataSync/DMS"
         )
     
     with col4:
-        # NEW: Direct Connect costs
-        dx_cost = cost_analysis.get('network_cost', 0)
+        network_cost = cost_breakdown.get('networking', {}).get('monthly_cost', 0)
         st.metric(
-            "🌐 Direct Connect (DX)",
-            f"${dx_cost:,.0f}/mo",
-            delta="Dedicated network connection"
+            "🌐 Networking",
+            f"${network_cost:,.0f}/mo",
+            delta="Direct Connect + VPC"
         )
     
     with col5:
-        # Total monthly cost
-        total_monthly = cost_analysis.get('total_monthly_cost', 0)
+        total_monthly = cost_analysis.get('monthly_total', 0)
         st.metric(
             "💰 Total Monthly",
             f"${total_monthly:,.0f}",
             delta=f"Annual: ${total_monthly * 12:,.0f}"
         )
     
-    # Detailed AWS Service Breakdown
-    st.markdown("**📊 Detailed AWS Service Cost Analysis:**")
-    
-    # Create comprehensive cost breakdown
+    # Create comprehensive service table from dynamic data
     service_costs = []
     
-    # 1. Compute Services
-    if config.get('is_sql_server') or config.get('database_engine', '').startswith('ec2_'):
-        # EC2 costs for SQL Server or self-managed
+    for category, details in cost_breakdown.items():
         service_costs.append({
-            "Service Category": "Compute",
-            "AWS Service": "Amazon EC2",
-            "Description": f"SQL Server on {config.get('database_engine', 'EC2')}",
-            "Monthly Cost": f"${cost_analysis.get('aws_compute_cost', 0):,.0f}",
-            "Usage": "Database hosting (self-managed)",
-            "Optimization": "Consider Reserved Instances for 30% savings"
-        })
-    else:
-        # RDS costs
-        service_costs.append({
-            "Service Category": "Compute",
-            "AWS Service": "Amazon RDS",
-            "Description": f"Managed {config.get('database_engine', 'MySQL').replace('rds_', '')}",
-            "Monthly Cost": f"${cost_analysis.get('aws_compute_cost', 0):,.0f}",
-            "Usage": "Managed database service",
-            "Optimization": "Consider Reserved Instances for 30% savings"
+            "Service Category": category.replace('_', ' ').title(),
+            "AWS Service": details.get('service', 'Unknown'),
+            "Description": details.get('description', f"{category} services"),
+            "Monthly Cost": f"${details.get('monthly_cost', 0):,.0f}",
+            "One-time Cost": f"${details.get('one_time_cost', 0):,.0f}",
+            "Data Source": "AWS API" if data_source == 'aws_api' else "Estimated"
         })
     
-    # 2. Storage Services
-    # EBS Storage
-    ebs_cost = cost_analysis.get('aws_storage_cost', 0)
-    if ebs_cost > 0:
-        service_costs.append({
-            "Service Category": "Storage",
-            "AWS Service": "Amazon EBS",
-            "Description": f"Database storage (GP3/IO2)",
-            "Monthly Cost": f"${ebs_cost:,.0f}",
-            "Usage": f"Database storage ({config.get('database_size_gb', 0):,} GB)",
-            "Optimization": "Right-size based on IOPS requirements"
-        })
-    
-    # Destination Storage (S3/FSx)
-    dest_storage_cost = cost_analysis.get('destination_storage_cost', 0)
-    destination_type = config.get('destination_storage_type', 'S3')
-    service_costs.append({
-        "Service Category": "Storage",
-        "AWS Service": f"Amazon {destination_type}",
-        "Description": f"Migration destination storage",
-        "Monthly Cost": f"${dest_storage_cost:,.0f}",
-        "Usage": f"Backup/archive storage ({destination_type})",
-        "Optimization": "Use lifecycle policies for cost optimization" if destination_type == "S3" else f"Right-size {destination_type} for workload"
-    })
-    
-    # 3. Migration Services
-    agent_cost = cost_analysis.get('agent_cost', 0)
-    num_agents = config.get('number_of_agents', 1)
-    is_homogeneous = config.get('source_database_engine') == config.get('ec2_database_engine', 'mysql')
-    migration_service = "DataSync" if is_homogeneous else "DMS"
-    
-    service_costs.append({
-        "Service Category": "Migration",
-        "AWS Service": f"AWS {migration_service}",
-        "Description": f"{num_agents}x {migration_service} agents",
-        "Monthly Cost": f"${agent_cost:,.0f}",
-        "Usage": f"Data migration and sync ({num_agents} agents)",
-        "Optimization": "Optimize agent count based on throughput needs"
-    })
-    
-    # 4. Network Services
-    dx_cost = cost_analysis.get('network_cost', 0)
-    environment = config.get('environment', 'non-production')
-    
-    service_costs.append({
-        "Service Category": "Networking",
-        "AWS Service": "AWS Direct Connect",
-        "Description": f"{environment.title()} DX connection",
-        "Monthly Cost": f"${dx_cost:,.0f}",
-        "Usage": f"Dedicated network connectivity ({environment})",
-        "Optimization": "Consider DX Gateway for multiple VPCs"
-    })
-    
-    # 5. Additional AWS Services
-    
-    # VPC and Security
-    service_costs.append({
-        "Service Category": "Networking",
-        "AWS Service": "Amazon VPC",
-        "Description": "Virtual Private Cloud setup",
-        "Monthly Cost": "$50",
-        "Usage": "Network isolation and security",
-        "Optimization": "Included in base networking costs"
-    })
-    
-    # CloudWatch Monitoring
-    monitoring_cost = 100 + (num_agents * 20)  # Base + per agent
-    service_costs.append({
-        "Service Category": "Management",
-        "AWS Service": "Amazon CloudWatch",
-        "Description": "Monitoring and alerting",
-        "Monthly Cost": f"${monitoring_cost:,.0f}",
-        "Usage": "Database and migration monitoring",
-        "Optimization": "Optimize log retention and metrics"
-    })
-    
-    # AWS Backup (if applicable)
-    if not config.get('database_engine', '').startswith('rds_'):
-        backup_cost = cost_analysis.get('aws_storage_cost', 0) * 0.2  # 20% of storage for backups
-        service_costs.append({
-            "Service Category": "Backup",
-            "AWS Service": "AWS Backup",
-            "Description": "Automated backup service",
-            "Monthly Cost": f"${backup_cost:,.0f}",
-            "Usage": "Database backup and recovery",
-            "Optimization": "Configure retention policies"
-        })
-    
-    # IAM and Security Services
-    service_costs.append({
-        "Service Category": "Security",
-        "AWS Service": "AWS IAM + KMS",
-        "Description": "Identity and encryption management",
-        "Monthly Cost": "$25",
-        "Usage": "Access control and encryption keys",
-        "Optimization": "Included in security baseline"
-    })
-    
-    # SQL Server Specific Costs
-    if config.get('is_sql_server'):
-        # SQL Server licensing
-        sql_licensing_cost = cost_analysis.get('os_licensing_cost', 0)
-        service_costs.append({
-            "Service Category": "Licensing",
-            "AWS Service": "SQL Server License",
-            "Description": "BYOL or License Included",
-            "Monthly Cost": f"${sql_licensing_cost:,.0f}",
-            "Usage": "SQL Server database engine licensing",
-            "Optimization": "Consider BYOL for long-term savings"
-        })
-        
-        # Windows Server licensing
-        windows_licensing_cost = 200  # Estimated Windows Server cost
-        service_costs.append({
-            "Service Category": "Licensing",
-            "AWS Service": "Windows Server License",
-            "Description": "Windows OS licensing on EC2",
-            "Monthly Cost": f"${windows_licensing_cost:,.0f}",
-            "Usage": "Windows Server OS for SQL Server",
-            "Optimization": "Include in EC2 pricing or BYOL"
-        })
-    
-    # Create comprehensive service table
     df_services = pd.DataFrame(service_costs)
     st.dataframe(df_services, use_container_width=True)
     
-    # Cost by Category Analysis
-    col1, col2 = st.columns(2)
+    # Cost optimization recommendations using dynamic pricing
+    st.markdown("**💡 Dynamic Cost Optimization Recommendations:**")
     
-    with col1:
-        st.markdown("**📈 Cost by Service Category:**")
-        
-        # Calculate category totals
-        category_costs = {}
-        for service in service_costs:
-            category = service["Service Category"]
-            cost_str = service["Monthly Cost"].replace("$", "").replace(",", "")
-            try:
-                cost = float(cost_str)
-                category_costs[category] = category_costs.get(category, 0) + cost
-            except:
-                continue
-        
-        if category_costs:
-            fig_category = px.pie(
-                values=list(category_costs.values()),
-                names=list(category_costs.keys()),
-                title="Monthly Cost by Service Category"
-            )
-            st.plotly_chart(fig_category, use_container_width=True, key="cost_category_breakdown")
+    cost_calculator = CentralizedCostCalculator(pricing_data)
+    recommendations = cost_calculator.get_cost_optimization_recommendations(cost_analysis, config)
     
-    with col2:
-        st.markdown("**💡 Cost Optimization Recommendations:**")
-        
-        with st.container():
-            st.success("Cost Optimization Strategies")
-            
-            # Generate optimization recommendations based on configuration
-            optimizations = []
-            
-            if not config.get('database_engine', '').startswith('rds_'):
-                optimizations.append("• Consider Reserved Instances for 30-50% compute savings")
-            
-            if config.get('destination_storage_type') == 'S3':
-                optimizations.append("• Implement S3 Intelligent Tiering for storage optimization")
-            
-            if num_agents > 3:
-                optimizations.append(f"• Optimize {num_agents} agents - consider consolidation")
-            
-            if config.get('environment') == 'non-production':
-                optimizations.append("• Use Spot Instances for non-prod workloads (60% savings)")
-            
-            optimizations.append("• Implement auto-scaling policies")
-            optimizations.append("• Regular cost reviews and rightsizing")
-            
-            for opt in optimizations:
-                st.write(opt)
-    
-    # One-time Migration Costs
-    st.markdown("**🔄 One-time Migration and Setup Costs:**")
-    
-    onetime_col1, onetime_col2, onetime_col3 = st.columns(3)
-    
-    with onetime_col1:
-        st.info("**Migration Setup Costs**")
-        setup_costs = {
-            "Professional Services": "$15,000",
-            "Agent Setup": f"${cost_analysis.get('agent_setup_cost', 0):,.0f}",
-            "Network Configuration": "$5,000",
-            "Testing & Validation": "$8,000",
-            "Training": "$3,000"
-        }
-        
-        for item, cost in setup_costs.items():
-            st.write(f"**{item}:** {cost}")
-    
-    with onetime_col2:
-        st.warning("**Data Transfer Costs**")
-        
-        database_size_gb = config.get('database_size_gb', 0)
-        data_transfer_cost = database_size_gb * 0.02  # $0.02 per GB estimate
-        
-        st.write(f"**Initial Data Transfer:** ${data_transfer_cost:,.0f}")
-        st.write(f"**Database Size:** {database_size_gb:,} GB")
-        st.write(f"**Transfer Rate:** $0.02/GB")
-        st.write(f"**Ongoing Sync:** Included in DX")
-        st.write(f"**Backup Transfer:** ${data_transfer_cost * 0.1:,.0f}/month")
-    
-    with onetime_col3:
-        st.error("**Risk Mitigation Costs**")
-        
-        risk_costs = {
-            "Rollback Preparation": "$5,000",
-            "Extended Support": "$10,000",
-            "Additional Testing": "$5,000",
-            "Contingency (10%)": f"${cost_analysis.get('one_time_migration_cost', 0) * 0.1:,.0f}"
-        }
-        
-        for item, cost in risk_costs.items():
-            st.write(f"**{item}:** {cost}")
-    
-    # Total Cost Summary
-    st.markdown("**📊 Total Cost of Ownership (TCO) Analysis:**")
-    
-    # Calculate 3-year TCO
-    monthly_total = sum(category_costs.values()) if category_costs else total_monthly
-    one_time_total = cost_analysis.get('one_time_migration_cost', 0) + 51000  # Professional services + setup
-    
-    tco_data = {
-        "Timeline": ["Month 1", "Year 1", "Year 2", "Year 3", "3-Year Total"],
-        "Monthly Costs": [f"${monthly_total:,.0f}", f"${monthly_total * 12:,.0f}", 
-                         f"${monthly_total * 12:,.0f}", f"${monthly_total * 12:,.0f}",
-                         f"${monthly_total * 36:,.0f}"],
-        "One-time Costs": [f"${one_time_total:,.0f}", "$0", "$0", "$0", f"${one_time_total:,.0f}"],
-        "Total": [f"${monthly_total + one_time_total:,.0f}", 
-                 f"${monthly_total * 12:,.0f}",
-                 f"${monthly_total * 12:,.0f}", 
-                 f"${monthly_total * 12:,.0f}",
-                 f"${monthly_total * 36 + one_time_total:,.0f}"]
-    }
-    
-    df_tco = pd.DataFrame(tco_data)
-    st.dataframe(df_tco, use_container_width=True)
-    
+    for i, rec in enumerate(recommendations, 1):
+        st.write(f"{i}. {rec}")    
     
     
     
