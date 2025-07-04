@@ -11727,6 +11727,274 @@ class PricingAPIDebugger:
             print("   3. Check if filters are too restrictive")
             print("   4. Consider using broader filters and filtering results in code")
 
+# Add this to your Streamlit app for debugging
+
+
+
+def create_debug_section():
+    """Add this to your Streamlit app to debug pricing API issues"""
+    
+    st.header("🔧 AWS Pricing API Debugger")
+    
+    if st.button("🩺 Run Pricing API Diagnostic"):
+        with st.spinner("Running diagnostic tests..."):
+            
+            # Capture all output
+            import io
+            import sys
+            from contextlib import redirect_stdout
+            
+            output_buffer = io.StringIO()
+            
+            try:
+                with redirect_stdout(output_buffer):
+                    debugger = PricingAPIDebugger()
+                    debugger.run_full_diagnostic('us-west-2')
+                
+                # Show the output
+                output = output_buffer.getvalue()
+                st.text_area("Diagnostic Output", output, height=400)
+                
+            except Exception as e:
+                st.error(f"Diagnostic failed: {e}")
+                st.text(traceback.format_exc())
+    
+    if st.button("🧪 Quick Pricing Test"):
+        with st.spinner("Testing single pricing call..."):
+            
+            try:
+                # Quick test function
+                pricing = boto3.client('pricing', region_name='us-east-1')
+                
+                st.write("**Test 1: Basic Connection**")
+                response = pricing.get_products(ServiceCode='AmazonEC2', MaxResults=1)
+                st.success(f"✅ Basic connection works - got {len(response['PriceList'])} results")
+                
+                st.write("**Test 2: Simple Instance Query**")
+                response = pricing.get_products(
+                    ServiceCode='AmazonEC2',
+                    Filters=[
+                        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': 't3.medium'}
+                    ],
+                    MaxResults=3
+                )
+                
+                st.success(f"✅ Found {len(response['PriceList'])} results for t3.medium")
+                
+                if response['PriceList']:
+                    st.write("**Sample Results:**")
+                    for i, item in enumerate(response['PriceList'][:2]):
+                        data = json.loads(item)
+                        attributes = data.get('product', {}).get('attributes', {})
+                        
+                        st.write(f"**Result {i+1}:**")
+                        st.write(f"- Location: {attributes.get('location', 'N/A')}")
+                        st.write(f"- OS: {attributes.get('operatingSystem', 'N/A')}")
+                        st.write(f"- Tenancy: {attributes.get('tenancy', 'N/A')}")
+                        st.write(f"- Pre-installed SW: {attributes.get('preInstalledSw', 'N/A')}")
+                        
+                        # Try to get price
+                        terms = data.get('terms', {}).get('OnDemand', {})
+                        if terms:
+                            term = list(terms.values())[0]
+                            price_dims = term.get('priceDimensions', {})
+                            if price_dims:
+                                price_info = list(price_dims.values())[0]
+                                price = price_info['pricePerUnit']['USD']
+                                st.write(f"- **Price: ${price}/hour**")
+                        
+                        st.write("---")
+                
+                st.write("**Test 3: Region-Specific Query**")
+                response = pricing.get_products(
+                    ServiceCode='AmazonEC2',
+                    Filters=[
+                        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': 't3.medium'},
+                        {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': 'US West (Oregon)'},
+                        {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'}
+                    ],
+                    MaxResults=1
+                )
+                
+                if response['PriceList']:
+                    st.success("✅ Region-specific query works!")
+                    data = json.loads(response['PriceList'][0])
+                    terms = data.get('terms', {}).get('OnDemand', {})
+                    if terms:
+                        term = list(terms.values())[0]
+                        price_dims = term.get('priceDimensions', {})
+                        if price_dims:
+                            price_info = list(price_dims.values())[0]
+                            price = price_info['pricePerUnit']['USD']
+                            st.success(f"💰 **SUCCESS! Found price: ${price}/hour for t3.medium in US West (Oregon)**")
+                        else:
+                            st.warning("⚠️ Found result but no price data")
+                    else:
+                        st.warning("⚠️ Found result but no OnDemand terms")
+                else:
+                    st.error("❌ No results for region-specific query - this is likely your problem!")
+                    st.write("**Try these solutions:**")
+                    st.write("1. Remove the 'tenancy', 'preInstalledSw' filters")
+                    st.write("2. Check if the region mapping is correct")
+                    st.write("3. Use broader filters and filter in code")
+                
+            except Exception as e:
+                st.error(f"❌ Test failed: {e}")
+                st.text(traceback.format_exc())
+
+def quick_fix_for_existing_code():
+    """Show the exact fix needed for the existing code"""
+    
+    st.header("🛠️ Quick Fix for Your Code")
+    
+    st.write("**Problem:** Your filters are too restrictive. Try this fix:")
+    
+    st.code("""
+# In your _get_ec2_pricing_async method, replace this:
+response = self.pricing_client.get_products(
+    ServiceCode='AmazonEC2',
+    Filters=[
+        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+        {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)},
+        {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'},           # ← REMOVE THIS
+        {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
+        {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}        # ← REMOVE THIS
+    ],
+    MaxResults=1
+)
+
+# With this simpler version:
+response = self.pricing_client.get_products(
+    ServiceCode='AmazonEC2',
+    Filters=[
+        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+        {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': self._region_to_location(region)},
+        {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'}
+    ],
+    MaxResults=5  # Get more results to choose from
+)
+
+# Then filter the results in code to find the best match
+""", language='python')
+    
+    st.write("**Why this works:**")
+    st.write("- AWS pricing data doesn't always have consistent values for 'tenancy' and 'preInstalledSw'")
+    st.write("- Some products might have 'Dedicated' tenancy or different SW values")
+    st.write("- By removing restrictive filters, you get more results to choose from")
+    st.write("- Then filter in your Python code to find the standard on-demand Linux pricing")
+
+
+# Add this to your Streamlit app to test the fix immediately
+
+
+def test_pricing_fix():
+    """Test if the simplified filters work"""
+    
+    st.subheader("🧪 Testing Pricing API Fix")
+    
+    if st.button("Test Simplified Filters"):
+        try:
+            pricing = boto3.client('pricing', region_name='us-east-1')
+            
+            # Test the old restrictive filters
+            st.write("**Testing OLD (restrictive) filters:**")
+            with st.spinner("Testing restrictive filters..."):
+                old_response = pricing.get_products(
+                    ServiceCode='AmazonEC2',
+                    Filters=[
+                        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': 't3.medium'},
+                        {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': 'US West (Oregon)'},
+                        {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'Shared'},
+                        {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
+                        {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'}
+                    ],
+                    MaxResults=1
+                )
+            
+            if old_response['PriceList']:
+                st.success(f"✅ OLD filters work: Found {len(old_response['PriceList'])} results")
+            else:
+                st.error("❌ OLD filters return no results - this is your problem!")
+            
+            # Test the new simplified filters  
+            st.write("**Testing NEW (simplified) filters:**")
+            with st.spinner("Testing simplified filters..."):
+                new_response = pricing.get_products(
+                    ServiceCode='AmazonEC2',
+                    Filters=[
+                        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': 't3.medium'},
+                        {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': 'US West (Oregon)'},
+                        {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'}
+                    ],
+                    MaxResults=5
+                )
+            
+            if new_response['PriceList']:
+                st.success(f"✅ NEW filters work: Found {len(new_response['PriceList'])} results")
+                
+                # Show the results
+                st.write("**Available pricing options:**")
+                for i, item in enumerate(new_response['PriceList']):
+                    data = json.loads(item)
+                    attributes = data.get('product', {}).get('attributes', {})
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write(f"**Option {i+1}:**")
+                        st.write(f"Tenancy: {attributes.get('tenancy', 'N/A')}")
+                        st.write(f"Pre-installed: {attributes.get('preInstalledSw', 'N/A')}")
+                    
+                    with col2:
+                        # Get price
+                        terms = data.get('terms', {}).get('OnDemand', {})
+                        if terms:
+                            term = list(terms.values())[0]
+                            price_dims = term.get('priceDimensions', {})
+                            if price_dims:
+                                price_info = list(price_dims.values())[0]
+                                price = price_info['pricePerUnit']['USD']
+                                st.write(f"**Price: ${price}/hour**")
+                    
+                    with col3:
+                        if 'shared' in attributes.get('tenancy', '').lower():
+                            st.write("🎯 **Recommended**")
+                
+            else:
+                st.error("❌ Even simplified filters don't work - deeper issue")
+            
+            # Show the fix
+            if new_response['PriceList'] and not old_response['PriceList']:
+                st.success("🎉 **FIX CONFIRMED!** Use the simplified filters in your code.")
+                
+                st.code("""
+# Replace your existing filters with:
+response = self.pricing_client.get_products(
+    ServiceCode='AmazonEC2',
+    Filters=[
+        {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+        {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': location},
+        {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'}
+    ],
+    MaxResults=5
+)
+""", language='python')
+                
+        except Exception as e:
+            st.error(f"Test failed: {e}")
+            st.text(str(e))
+
+# Usage: Add this to your app
+test_pricing_fix()
+
+
+# Usage in your Streamlit app:
+# Add this to your sidebar or main area:
+if __name__ == "__main__":
+    create_debug_section()
+    quick_fix_for_existing_code()
+
+
+
 # Usage
 if __name__ == "__main__":
     debugger = PricingAPIDebugger()
